@@ -9,6 +9,7 @@ import { useGameStore } from '../store/useGameStore';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { leaveRoom } from '../services/room-session';
 import { useVoiceLabels } from '../hooks/useVoiceLabels';
+import { AppIcon } from '../components/common/AppIcon';
 
 export const InGameDrawerPage: React.FC = () => {
   const { t } = useTranslation();
@@ -246,7 +247,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
                   title={t('inGame.exitRoom', '退出房间')}
                 >
-                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                  <AppIcon name="arrow_back" className="w-[18px] h-[18px]" />
                 </button>
                 <div className="flex flex-col leading-tight">
                   <div className="flex items-center gap-1">
@@ -263,9 +264,7 @@ export const InGameDrawerPage: React.FC = () => {
 
               {/* Center: Compact Timer Pill */}
               <div className="flex items-center gap-1.5 bg-secondary-fixed/50 border border-secondary/20 px-2.5 py-1 rounded-full shadow-xs">
-                <span className="material-symbols-outlined text-secondary text-[16px] animate-pulse">
-                  timer
-                </span>
+                <AppIcon name="timer" className="w-4 h-4 text-secondary animate-pulse" />
                 <span className="font-headline-sm text-[14px] font-black text-secondary tracking-tight leading-none">
                   {timeLeft}s
                 </span>
@@ -279,13 +278,12 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn flex items-center gap-1 bg-surface-container text-on-surface px-2 py-1 rounded-full cursor-pointer"
                   title={t('voice.channel', '语音频道')}
                 >
-                  <span
-                    className={`material-symbols-outlined text-[14px] ${
+                  <AppIcon
+                    name={voiceStatus === 'connected' ? 'mic' : voiceStatus === 'connecting' ? 'hourglass_top' : 'mic_off'}
+                    className={`w-3.5 h-3.5 ${
                       voiceStatus === 'connected' ? 'text-tertiary-container animate-bounce' : 'text-outline'
                     }`}
-                  >
-                    {voiceStatus === 'connected' ? 'mic' : voiceStatus === 'connecting' ? 'hourglass_top' : 'mic_off'}
-                  </span>
+                  />
                   <span className="font-label-sm text-[11px] font-bold">
                     {voiceStatus === 'connected'
                       ? speakingUserIds.length > 0
@@ -303,12 +301,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn flex items-center gap-1 bg-primary text-on-primary px-2.5 py-1 rounded-full shadow-sm hover:bg-primary-container cursor-pointer"
                   title={t('inGame.fullscreenBoard', '全屏画板')}
                 >
-                  <span
-                    className="material-symbols-outlined text-[15px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    fullscreen
-                  </span>
+                  <AppIcon name="fullscreen" className="w-4 h-4" />
                   <span className="font-label-sm text-[11px] font-extrabold">{t('inGame.fullscreenBoard', '全屏画板')}</span>
                 </button>
               </div>
@@ -319,12 +312,7 @@ export const InGameDrawerPage: React.FC = () => {
               {/* Secret Word Pill (Drawer's Target Word) */}
               <div className="flex-1 bg-surface-container-low border border-surface-container rounded-xl px-2.5 py-1.5 flex items-center justify-between shadow-xs">
                 <div className="flex items-center gap-1.5 truncate">
-                  <span
-                    className="material-symbols-outlined text-primary text-[17px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    visibility
-                  </span>
+                  <AppIcon name="visibility" className="w-4 h-4 text-primary shrink-0" />
                   <span className="font-label-sm text-[11px] text-on-surface-variant font-bold shrink-0">
                     词条:
                   </span>
@@ -345,7 +333,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn shrink-0 flex items-center gap-0.5 bg-surface-container-highest text-primary hover:bg-primary hover:text-on-primary px-2 py-0.5 rounded-full font-label-sm text-[10px] transition-colors cursor-pointer disabled:opacity-40"
                   title={`换词 (剩${rerollsLeft}次)`}
                 >
-                  <span className="material-symbols-outlined text-[12px]">autorenew</span>
+                  <AppIcon name="autorenew" className="w-3 h-3" />
                   <span>{t('inGame.reroll', '换词')}</span>
                 </button>
               </div>
@@ -412,7 +400,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('inGame.undo', '撤销 (Undo)')}
                     aria-label={t('inGame.undo', '撤销')}
                   >
-                    <span className="material-symbols-outlined text-[19px]">undo</span>
+                    <AppIcon name="undo" className="w-[19px] h-[19px]" />
                   </button>
                   <button
                     type="button"
@@ -422,7 +410,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('inGame.redo', '重做 (Redo)')}
                     aria-label={t('inGame.redo', '重做')}
                   >
-                    <span className="material-symbols-outlined text-[19px]">redo</span>
+                    <AppIcon name="redo" className="w-[19px] h-[19px]" />
                   </button>
                   <div className="w-px h-4 bg-outline-variant my-auto"></div>
                   <button
@@ -433,7 +421,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('inGame.clear', '清屏 (Clear)')}
                     aria-label={t('inGame.clear', '清屏')}
                   >
-                    <span className="material-symbols-outlined text-[19px]">delete_sweep</span>
+                    <AppIcon name="delete_sweep" className="w-[19px] h-[19px]" />
                   </button>
                   <div className="w-px h-4 bg-outline-variant my-auto"></div>
                   <button
@@ -443,7 +431,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                     aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                   >
-                    <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+                    <AppIcon name="open_in_full" className="w-[18px] h-[18px]" />
                   </button>
                 </div>
               </div>
@@ -452,12 +440,7 @@ export const InGameDrawerPage: React.FC = () => {
               <div className="absolute top-12 left-0 right-0 h-28 pointer-events-none z-20 overflow-hidden flex flex-col justify-start gap-2 pt-1 px-3">
                 {latestCorrectPlayer && (
                   <div className="danmaku-badge self-start flex items-center gap-1.5 bg-gradient-to-r from-emerald-600/90 via-teal-600/90 to-emerald-500/90 backdrop-blur-md text-white px-3 py-1 rounded-full shadow-lg border border-white/20 transform -translate-x-1">
-                    <span
-                      className="material-symbols-outlined text-[15px] animate-bounce"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      celebration
-                    </span>
+                    <AppIcon name="celebration" className="w-4 h-4 animate-bounce" />
                     <span className="font-label-sm text-[12px] font-black">
                       {latestCorrectPlayer.nickname} {t('inGame.guessedCorrectlyShort', '猜中了！')}
                     </span>
@@ -499,7 +482,7 @@ export const InGameDrawerPage: React.FC = () => {
               {/* Canvas Bottom Info Bar */}
               <div className="bg-surface-container-low/90 backdrop-blur-sm px-3 py-1 flex items-center justify-between border-t border-surface-container text-on-surface-variant z-10 shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[15px] text-primary">touch_app</span>
+                  <AppIcon name="touch_app" className="w-4 h-4 text-primary" />
                   <span className="font-label-sm text-[11px] font-bold text-on-surface">
                     {t('inGame.goldenReachReady', '大拇指黄金触控区已就绪')}
                   </span>
@@ -516,7 +499,7 @@ export const InGameDrawerPage: React.FC = () => {
           <div className="px-3 py-0.5 bg-surface shrink-0 z-20">
             <div className="bg-surface-container-low/90 border border-surface-container rounded-full px-2.5 py-1 shadow-xs flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <span className="material-symbols-outlined text-primary text-[14px] shrink-0">forum</span>
+                <AppIcon name="forum" className="w-3.5 h-3.5 text-primary shrink-0" />
                 <div className="flex items-center gap-1 text-[11px] min-w-0 truncate">
                   {latestGuessMessage ? (
                     <>
@@ -539,7 +522,7 @@ export const InGameDrawerPage: React.FC = () => {
                 title="展开完整互动消息"
               >
                 <span className="text-[10px]">{messages.length}条</span>
-                <span className="material-symbols-outlined text-[12px]">expand_less</span>
+                <AppIcon name="expand_less" className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -582,7 +565,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn w-7 h-7 rounded-full bg-gradient-to-tr from-pink-400 via-indigo-500 to-teal-300 flex items-center justify-center text-white shrink-0 shadow-sm cursor-pointer"
                   title="更多色彩"
                 >
-                  <span className="material-symbols-outlined text-[14px]">palette</span>
+                  <AppIcon name="palette" className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -600,12 +583,7 @@ export const InGameDrawerPage: React.FC = () => {
                         : 'bg-surface-container text-on-surface'
                     }`}
                   >
-                    <span
-                      className="material-symbols-outlined text-[16px]"
-                      style={{ fontVariationSettings: !isEraser ? "'FILL' 1" : "'FILL' 0" }}
-                    >
-                      edit
-                    </span>
+                    <AppIcon name="edit" className="w-4 h-4" />
                     <span>{t('inGame.penTool', '画笔')}</span>
                   </button>
 
@@ -619,7 +597,7 @@ export const InGameDrawerPage: React.FC = () => {
                         : 'bg-surface-container text-on-surface hover:bg-surface-variant'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">ink_eraser</span>
+                    <AppIcon name="ink_eraser" className="w-4 h-4" />
                     <span>{t('inGame.eraserTool', '橡皮')}</span>
                   </button>
                 </div>
@@ -664,7 +642,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer"
                   title="常用短语与表情"
                 >
-                  <span className="material-symbols-outlined text-[18px]">sentiment_satisfied</span>
+                  <AppIcon name="sentiment_satisfied" className="w-4 h-4" />
                 </button>
                 <input
                   type="text"
@@ -679,7 +657,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn w-7 h-7 rounded-full bg-primary hover:bg-primary-container text-on-primary flex items-center justify-center shrink-0 shadow-xs transition-colors cursor-pointer disabled:opacity-40"
                   title="发送弹幕"
                 >
-                  <span className="material-symbols-outlined text-[15px]">send</span>
+                  <AppIcon name="send" className="w-4 h-4" />
                 </button>
               </form>
 
@@ -693,12 +671,7 @@ export const InGameDrawerPage: React.FC = () => {
                     className="tactile-btn shrink-0 flex items-center gap-1 bg-surface-container-high text-primary hover:bg-primary hover:text-white px-2.5 py-1.5 rounded-full font-label-sm text-[11px] transition-colors cursor-pointer"
                     title={`公布线索提示 (剩${hintsLeft}次)`}
                   >
-                    <span
-                      className="material-symbols-outlined text-[15px]"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      lightbulb
-                    </span>
+                    <AppIcon name="lightbulb" className="w-4 h-4" />
                     <span className="font-extrabold">提示</span>
                   </button>
                 )}
@@ -766,9 +739,7 @@ export const InGameDrawerPage: React.FC = () => {
                       : 'bg-primary hover:bg-primary-container text-on-primary'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    {!isMuted ? 'mic' : 'mic_none'}
-                  </span>
+                  <AppIcon name={!isMuted ? 'mic' : 'mic_none'} className="w-4 h-4" />
                   <span>
                     {voiceMode === 'hold'
                       ? !isMuted
@@ -807,7 +778,7 @@ export const InGameDrawerPage: React.FC = () => {
               className="tactile-btn flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
               title="点击复制房号"
             >
-              <span className="material-symbols-outlined text-[15px] text-primary">tag</span>
+              <AppIcon name="tag" className="w-3.5 h-3.5 text-primary" />
               <span className="font-label-sm text-xs font-bold tracking-tight">
                 #{roomCode} {copiedCode ? '✓' : ''}
               </span>
@@ -818,7 +789,7 @@ export const InGameDrawerPage: React.FC = () => {
             </span>
 
             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary-fixed text-primary font-bold text-xs">
-              <span className="material-symbols-outlined text-[15px]">edit</span>
+              <AppIcon name="edit" className="w-3.5 h-3.5" />
               <span>灵魂画手</span>
             </div>
           </div>
@@ -826,7 +797,7 @@ export const InGameDrawerPage: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Timer Badge */}
             <div className="flex items-center gap-2 bg-error-container text-secondary font-black px-3 py-1 rounded-full shadow-xs">
-              <span className="material-symbols-outlined text-[18px] animate-pulse">timer</span>
+              <AppIcon name="timer" className="w-4 h-4 animate-pulse" />
               <span className="font-headline-sm text-sm">{timeLeft}s 倒计时</span>
             </div>
 
@@ -879,9 +850,7 @@ export const InGameDrawerPage: React.FC = () => {
                   : 'bg-surface-container text-on-surface hover:bg-surface-variant'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">
-                {!isMuted ? 'mic' : 'mic_off'}
-              </span>
+              <AppIcon name={!isMuted ? 'mic' : 'mic_off'} className="w-4 h-4" />
               <span>
                 {voiceMode === 'hold'
                   ? !isMuted
@@ -901,9 +870,7 @@ export const InGameDrawerPage: React.FC = () => {
               title={voiceMode === 'hold' ? t('voice.modeOpenAria', '切换到自由麦模式') : t('voice.modeHoldAria', '切换到按住说话模式')}
               className="tactile-btn px-2.5 py-1.5 rounded-full bg-surface-container hover:bg-surface-variant text-xs font-bold text-on-surface flex items-center gap-1 cursor-pointer transition-colors"
             >
-              <span className="material-symbols-outlined text-[15px] text-primary">
-                {voiceMode === 'hold' ? 'touch_app' : 'campaign'}
-              </span>
+              <AppIcon name={voiceMode === 'hold' ? 'touch_app' : 'campaign'} className="w-4 h-4 text-primary" />
               <span>{voiceMode === 'hold' ? t('voice.modeHold', '按住说话') : t('voice.modeOpen', '自由麦')}</span>
             </button>
 
@@ -915,7 +882,7 @@ export const InGameDrawerPage: React.FC = () => {
               title={t('voice.roomChatTitle', '房间交流')}
               className="tactile-btn relative p-2 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface-variant flex items-center justify-center cursor-pointer transition-colors"
             >
-              <span className="material-symbols-outlined text-[18px]">forum</span>
+              <AppIcon name="forum" className="w-4 h-4" />
               {messages.length > 0 && (
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span>
               )}
@@ -933,9 +900,7 @@ export const InGameDrawerPage: React.FC = () => {
               }`}
               title={isDeafened ? t('voice.undeafen', '取消闭音') : t('voice.deafen', '闭音')}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {isDeafened ? 'volume_off' : 'volume_up'}
-              </span>
+              <AppIcon name={isDeafened ? 'volume_off' : 'volume_up'} className="w-4 h-4" />
             </button>
 
             <button
@@ -1017,7 +982,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('inGame.undo', '撤销')}
                     aria-label={t('inGame.undo', '撤销')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">undo</span>
+                    <AppIcon name="undo" className="w-4 h-4" />
                     <span>{t('inGame.undo', '撤销')}</span>
                   </button>
                   <button
@@ -1028,7 +993,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('inGame.redo', '重做')}
                     aria-label={t('inGame.redo', '重做')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">redo</span>
+                    <AppIcon name="redo" className="w-4 h-4" />
                     <span>{t('inGame.redo', '重做')}</span>
                   </button>
                   <div className="w-px h-4 bg-outline-variant my-auto"></div>
@@ -1040,7 +1005,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('inGame.clear', '清屏')}
                     aria-label={t('inGame.clear', '清屏')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
+                    <AppIcon name="delete_sweep" className="w-4 h-4" />
                     <span>{t('inGame.clear', '清屏')}</span>
                   </button>
                   <div className="w-px h-4 bg-outline-variant my-auto"></div>
@@ -1051,7 +1016,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                     aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">open_in_full</span>
+                    <AppIcon name="open_in_full" className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
@@ -1060,7 +1025,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('voice.roomChatTitle', '房间交流')}
                     aria-label={t('voice.roomChatTitle', '房间交流')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">forum</span>
+                    <AppIcon name="forum" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1082,7 +1047,7 @@ export const InGameDrawerPage: React.FC = () => {
                 {/* Floating Correct Guess Celebration Badge */}
                 {latestCorrectPlayer && (
                   <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white px-5 py-2 rounded-full text-sm font-black shadow-xl flex items-center gap-2 animate-bounce pointer-events-none border border-white/20">
-                    <span className="material-symbols-outlined text-[18px]">celebration</span>
+                    <AppIcon name="celebration" className="w-4 h-4" />
                     <span>{latestCorrectPlayer.nickname} {t('inGame.guessedCorrectlyShort', '猜中了！')}</span>
                     <span className="bg-white/25 text-xs px-2 py-0.5 rounded-full font-mono">
                       {latestCorrectPlayer.guessRank ? `#${latestCorrectPlayer.guessRank}` : '✓'}
@@ -1108,7 +1073,7 @@ export const InGameDrawerPage: React.FC = () => {
               {/* Canvas Bottom Info Bar */}
               <div className="bg-surface-container-low px-4 py-1.5 flex items-center justify-between border-t border-surface-container text-xs text-on-surface-variant shrink-0">
                 <div className="flex items-center gap-1.5 font-bold">
-                  <span className="material-symbols-outlined text-[16px] text-primary">touch_app</span>
+                  <AppIcon name="touch_app" className="w-4 h-4 text-primary" />
                   <span>触控画板已就绪 · 完美还原笔触</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1147,7 +1112,7 @@ export const InGameDrawerPage: React.FC = () => {
                   className="tactile-btn w-6 h-6 rounded-full bg-gradient-to-tr from-pink-400 via-indigo-500 to-teal-300 flex items-center justify-center text-white shrink-0 shadow-sm cursor-pointer ml-1"
                   title="自定义取色器"
                 >
-                  <span className="material-symbols-outlined text-[13px]">palette</span>
+                  <AppIcon name="palette" className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -1163,7 +1128,7 @@ export const InGameDrawerPage: React.FC = () => {
                         : 'text-on-surface hover:bg-surface-variant'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[15px]">edit</span>
+                    <AppIcon name="edit" className="w-4 h-4" />
                     <span>{t('inGame.penTool', '画笔')}</span>
                   </button>
                   <button
@@ -1175,7 +1140,7 @@ export const InGameDrawerPage: React.FC = () => {
                         : 'text-on-surface hover:bg-surface-variant'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[15px]">ink_eraser</span>
+                    <AppIcon name="ink_eraser" className="w-4 h-4" />
                     <span>{t('inGame.eraserTool', '橡皮')}</span>
                   </button>
                 </div>
@@ -1207,9 +1172,7 @@ export const InGameDrawerPage: React.FC = () => {
             <section className="bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col shrink-0">
               <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[18px] text-secondary-container">
-                    leaderboard
-                  </span>
+                  <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
                   <span className="font-label-sm text-sm font-bold text-on-surface">{t('inGame.leaderboard', '实时积分榜')}</span>
                 </div>
                 <span className="text-xs text-outline font-bold">
@@ -1317,7 +1280,7 @@ export const InGameDrawerPage: React.FC = () => {
                     title={t('voice.roomChatTitle', '房间交流')}
                     aria-label={t('voice.roomChatTitle', '房间交流')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                    <AppIcon name="open_in_new" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1366,11 +1329,11 @@ export const InGameDrawerPage: React.FC = () => {
                           <span>{m.payload.content}</span>
                           {m.payload.isDanmaku ? (
                             <span className="text-secondary font-bold text-[10px] flex items-center">
-                              <span className="material-symbols-outlined text-[12px]">chat</span>
+                              <AppIcon name="chat" className="w-3 h-3" />
                             </span>
                           ) : (
-                            <span className="text-error font-bold text-[10px] flex items-center">
-                              <span className="material-symbols-outlined text-[12px]">close</span> 不对
+                            <span className="text-error font-bold text-[10px] flex items-center gap-0.5">
+                              <AppIcon name="close" className="w-3 h-3" /> 不对
                             </span>
                           )}
                         </div>

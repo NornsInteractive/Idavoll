@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import confetti from 'canvas-confetti';
 import { Loader2 } from 'lucide-react';
+import { AppIcon } from '../components/common/AppIcon';
 import { DrawBoard, InGameChatDrawer, DanmakuOverlay } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
@@ -213,7 +214,7 @@ export const InGameGuesserPage: React.FC = () => {
                   className="tactile-btn flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
                   title={t('inGame.copyRoomCode', '点击复制房号')}
                 >
-                  <span className="material-symbols-outlined text-[13px] text-primary">tag</span>
+                  <AppIcon name="tag" className="w-3.5 h-3.5 text-primary" />
                   <span className="font-label-sm text-[12px] font-bold tracking-tight">
                     {roomCode} {copiedCode ? '✓' : ''}
                   </span>
@@ -223,7 +224,7 @@ export const InGameGuesserPage: React.FC = () => {
                 </span>
                 {/* Identity Badge: Guesser */}
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-bold">
-                  <span className="material-symbols-outlined text-[13px]">visibility</span>
+                  <AppIcon name="visibility" className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-label-sm">{t('inGame.guesserRole', '猜题者')}</span>
                 </div>
               </div>
@@ -242,16 +243,18 @@ export const InGameGuesserPage: React.FC = () => {
                     onClick={() => setIsRulesOpen(true)}
                     className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
                     title={t('gameDetail.overviewTitle', '房间规则')}
+                    aria-label={t('gameDetail.overviewTitle', '房间规则')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">help</span>
+                    <AppIcon name="help" className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsChatDrawerOpen(true)}
                     className="relative w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
                     title={t('inGame.chatAndVoice', '聊天抽屉')}
+                    aria-label={t('inGame.chatAndVoice', '聊天抽屉')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">chat</span>
+                    <AppIcon name="chat" className="w-4 h-4" />
                     {messages.length > 0 && (
                       <span className="absolute 0 0 w-2 h-2 rounded-full bg-secondary"></span>
                     )}
@@ -261,18 +264,18 @@ export const InGameGuesserPage: React.FC = () => {
                     onClick={() => setIsFullscreen((prev) => !prev)}
                     className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
                     title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏')}
+                    aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">
-                      {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
-                    </span>
+                    <AppIcon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={handleLeave}
                     className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-error-container active:scale-95 text-error cursor-pointer"
                     title={t('inGame.exitRoom', '退出房间')}
+                    aria-label={t('inGame.exitRoom', '退出房间')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">logout</span>
+                    <AppIcon name="logout" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -309,17 +312,12 @@ export const InGameGuesserPage: React.FC = () => {
                       )}
                       {isDrawer && (
                         <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-secondary-container text-on-primary flex items-center justify-center shadow-xs">
-                          <span className="material-symbols-outlined text-[8px] pencil-anim">edit</span>
+                          <AppIcon name="edit" className="w-2 h-2 pencil-anim" />
                         </span>
                       )}
                       {hasCorrect && !isDrawer && (
                         <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shadow-xs">
-                          <span
-                            className="material-symbols-outlined text-[9px]"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            check
-                          </span>
+                          <AppIcon name="check" className="w-2 h-2" />
                         </span>
                       )}
                       {isSpeaking && (
@@ -358,7 +356,7 @@ export const InGameGuesserPage: React.FC = () => {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-[11px] font-bold">
-                  <span className="material-symbols-outlined text-[13px]">lightbulb</span>
+                  <AppIcon name="lightbulb" className="w-3.5 h-3.5" />
                   {t('inGame.hintCategory', '提示分类')}
                 </span>
                 <span className="font-label-md text-label-md font-extrabold text-primary tracking-tight">
@@ -401,9 +399,7 @@ export const InGameGuesserPage: React.FC = () => {
                 }}
                 className="tactile-btn px-2.5 py-1 rounded-full bg-surface-container-lowest text-primary hover:bg-surface-container shadow-xs border border-primary/20 flex items-center gap-1 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[15px] text-secondary-container">
-                  tips_and_updates
-                </span>
+                <AppIcon name="tips_and_updates" className="w-3.5 h-3.5 text-secondary-container" />
                 <span className="text-[11px] font-label-sm font-bold">{t('inGame.requestHint', '申请提示')}</span>
               </button>
               <span className="text-[10px] text-on-surface-variant">
@@ -432,8 +428,9 @@ export const InGameGuesserPage: React.FC = () => {
                     onClick={() => setIsFullscreen((prev) => !prev)}
                     className="w-6 h-6 rounded-full bg-surface-container-lowest/90 backdrop-blur-xs shadow-xs flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 cursor-pointer"
                     title={t('inGame.fullscreenDanmaku', '全屏查看')}
+                    aria-label={t('inGame.fullscreenDanmaku', '全屏查看')}
                   >
-                    <span className="material-symbols-outlined text-[14px]">fullscreen</span>
+                    <AppIcon name="fullscreen" className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -516,7 +513,7 @@ export const InGameGuesserPage: React.FC = () => {
             {/* Feed Header */}
             <div className="flex items-center justify-between pb-1.5 border-b border-surface-container-high/60 shrink-0">
               <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-primary">forum</span>
+                <AppIcon name="forum" className="w-4 h-4 text-primary" />
                 <span className="font-label-sm text-[12px] font-bold text-on-surface">实时竞猜与动态</span>
               </div>
               <span className="text-[10px] font-label-sm text-outline">答案保护已开启（防剧透）</span>
@@ -527,7 +524,7 @@ export const InGameGuesserPage: React.FC = () => {
               {/* System Clue Alert */}
               {wordHint && (
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-container-low text-on-surface-variant text-[11px] border-l-2 border-primary">
-                  <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+                  <AppIcon name="auto_awesome" className="w-3.5 h-3.5 text-primary" />
                   <span>
                     系统：画手 <strong className="text-primary">{drawerNickname || '画手'}</strong> 公布了线索「
                     <strong className="text-primary">{wordHint}</strong>」
@@ -581,11 +578,11 @@ export const InGameGuesserPage: React.FC = () => {
                         <span>{m.payload.content}</span>
                         {m.payload.isDanmaku ? (
                           <span className="text-secondary font-bold text-[10px] flex items-center">
-                            <span className="material-symbols-outlined text-[12px]">chat</span>
+                            <AppIcon name="chat" className="w-3 h-3" />
                           </span>
                         ) : (
-                          <span className="text-error font-bold text-[11px] flex items-center">
-                            <span className="material-symbols-outlined text-[13px]">close</span> 不对
+                          <span className="text-error font-bold text-[11px] flex items-center gap-0.5">
+                            <AppIcon name="close" className="w-3 h-3" /> 不对
                           </span>
                         )}
                       </div>
@@ -622,7 +619,7 @@ export const InGameGuesserPage: React.FC = () => {
             {/* Primary Input Field + Send Button */}
             <form onSubmit={handleGuessSubmit} className="flex items-center gap-2">
               <div className="flex-1 relative flex items-center">
-                <span className="absolute left-3 text-outline material-symbols-outlined text-[18px]">search</span>
+                <AppIcon name="search" className="absolute left-3 text-outline w-4 h-4" />
                 <input
                   type="text"
                   value={guessInput}
@@ -644,7 +641,7 @@ export const InGameGuesserPage: React.FC = () => {
                     className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer"
                     title={t('inGame.clear', '清空')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                    <AppIcon name="cancel" className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -655,7 +652,7 @@ export const InGameGuesserPage: React.FC = () => {
                 className="tactile-btn px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-md font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
               >
                 <span>{t('inGame.submitGuess', '猜一猜')}</span>
-                <span className="material-symbols-outlined text-[16px]">send</span>
+                <AppIcon name="send" className="w-4 h-4" />
               </button>
             </form>
 
@@ -711,9 +708,7 @@ export const InGameGuesserPage: React.FC = () => {
                       : 'bg-surface-container text-primary hover:bg-surface-variant'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {!isMuted ? 'mic' : 'mic_none'}
-                  </span>
+                  <AppIcon name={!isMuted ? 'mic' : 'mic_none'} className="w-4 h-4" />
                   <span className="font-label-sm text-label-sm font-bold">
                     {voiceMode === 'hold'
                       ? !isMuted
@@ -762,9 +757,7 @@ export const InGameGuesserPage: React.FC = () => {
                   onClick={() => setIsLeaderboardOpen(true)}
                   className="tactile-btn flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container shadow-xs cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[17px] text-secondary-container">
-                    leaderboard
-                  </span>
+                  <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
                   <span className="font-label-sm text-label-sm font-bold">{t('inGame.leaderboard', '积分榜')}</span>
                 </button>
                 {/* Quick Reaction Trigger */}
@@ -773,8 +766,9 @@ export const InGameGuesserPage: React.FC = () => {
                   onClick={() => handleSendReaction('🔥')}
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container flex items-center justify-center shadow-xs cursor-pointer"
                   title={t('inGame.quickReaction', '快速喝彩')}
+                  aria-label={t('inGame.quickReaction', '快速喝彩')}
                 >
-                  <span className="material-symbols-outlined text-[18px]">add_reaction</span>
+                  <AppIcon name="add_reaction" className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -804,7 +798,7 @@ export const InGameGuesserPage: React.FC = () => {
               className="tactile-btn flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
               title="点击复制房号"
             >
-              <span className="material-symbols-outlined text-[15px] text-primary">tag</span>
+              <AppIcon name="tag" className="w-4 h-4 text-primary" />
               <span className="font-label-sm text-xs font-bold tracking-tight">
                 #{roomCode} {copiedCode ? '✓' : ''}
               </span>
@@ -815,7 +809,7 @@ export const InGameGuesserPage: React.FC = () => {
             </span>
 
             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-highest text-primary font-bold text-xs">
-              <span className="material-symbols-outlined text-[15px]">visibility</span>
+              <AppIcon name="visibility" className="w-4 h-4" />
               <span>猜题者</span>
             </div>
           </div>
@@ -823,7 +817,7 @@ export const InGameGuesserPage: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Circular Countdown Timer */}
             <div className="flex items-center gap-2 bg-error-container text-secondary font-black px-3 py-1 rounded-full shadow-xs">
-              <span className="material-symbols-outlined text-[18px] animate-pulse">timer</span>
+              <AppIcon name="timer" className="w-4 h-4 animate-pulse" />
               <span className="font-headline-sm text-sm">{timeLeft}s 倒计时</span>
             </div>
 
@@ -876,9 +870,7 @@ export const InGameGuesserPage: React.FC = () => {
                   : 'bg-surface-container text-on-surface hover:bg-surface-variant'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">
-                {!isMuted ? 'mic' : 'mic_off'}
-              </span>
+              <AppIcon name={!isMuted ? 'mic' : 'mic_off'} className="w-4 h-4" />
               <span>
                 {voiceMode === 'hold'
                   ? !isMuted
@@ -898,9 +890,7 @@ export const InGameGuesserPage: React.FC = () => {
               title={voiceMode === 'hold' ? t('voice.modeOpenAria', '切换到自由麦模式') : t('voice.modeHoldAria', '切换到按住说话模式')}
               className="tactile-btn px-2.5 py-1.5 rounded-full bg-surface-container hover:bg-surface-variant text-xs font-bold text-on-surface flex items-center gap-1 cursor-pointer transition-colors"
             >
-              <span className="material-symbols-outlined text-[15px] text-primary">
-                {voiceMode === 'hold' ? 'touch_app' : 'campaign'}
-              </span>
+              <AppIcon name={voiceMode === 'hold' ? 'touch_app' : 'campaign'} className="w-4 h-4 text-primary" />
               <span>{voiceMode === 'hold' ? t('voice.modeHold', '按住说话') : t('voice.modeOpen', '自由麦')}</span>
             </button>
 
@@ -912,7 +902,7 @@ export const InGameGuesserPage: React.FC = () => {
               title={t('voice.roomChatTitle', '房间交流')}
               className="tactile-btn relative p-2 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface-variant flex items-center justify-center cursor-pointer transition-colors"
             >
-              <span className="material-symbols-outlined text-[18px]">forum</span>
+              <AppIcon name="forum" className="w-4 h-4" />
               {messages.length > 0 && (
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span>
               )}
@@ -930,9 +920,7 @@ export const InGameGuesserPage: React.FC = () => {
               }`}
               title={isDeafened ? t('voice.undeafen', '取消闭音') : t('voice.deafen', '闭音')}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {isDeafened ? 'volume_off' : 'volume_up'}
-              </span>
+              <AppIcon name={isDeafened ? 'volume_off' : 'volume_up'} className="w-4 h-4" />
             </button>
 
             <button
@@ -963,7 +951,7 @@ export const InGameGuesserPage: React.FC = () => {
             <section className="bg-gradient-to-r from-primary/10 via-surface-container-high to-surface-variant rounded-2xl px-4 py-2.5 flex items-center justify-between border border-primary/15 shadow-xs shrink-0">
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-label-sm text-xs font-bold shadow-xs">
-                  <span className="material-symbols-outlined text-[15px]">lightbulb</span>
+                  <AppIcon name="lightbulb" className="w-3.5 h-3.5" />
                   {t('inGame.hintCategory', '提示分类')}
                 </span>
                 <span className="font-headline-sm text-base font-extrabold text-primary">
@@ -1004,9 +992,7 @@ export const InGameGuesserPage: React.FC = () => {
                   onClick={() => sendMessage('申请提示 💡', false)}
                   className="tactile-btn px-3 py-1.5 rounded-full bg-surface-container-lowest text-primary hover:bg-surface-container shadow-xs border border-primary/20 flex items-center gap-1 cursor-pointer font-bold text-xs"
                 >
-                  <span className="material-symbols-outlined text-[16px] text-secondary-container">
-                    tips_and_updates
-                  </span>
+                  <AppIcon name="tips_and_updates" className="w-4 h-4 text-secondary-container" />
                   <span>{t('inGame.requestHint', '申请提示')}</span>
                 </button>
               </div>
@@ -1029,7 +1015,7 @@ export const InGameGuesserPage: React.FC = () => {
                     onClick={() => setIsFullscreen((prev) => !prev)}
                     className="tactile-btn px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-xs flex items-center gap-1 text-on-surface-variant hover:bg-surface-container text-xs font-bold cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[15px]">fullscreen</span>
+                    <AppIcon name="fullscreen" className="w-4 h-4" />
                     <span>全屏模式</span>
                   </button>
                   <button
@@ -1039,7 +1025,7 @@ export const InGameGuesserPage: React.FC = () => {
                     title={t('voice.roomChatTitle', '房间交流')}
                     aria-label={t('voice.roomChatTitle', '房间交流')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">forum</span>
+                    <AppIcon name="forum" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1109,9 +1095,7 @@ export const InGameGuesserPage: React.FC = () => {
             <footer className="bg-surface-container-lowest p-3 rounded-2xl border border-surface-container shadow-xs flex items-center gap-3 shrink-0">
               <form onSubmit={handleGuessSubmit} className="flex-1 flex items-center gap-2">
                 <div className="flex-1 relative flex items-center">
-                  <span className="absolute left-3.5 text-outline material-symbols-outlined text-[20px]">
-                    search
-                  </span>
+                  <AppIcon name="search" className="absolute left-3.5 text-outline w-5 h-5 pointer-events-none" />
                   <input
                     type="text"
                     value={guessInput}
@@ -1133,7 +1117,7 @@ export const InGameGuesserPage: React.FC = () => {
                       className="absolute right-3 text-outline hover:text-on-surface cursor-pointer"
                       title={t('inGame.clear', '清空')}
                     >
-                      <span className="material-symbols-outlined text-[18px]">cancel</span>
+                      <AppIcon name="cancel" className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -1143,7 +1127,7 @@ export const InGameGuesserPage: React.FC = () => {
                   className="tactile-btn px-6 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-sm font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
                 >
                   <span>{t('inGame.submitGuess', '抢先猜词')}</span>
-                  <span className="material-symbols-outlined text-[18px]">send</span>
+                  <AppIcon name="send" className="w-4 h-4" />
                 </button>
               </form>
 
@@ -1153,8 +1137,9 @@ export const InGameGuesserPage: React.FC = () => {
                 onClick={() => handleSendReaction('🔥')}
                 className="tactile-btn w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant shadow-xs cursor-pointer"
                 title={t('inGame.quickReaction', '热烈反应')}
+                aria-label={t('inGame.quickReaction', '热烈反应')}
               >
-                <span className="material-symbols-outlined text-[20px]">add_reaction</span>
+                <AppIcon name="add_reaction" className="w-5 h-5" />
               </button>
             </footer>
           </div>
@@ -1165,9 +1150,7 @@ export const InGameGuesserPage: React.FC = () => {
             <section className="bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col shrink-0">
               <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[18px] text-secondary-container">
-                    leaderboard
-                  </span>
+                  <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
                   <span className="font-label-sm text-sm font-bold text-on-surface">{t('inGame.leaderboard', '实时积分榜')}</span>
                 </div>
                 <span className="text-xs text-outline font-bold">
@@ -1243,7 +1226,7 @@ export const InGameGuesserPage: React.FC = () => {
             <section className="flex-1 bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col justify-between overflow-hidden min-h-0">
               <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60 shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[18px] text-primary">forum</span>
+                  <AppIcon name="forum" className="w-4 h-4 text-primary" />
                   <span className="font-label-sm text-sm font-bold text-on-surface">实时竞猜与动态</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1255,7 +1238,7 @@ export const InGameGuesserPage: React.FC = () => {
                     title={t('voice.roomChatTitle', '房间交流')}
                     aria-label={t('voice.roomChatTitle', '房间交流')}
                   >
-                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                    <AppIcon name="open_in_new" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1264,7 +1247,7 @@ export const InGameGuesserPage: React.FC = () => {
               <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1 custom-scroll text-xs">
                 {wordHint && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-low text-on-surface-variant text-xs border-l-2 border-primary">
-                    <span className="material-symbols-outlined text-[16px] text-primary">auto_awesome</span>
+                    <AppIcon name="auto_awesome" className="w-4 h-4 text-primary" />
                     <span>
                       系统：画手 <strong className="text-primary">{drawerNickname || '画手'}</strong> 公布了线索「
                       <strong className="text-primary">{wordHint}</strong>」
@@ -1314,11 +1297,11 @@ export const InGameGuesserPage: React.FC = () => {
                           <span>{m.payload.content}</span>
                           {m.payload.isDanmaku ? (
                             <span className="text-secondary font-bold text-[10px] flex items-center">
-                              <span className="material-symbols-outlined text-[12px]">chat</span>
+                              <AppIcon name="chat" className="w-3 h-3" />
                             </span>
                           ) : (
-                            <span className="text-error font-bold text-[10px] flex items-center">
-                              <span className="material-symbols-outlined text-[12px]">close</span> 不对
+                            <span className="text-error font-bold text-[10px] flex items-center gap-0.5">
+                              <AppIcon name="close" className="w-3 h-3" /> 不对
                             </span>
                           )}
                         </div>
@@ -1359,15 +1342,16 @@ export const InGameGuesserPage: React.FC = () => {
           <div className="w-full max-w-sm bg-surface p-5 rounded-3xl border border-surface-container shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-surface-container">
               <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-secondary-container">leaderboard</span>
+                <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
                 <h3 className="font-headline-sm text-base font-extrabold text-on-surface">房间积分榜</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsLeaderboardOpen(false)}
                 className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
+                aria-label="关闭"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <AppIcon name="close" className="w-4 h-4" />
               </button>
             </div>
 
@@ -1421,8 +1405,9 @@ export const InGameGuesserPage: React.FC = () => {
                 type="button"
                 onClick={() => setIsRulesOpen(false)}
                 className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
+                aria-label="关闭"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <AppIcon name="close" className="w-4 h-4" />
               </button>
             </div>
             <div className="space-y-2 text-xs leading-relaxed text-on-surface-variant">
