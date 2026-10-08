@@ -557,19 +557,13 @@ export const InGameGuesserPage: React.FC = () => {
                         <span className="text-[14px]">🎉</span>
                         <div className="flex items-center gap-1 flex-1">
                           <span className="font-bold font-label-sm">
-                            {t('inGame.systemPrefix', '系统：')}{m.payload.senderNickname}
+                            {t('inGame.systemPrefix', '系统：')}{m.payload.senderNickname} {isMe ? t('voice.me', '(我)') : ''}
                           </span>
                           <span className="text-[12px]">{t('inGame.guessedCorrectlyShort', '猜中了！')}</span>
                         </div>
-                        {isMe && guessResult?.earned ? (
-                          <span className="font-extrabold text-[12px] text-tertiary">
-                            +{guessResult.earned} {t('inGame.scorePoints', '分')}
-                          </span>
-                        ) : (
-                          <span className="font-extrabold text-[11px] text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
-                            ✓
-                          </span>
-                        )}
+                        <span className="font-extrabold text-[11px] text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
+                          ✓
+                        </span>
                       </div>
                     );
                   }
@@ -636,7 +630,9 @@ export const InGameGuesserPage: React.FC = () => {
                   disabled={hasGuessedCorrect}
                   placeholder={
                     hasGuessedCorrect
-                      ? t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
+                      ? guessResult?.earned
+                        ? t('inGame.guessedWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！静候其他玩家抢答...` })
+                        : t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
                       : t('inGame.guessInputPlaceholder', '输入你猜测的词语（按 Enter 立即抢答）...')
                   }
                   className="w-full pl-9 pr-8 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[14px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
@@ -894,6 +890,34 @@ export const InGameGuesserPage: React.FC = () => {
               </span>
             </button>
 
+            {/* Direct Voice Mode Switcher (Hold to Talk vs Open Mic) */}
+            <button
+              type="button"
+              onClick={() => setVoiceMode(voiceMode === 'hold' ? 'open' : 'hold')}
+              aria-label={voiceMode === 'hold' ? t('voice.modeOpenAria', '切换到自由麦模式') : t('voice.modeHoldAria', '切换到按住说话模式')}
+              title={voiceMode === 'hold' ? t('voice.modeOpenAria', '切换到自由麦模式') : t('voice.modeHoldAria', '切换到按住说话模式')}
+              className="tactile-btn px-2.5 py-1.5 rounded-full bg-surface-container hover:bg-surface-variant text-xs font-bold text-on-surface flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span className="material-symbols-outlined text-[15px] text-primary">
+                {voiceMode === 'hold' ? 'touch_app' : 'campaign'}
+              </span>
+              <span>{voiceMode === 'hold' ? t('voice.modeHold', '按住说话') : t('voice.modeOpen', '自由麦')}</span>
+            </button>
+
+            {/* Room Chat & Voice Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsChatDrawerOpen(true)}
+              aria-label={t('voice.roomChatTitle', '房间交流')}
+              title={t('voice.roomChatTitle', '房间交流')}
+              className="tactile-btn relative p-2 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface-variant flex items-center justify-center cursor-pointer transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">forum</span>
+              {messages.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span>
+              )}
+            </button>
+
             {/* Deafen toggle */}
             <button
               type="button"
@@ -1008,6 +1032,15 @@ export const InGameGuesserPage: React.FC = () => {
                     <span className="material-symbols-outlined text-[15px]">fullscreen</span>
                     <span>全屏模式</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatDrawerOpen(true)}
+                    className="tactile-btn p-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-xs text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
+                    title={t('voice.roomChatTitle', '房间交流')}
+                    aria-label={t('voice.roomChatTitle', '房间交流')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">forum</span>
+                  </button>
                 </div>
               </div>
 
@@ -1086,7 +1119,9 @@ export const InGameGuesserPage: React.FC = () => {
                     disabled={hasGuessedCorrect}
                     placeholder={
                       hasGuessedCorrect
-                        ? t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
+                        ? guessResult?.earned
+                          ? t('inGame.guessedWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！静候其他玩家抢答...` })
+                          : t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
                         : t('inGame.guessInputPlaceholderDesktop', '输入你的猜测词，按回车提交...')
                     }
                     className="w-full pl-10 pr-9 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
@@ -1211,7 +1246,18 @@ export const InGameGuesserPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[18px] text-primary">forum</span>
                   <span className="font-label-sm text-sm font-bold text-on-surface">实时竞猜与动态</span>
                 </div>
-                <span className="text-[10px] text-outline">答案保护已开启</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-outline">答案保护已开启</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatDrawerOpen(true)}
+                    className="tactile-btn p-1 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
+                    title={t('voice.roomChatTitle', '房间交流')}
+                    aria-label={t('voice.roomChatTitle', '房间交流')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  </button>
+                </div>
               </div>
 
               {/* Messages Stream */}
@@ -1247,18 +1293,12 @@ export const InGameGuesserPage: React.FC = () => {
                         >
                           <span className="text-base">🎉</span>
                           <div className="flex items-center gap-1 flex-1">
-                            <span className="font-bold">{m.payload.senderNickname}</span>
+                            <span className="font-bold">{m.payload.senderNickname} {isMe ? t('voice.me', '(我)') : ''}</span>
                             <span>{t('inGame.guessedCorrectly', '猜中了正确答案！')}</span>
                           </div>
-                          {isMe && guessResult?.earned ? (
-                            <span className="font-black text-tertiary">
-                              +{guessResult.earned} {t('inGame.scorePoints', '分')}
-                            </span>
-                          ) : (
-                            <span className="font-black text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
-                              ✓
-                            </span>
-                          )}
+                          <span className="font-black text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
+                            ✓
+                          </span>
                         </div>
                       );
                     }

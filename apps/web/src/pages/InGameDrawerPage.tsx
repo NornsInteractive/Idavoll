@@ -203,7 +203,9 @@ export const InGameDrawerPage: React.FC = () => {
 
   // Latest guess message for mobile ticker
   const latestGuessMessage = messages.filter((m) => !m.payload.isDanmaku).slice(-1)[0];
-  const correctGuess = messages.find((m) => m.payload.type === 'correct_guess');
+  // Accurate current-turn correct guessers from gameState.scores (strictly current round, not historical messages)
+  const currentTurnCorrectPlayers = gameState.scores?.filter((s) => s.hasGuessedCorrectly && s.playerId !== gameState.drawerId) || [];
+  const latestCorrectPlayer = [...currentTurnCorrectPlayers].sort((a, b) => (b.guessRank ?? 0) - (a.guessRank ?? 0))[0];
 
   return (
     <div
@@ -448,7 +450,7 @@ export const InGameDrawerPage: React.FC = () => {
 
               {/* Floating Danmaku Overlay lanes */}
               <div className="absolute top-12 left-0 right-0 h-28 pointer-events-none z-20 overflow-hidden flex flex-col justify-start gap-2 pt-1 px-3">
-                {correctGuess && (
+                {latestCorrectPlayer && (
                   <div className="danmaku-badge self-start flex items-center gap-1.5 bg-gradient-to-r from-emerald-600/90 via-teal-600/90 to-emerald-500/90 backdrop-blur-md text-white px-3 py-1 rounded-full shadow-lg border border-white/20 transform -translate-x-1">
                     <span
                       className="material-symbols-outlined text-[15px] animate-bounce"
@@ -457,10 +459,10 @@ export const InGameDrawerPage: React.FC = () => {
                       celebration
                     </span>
                     <span className="font-label-sm text-[12px] font-black">
-                      {correctGuess.payload.senderNickname} {t('inGame.guessedCorrectlyShort', '猜中了！')}
+                      {latestCorrectPlayer.nickname} {t('inGame.guessedCorrectlyShort', '猜中了！')}
                     </span>
                     <span className="bg-white/25 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
-                      ✓
+                      {latestCorrectPlayer.guessRank ? `#${latestCorrectPlayer.guessRank}` : '✓'}
                     </span>
                   </div>
                 )}
@@ -891,6 +893,34 @@ export const InGameDrawerPage: React.FC = () => {
               </span>
             </button>
 
+            {/* Direct Voice Mode Switcher (Hold to Talk vs Open Mic) */}
+            <button
+              type="button"
+              onClick={() => setVoiceMode(voiceMode === 'hold' ? 'open' : 'hold')}
+              aria-label={voiceMode === 'hold' ? t('voice.modeOpenAria', '切换到自由麦模式') : t('voice.modeHoldAria', '切换到按住说话模式')}
+              title={voiceMode === 'hold' ? t('voice.modeOpenAria', '切换到自由麦模式') : t('voice.modeHoldAria', '切换到按住说话模式')}
+              className="tactile-btn px-2.5 py-1.5 rounded-full bg-surface-container hover:bg-surface-variant text-xs font-bold text-on-surface flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span className="material-symbols-outlined text-[15px] text-primary">
+                {voiceMode === 'hold' ? 'touch_app' : 'campaign'}
+              </span>
+              <span>{voiceMode === 'hold' ? t('voice.modeHold', '按住说话') : t('voice.modeOpen', '自由麦')}</span>
+            </button>
+
+            {/* Room Chat & Voice Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsChatDrawerOpen(true)}
+              aria-label={t('voice.roomChatTitle', '房间交流')}
+              title={t('voice.roomChatTitle', '房间交流')}
+              className="tactile-btn relative p-2 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface-variant flex items-center justify-center cursor-pointer transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">forum</span>
+              {messages.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span>
+              )}
+            </button>
+
             {/* Deafen toggle */}
             <button
               type="button"
@@ -1022,6 +1052,15 @@ export const InGameDrawerPage: React.FC = () => {
                     aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                   >
                     <span className="material-symbols-outlined text-[16px]">open_in_full</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatDrawerOpen(true)}
+                    className="tactile-btn p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
+                    title={t('voice.roomChatTitle', '房间交流')}
+                    aria-label={t('voice.roomChatTitle', '房间交流')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">forum</span>
                   </button>
                 </div>
               </div>
@@ -1258,7 +1297,18 @@ export const InGameDrawerPage: React.FC = () => {
                     房间聊天
                   </button>
                 </div>
-                <span className="text-[10px] text-outline">画手禁剧透</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-outline">画手禁剧透</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatDrawerOpen(true)}
+                    className="tactile-btn p-1 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
+                    title={t('voice.roomChatTitle', '房间交流')}
+                    aria-label={t('voice.roomChatTitle', '房间交流')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  </button>
+                </div>
               </div>
 
               {/* Message Feed */}

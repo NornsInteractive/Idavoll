@@ -229,6 +229,7 @@ const resources = {
         voiceConnected: '已连麦',
         speakingCount: '{{count}}人说话',
         quickReaction: '快速喝彩',
+        guessedWithScore: '你已猜中 (+{{score}}分)！静候其他玩家抢答...',
       },
       settlement: {
         title: '游戏结算',
@@ -558,6 +559,7 @@ const resources = {
         voiceConnected: 'Connected',
         speakingCount: '{{count}} speaking',
         quickReaction: 'Quick reaction',
+        guessedWithScore: 'You guessed correctly (+{{score}} pts)! Waiting for other players...',
       },
       settlement: {
         title: 'Game Over',
