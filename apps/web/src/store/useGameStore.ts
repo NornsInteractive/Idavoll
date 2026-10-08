@@ -19,7 +19,7 @@ export interface GameStore {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
-  currentWord: '西瓜',
+  currentWord: '旋转木马',
   isDrawer: true,
   canUndo: false,
   historyStrokes: [],
@@ -111,89 +111,124 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   initDemoGame: (currentUserId, asDrawer = true) => {
-    const defaultWord = '西瓜';
+    const defaultWord = '旋转木马';
     const sampleStrokes: DrawStroke[] = [
-      // Outer green rind of watermelon
+      // Carousel top canopy roof (dome/tent shape in primary and red)
       {
         id: 'stroke_1',
         points: [
-          [250, 420, 0.6],
-          [300, 470, 0.7],
-          [400, 490, 0.8],
-          [500, 470, 0.7],
-          [550, 420, 0.6],
+          [160, 260, 0.7],
+          [200, 210, 0.8],
+          [250, 180, 0.9],
+          [300, 210, 0.8],
+          [340, 260, 0.7],
         ],
-        color: '#10B981',
-        size: 14,
+        color: '#ae3029',
+        size: 8,
         isEraser: false,
-        timestamp: Date.now() - 5000,
+        timestamp: Date.now() - 9000,
       },
-      // Inner red melon flesh
+      // Canopy stripes / scalloped border
       {
         id: 'stroke_2',
         points: [
-          [260, 400, 0.5],
-          [310, 450, 0.7],
-          [400, 465, 0.8],
-          [490, 450, 0.7],
-          [540, 400, 0.5],
-          [400, 395, 0.6],
-          [260, 400, 0.5],
+          [160, 260, 0.8],
+          [250, 260, 0.8],
+          [340, 260, 0.8],
         ],
-        color: '#FF6B5E',
+        color: '#5b5bf0',
+        size: 6,
+        isEraser: false,
+        timestamp: Date.now() - 8000,
+      },
+      // Center golden pillar
+      {
+        id: 'stroke_3',
+        points: [
+          [250, 260, 0.8],
+          [250, 390, 0.8],
+        ],
+        color: '#eab308',
         size: 10,
         isEraser: false,
-        timestamp: Date.now() - 3000,
+        timestamp: Date.now() - 7000,
+      },
+      // Carousel base platform
+      {
+        id: 'stroke_4',
+        points: [
+          [150, 390, 0.8],
+          [250, 400, 0.9],
+          [350, 390, 0.8],
+        ],
+        color: '#5b5bf0',
+        size: 8,
+        isEraser: false,
+        timestamp: Date.now() - 6000,
+      },
+      // Wooden horse outline (left horse)
+      {
+        id: 'stroke_5',
+        points: [
+          [190, 290, 0.7],
+          [200, 330, 0.7],
+          [210, 310, 0.6],
+          [220, 340, 0.7],
+        ],
+        color: '#f97316',
+        size: 5,
+        isEraser: false,
+        timestamp: Date.now() - 4000,
       },
     ];
 
     const demoState: DrawAndGuessState = {
       status: 'drawing',
-      currentRound: 1,
-      totalRounds: 3,
-      drawerId: asDrawer ? currentUserId : 'usr_bot_1',
-      drawerNickname: asDrawer ? '我' : '画画小能手',
-      wordChoices: ['西瓜', '大熊猫', '自行车'],
-      currentWordLength: defaultWord.length,
-      wordCategory: '水果食物',
-      wordHint: '夏天常吃的大瓜',
+      currentRound: 2,
+      totalRounds: 5,
+      drawerId: asDrawer ? currentUserId : 'usr_xiaoming',
+      drawerNickname: asDrawer ? '浩浩 (你)' : '小明',
+      wordChoices: ['旋转木马', '过山车', '摩天轮'],
+      currentWordLength: 4,
+      wordCategory: '游乐场设施',
+      wordHint: '4个字 · 梦幻游乐场设施',
       strokes: sampleStrokes,
-      timeLeft: 48,
+      timeLeft: 38,
       scores: [
         {
-          playerId: currentUserId,
-          nickname: asDrawer ? '我 (画手)' : '我 (猜题中)',
-          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=LuckyFox',
-          score: 180,
-          hasGuessedCorrectly: false,
-        },
-        {
-          playerId: 'usr_bot_1',
-          nickname: '画画小能手',
-          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Painter',
-          score: 140,
-          hasGuessedCorrectly: false,
-        },
-        {
-          playerId: 'usr_bot_2',
-          nickname: '猜词神算子',
-          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Oracle',
-          score: 95,
+          playerId: 'usr_aya',
+          nickname: '阿雅',
+          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Aya',
+          score: 220,
           hasGuessedCorrectly: true,
           guessRank: 1,
         },
         {
-          playerId: 'usr_bot_3',
-          nickname: '涂鸦萌新',
-          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Noob',
-          score: 60,
+          playerId: currentUserId,
+          nickname: asDrawer ? '浩浩 (画手)' : '浩浩 (你)',
+          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=HaoHao',
+          score: 160,
+          hasGuessedCorrectly: false,
+        },
+        {
+          playerId: 'usr_xiaoming',
+          nickname: '小明',
+          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=XiaoMing',
+          score: 140,
+          hasGuessedCorrectly: false,
+        },
+        {
+          playerId: 'usr_tangtang',
+          nickname: '糖糖',
+          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=TangTang',
+          score: 95,
           hasGuessedCorrectly: false,
         },
       ],
       turnSummary: {
         secretWord: defaultWord,
-        drawerEarned: 50,
-        guesserEarned: { usr_bot_2: 75 },
+        drawerEarned: 60,
+        guesserEarned: { usr_aya: 100 },
       },
       gamePodium: [
         {

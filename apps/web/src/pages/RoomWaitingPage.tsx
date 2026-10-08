@@ -256,14 +256,27 @@ export const RoomWaitingPage: React.FC = () => {
               </div>
 
               {isHost && (
-                <Button
-                  size="lg"
-                  onClick={handleStartGame}
-                  className="w-full sm:w-auto font-black px-10 gap-2 text-base shadow-xl"
-                >
-                  <Play className="w-5 h-5 fill-current" />
-                  <span>{t('roomWaiting.startGameBtn')}</span>
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    size="lg"
+                    variant="surface"
+                    onClick={() => {
+                      initDemoGame(userId, false);
+                      navigate('/game/guesser');
+                    }}
+                    className="font-black px-6 text-sm gap-1.5"
+                  >
+                    <span>🔍 猜题者视角体验</span>
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={handleStartGame}
+                    className="w-full sm:w-auto font-black px-8 gap-2 text-base shadow-xl"
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                    <span>🎨 画手视角开局</span>
+                  </Button>
+                </div>
               )}
             </div>
           </Card>
