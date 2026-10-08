@@ -24,9 +24,11 @@ import { useRoomStore } from '../store/useRoomStore';
 import { connectRoom, leaveRoom, disconnectRoom } from '../services/room-session';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { RoomSettings } from '@idavoll/protocol';
+import { useVoiceLabels } from '../hooks/useVoiceLabels';
 
 export const RoomWaitingPage: React.FC = () => {
   const { t } = useTranslation();
+  const { voiceDockLabels } = useVoiceLabels();
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
 
@@ -606,6 +608,7 @@ export const RoomWaitingPage: React.FC = () => {
               voiceMode={voiceMode}
               onSetVoiceMode={setVoiceMode}
               onHoldToTalk={holdToTalk}
+              labels={voiceDockLabels}
             />
 
             {/* Bottom Actions */}

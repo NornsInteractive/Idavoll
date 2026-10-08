@@ -9,9 +9,11 @@ import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { leaveRoom } from '../services/room-session';
+import { useVoiceLabels } from '../hooks/useVoiceLabels';
 
 export const InGameGuesserPage: React.FC = () => {
   const { t } = useTranslation();
+  const { chatDrawerLabels } = useVoiceLabels();
   const navigate = useNavigate();
 
   const { id: userId, nickname, avatar } = useUserStore();
@@ -387,7 +389,15 @@ export const InGameGuesserPage: React.FC = () => {
 
               <button
                 type="button"
-                aria-label={voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
+                aria-label={
+                  voiceMode === 'hold'
+                    ? !isMuted
+                      ? t('voice.releaseToMuteAria', '松开静音')
+                      : t('voice.holdToTalkAria', '按住说话')
+                    : isMuted
+                    ? t('voice.unmuteAria', '开麦')
+                    : t('voice.muteAria', '静音')
+                }
                 {...(voiceMode === 'hold'
                   ? {
                       onPointerDown: (e) => {
@@ -425,7 +435,13 @@ export const InGameGuesserPage: React.FC = () => {
                     : 'bg-surface-container text-muted-foreground border-outline-variant/50'
                 }`}
               >
-                {voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
+                {voiceMode === 'hold'
+                  ? !isMuted
+                    ? t('voice.releaseToMute', '松开发言')
+                    : t('voice.holdToTalk', '按住说话')
+                  : isMuted
+                  ? t('voice.unmute', '开麦')
+                  : t('voice.mute', '静音')}
               </button>
             </div>
 
@@ -496,13 +512,27 @@ export const InGameGuesserPage: React.FC = () => {
 
             {/* Push to talk indicator / hold space */}
             <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground font-semibold px-2">
-              <span>{voiceMode === 'hold' ? (!isMuted ? '正在讲话...' : '按住空格讲话') : '自由麦模式'}</span>
+              <span>
+                {voiceMode === 'hold'
+                  ? !isMuted
+                    ? t('voice.speakingNow', '正在讲话...')
+                    : t('voice.holdSpaceToTalk', '按住空格讲话')
+                  : t('voice.openMicMode', '自由麦模式')}
+              </span>
             </div>
 
             {/* Mic & Deafen */}
             <button
               type="button"
-              aria-label={voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
+              aria-label={
+                voiceMode === 'hold'
+                  ? !isMuted
+                    ? t('voice.releaseToMuteAria', '松开静音')
+                    : t('voice.holdToTalkAria', '按住说话')
+                  : isMuted
+                  ? t('voice.unmuteAria', '开麦')
+                  : t('voice.muteAria', '静音')
+              }
               {...(voiceMode === 'hold'
                 ? {
                     onPointerDown: (e) => {
@@ -546,11 +576,11 @@ export const InGameGuesserPage: React.FC = () => {
               <span>
                 {voiceMode === 'hold'
                   ? !isMuted
-                    ? '发言中...'
-                    : '按住说话'
+                    ? t('voice.speakingNow', '发言中...')
+                    : t('voice.holdToTalk', '按住说话')
                   : isMuted
-                  ? '麦克风静音'
-                  : '已开麦'}
+                  ? t('voice.unmute', '开麦')
+                  : t('voice.mute', '静音')}
               </span>
             </button>
 
@@ -908,6 +938,7 @@ export const InGameGuesserPage: React.FC = () => {
         roomCode={roomCode}
         currentDrawerNickname={drawerNickname}
         isDrawer={false}
+        labels={chatDrawerLabels}
       />
     </div>
   );

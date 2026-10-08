@@ -5,8 +5,6 @@ import {
   Smile,
   Mic,
   MicOff,
-  Volume2,
-  VolumeX,
   Radio,
   Sparkles,
   Zap,
@@ -16,6 +14,71 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage, UserProfile } from '@idavoll/protocol';
 import { Avatar } from '../ui/avatar';
 import { Button } from '../ui/button';
+
+export interface InGameChatDrawerLabels {
+  // Header
+  roomChatTitle?: string;
+  artistLabel?: string;
+  closeDrawerAria?: string;
+  // Tabs
+  chatTab?: string;
+  chatTabAria?: string;
+  phrasesTab?: string;
+  phrasesTabAria?: string;
+  // Status Strip
+  holdReadyMuted?: string;
+  micMuted?: string;
+  micOpenSpeaking?: string;
+  connecting?: string;
+  errorFallback?: string;
+  off?: string;
+  deafenedBadge?: string;
+  retryUnmute?: string;
+  retryUnmuteAria?: string;
+  joinVoice?: string;
+  joinVoiceAria?: string;
+  toggleMicAria?: string;
+  deafen?: string;
+  undeafen?: string;
+  deafenAria?: string;
+  undeafenAria?: string;
+  // Players
+  me?: string;
+  speaking?: string;
+  ready?: string;
+  muted?: string;
+  // Chat Body
+  emptyMessages?: string;
+  quickChatPrefix?: string;
+  quickPhraseAria?: string;
+  // Input
+  holdToTalk?: string;
+  releaseToMute?: string;
+  holdToTalkAria?: string;
+  releaseToMuteAria?: string;
+  mute?: string;
+  unmute?: string;
+  muteAria?: string;
+  unmuteAria?: string;
+  inputPlaceholderArtist?: string;
+  inputPlaceholderGuesser?: string;
+  inputAriaArtist?: string;
+  inputAriaGuesser?: string;
+  insertEmojiAria?: string;
+  send?: string;
+  sendAria?: string;
+  // Footer
+  voiceModeLabel?: string;
+  modeHold?: string;
+  modeHoldAria?: string;
+  modeOpen?: string;
+  modeOpenAria?: string;
+  statusConnected?: string;
+  statusConnecting?: string;
+  statusError?: string;
+  statusErrorAria?: string;
+  statusOff?: string;
+}
 
 export interface InGameChatDrawerProps {
   isOpen: boolean;
@@ -38,6 +101,7 @@ export interface InGameChatDrawerProps {
   roundInfo?: string;
   currentDrawerNickname?: string;
   isDrawer?: boolean;
+  labels?: InGameChatDrawerLabels;
 }
 
 const QUICK_PHRASES = [
@@ -70,17 +134,21 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   roundInfo = '',
   currentDrawerNickname = '',
   isDrawer = false,
+  labels,
 }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'phrases'>('chat');
   const [inputText, setInputText] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Release push-to-talk on unmount or drawer close
+  // Release push-to-talk on unmount, when drawer closes, or when isOpen becomes false
   useEffect(() => {
+    if (!isOpen) {
+      onHoldToTalk?.(false);
+    }
     return () => {
       onHoldToTalk?.(false);
     };
-  }, [onHoldToTalk]);
+  }, [isOpen, onHoldToTalk]);
 
   const handleClose = () => {
     onHoldToTalk?.(false);
@@ -133,10 +201,13 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm text-foreground">
-                    房间交流 {roomCode ? `(#${roomCode})` : ''}
+                    {labels?.roomChatTitle ?? '房间交流'} {roomCode ? `(#${roomCode})` : ''}
                   </h4>
                   <p className="text-[10px] text-muted-foreground">
-                    {roundInfo} {currentDrawerNickname ? `· 画手: ${currentDrawerNickname}` : ''}
+                    {roundInfo}{' '}
+                    {currentDrawerNickname
+                      ? `· ${labels?.artistLabel ?? '画手:'} ${currentDrawerNickname}`
+                      : ''}
                   </p>
                 </div>
               </div>
@@ -144,7 +215,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label="关闭聊天抽屉"
+                aria-label={labels?.closeDrawerAria ?? '关闭聊天抽屉'}
                 className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -156,27 +227,31 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('chat')}
-                aria-label={`聊天动态 (${messages.length}条)`}
+                aria-label={
+                  labels?.chatTabAria
+                    ? `${labels.chatTabAria} (${messages.length})`
+                    : `聊天动态 (${messages.length}条)`
+                }
                 className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                   activeTab === 'chat'
                     ? 'bg-card text-[var(--theme-primary,#5B5BF0)] shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                聊天动态 ({messages.length})
+                {(labels?.chatTab ?? '聊天动态')} ({messages.length})
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('phrases')}
-                aria-label="快捷短语"
+                aria-label={labels?.phrasesTabAria ?? (labels?.phrasesTab ?? '快捷短语')}
                 className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                   activeTab === 'phrases'
                     ? 'bg-card text-[var(--theme-primary,#5B5BF0)] shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                快捷短语
+                {labels?.phrasesTab ?? '快捷短语'}
               </button>
             </div>
 
@@ -199,28 +274,34 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                     <span>
                       {isMuted
                         ? voiceMode === 'hold'
-                          ? '按住说话已就绪 (静音中)'
-                          : '麦克风已静音'
-                        : '麦克风已开 (发言中)'}
+                          ? (labels?.holdReadyMuted ?? '按住说话已就绪 (静音中)')
+                          : (labels?.micMuted ?? '麦克风已静音')
+                        : (labels?.micOpenSpeaking ?? '麦克风已开 (发言中)')}
                     </span>
                   </>
                 ) : voiceStatus === 'connecting' ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                    <span>正在连接语音...</span>
+                    <span>{labels?.connecting ?? '正在连接语音...'}</span>
                   </>
                 ) : voiceStatus === 'error' ? (
                   <>
                     <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="truncate max-w-[200px]">{voiceError || '语音连接失败'}</span>
+                    <span className="truncate max-w-[200px]">
+                      {voiceError || (labels?.errorFallback ?? '语音连接失败')}
+                    </span>
                   </>
                 ) : (
                   <>
                     <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
-                    <span>语音未开启</span>
+                    <span>{labels?.off ?? '语音未开启'}</span>
                   </>
                 )}
-                {isDeafened && <span className="text-rose-500 font-extrabold">(已闭音)</span>}
+                {isDeafened && (
+                  <span className="text-rose-500 font-extrabold">
+                    {labels?.deafenedBadge ?? '(已闭音)'}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -228,28 +309,32 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   <button
                     type="button"
                     onClick={onToggleMute}
-                    aria-label="重试语音连接"
+                    aria-label={labels?.retryUnmuteAria ?? '重试语音连接'}
                     className="text-xs font-extrabold underline text-rose-600 dark:text-rose-400 hover:opacity-80 cursor-pointer"
                   >
-                    重试开麦
+                    {labels?.retryUnmute ?? '重试开麦'}
                   </button>
                 ) : voiceStatus === 'off' ? (
                   <button
                     type="button"
                     onClick={onToggleMute}
-                    aria-label="点击开麦加入语音"
+                    aria-label={labels?.joinVoiceAria ?? '点击开麦加入语音'}
                     className="text-xs font-extrabold underline hover:text-foreground cursor-pointer"
                   >
-                    开麦加入
+                    {labels?.joinVoice ?? '开麦加入'}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={onToggleMute}
-                    aria-label={isMuted ? '点击开麦' : '点击静音'}
+                    aria-label={
+                      isMuted
+                        ? labels?.unmuteAria ?? '点击开麦'
+                        : labels?.muteAria ?? '点击静音'
+                    }
                     className="text-xs font-extrabold underline hover:opacity-80 cursor-pointer"
                   >
-                    {isMuted ? '开麦' : '静音'}
+                    {isMuted ? labels?.unmute ?? '开麦' : labels?.mute ?? '静音'}
                   </button>
                 )}
 
@@ -257,10 +342,16 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   <button
                     type="button"
                     onClick={onToggleDeafen}
-                    aria-label={isDeafened ? '取消闭音' : '闭音'}
+                    aria-label={
+                      isDeafened
+                        ? labels?.undeafenAria ?? '取消闭音'
+                        : labels?.deafenAria ?? '闭音'
+                    }
                     className="text-xs font-extrabold underline text-muted-foreground hover:text-foreground cursor-pointer"
                   >
-                    {isDeafened ? '取消闭音' : '闭音'}
+                    {isDeafened
+                      ? labels?.undeafen ?? '取消闭音'
+                      : labels?.deafen ?? '闭音'}
                   </button>
                 )}
               </div>
@@ -292,15 +383,21 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                     <div className="text-left">
                       <div className="text-xs font-extrabold text-foreground flex items-center gap-1">
                         <span>{p.nickname}</span>
-                        {isMe && <span className="text-[10px] text-[var(--theme-primary,#5B5BF0)]">(我)</span>}
+                        {isMe && (
+                          <span className="text-[10px] text-[var(--theme-primary,#5B5BF0)]">
+                            {labels?.me ?? '(我)'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-muted-foreground font-medium">
                         {isSpeaking ? (
-                          <span className="text-emerald-600 font-bold">发言中</span>
+                          <span className="text-emerald-600 font-bold">
+                            {labels?.speaking ?? '发言中'}
+                          </span>
                         ) : p.micMuted ? (
-                          '静音'
+                          labels?.muted ?? '静音'
                         ) : (
-                          '就绪'
+                          labels?.ready ?? '就绪'
                         )}
                       </div>
                     </div>
@@ -315,7 +412,9 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                 <div className="flex justify-center">
                   <div className="px-3.5 py-1 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{roundInfo} · 画手为 {currentDrawerNickname}</span>
+                    <span>
+                      {roundInfo} · {labels?.artistLabel ?? '画手为'} {currentDrawerNickname}
+                    </span>
                   </div>
                 </div>
               )}
@@ -323,7 +422,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               {/* Message List */}
               {messages.length === 0 ? (
                 <div className="h-32 flex items-center justify-center text-xs text-muted-foreground">
-                  暂无消息记录，开始发言吧！
+                  {labels?.emptyMessages ?? '暂无消息记录，开始发言吧！'}
                 </div>
               ) : (
                 messages.map((msg) => {
@@ -373,14 +472,18 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
             <div className="flex items-center gap-2 px-4 py-2 border-t border-border/40 bg-muted/10 overflow-x-auto no-scrollbar shrink-0">
               <span className="text-xs font-black text-muted-foreground shrink-0 flex items-center gap-0.5">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
-                <span>快聊:</span>
+                <span>{labels?.quickChatPrefix ?? '快聊:'}</span>
               </span>
               {QUICK_PHRASES.map((item) => (
                 <button
                   key={item.text}
                   type="button"
                   onClick={() => handleQuickPhrase(item.text)}
-                  aria-label={`发送快捷短语: ${item.text}`}
+                  aria-label={
+                    labels?.quickPhraseAria
+                      ? `${labels.quickPhraseAria} ${item.text}`
+                      : `发送快捷短语: ${item.text}`
+                  }
                   className="px-3 py-1 rounded-full bg-card hover:bg-muted border border-border text-xs font-bold text-foreground flex items-center gap-1 shrink-0 transition-transform active:scale-95 shadow-2xs cursor-pointer"
                 >
                   <span>{item.icon}</span>
@@ -395,7 +498,11 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               {voiceMode === 'hold' ? (
                 <button
                   type="button"
-                  aria-label={!isMuted ? '松开静音' : '按住说话'}
+                  aria-label={
+                    !isMuted
+                      ? labels?.releaseToMuteAria ?? '松开静音'
+                      : labels?.holdToTalkAria ?? '按住说话'
+                  }
                   onPointerDown={(e) => {
                     e.currentTarget.setPointerCapture(e.pointerId);
                     onHoldToTalk?.(true);
@@ -428,13 +535,21 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   }`}
                 >
                   {!isMuted ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{!isMuted ? '松开发言' : '按住说话'}</span>
+                  <span className="hidden sm:inline">
+                    {!isMuted
+                      ? labels?.releaseToMute ?? '松开发言'
+                      : labels?.holdToTalk ?? '按住说话'}
+                  </span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={onToggleMute}
-                  aria-label={isMuted ? '开麦' : '静音'}
+                  aria-label={
+                    isMuted
+                      ? labels?.unmuteAria ?? '开麦'
+                      : labels?.muteAria ?? '静音'
+                  }
                   className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
                     isMuted ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500 text-white shadow-sm'
                   }`}
@@ -448,14 +563,22 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={isDrawer ? '发送聊天消息... (画手禁发答案)' : '发送消息或猜词...'}
-                  aria-label={isDrawer ? '发送聊天消息' : '发送消息或猜词'}
+                  placeholder={
+                    isDrawer
+                      ? labels?.inputPlaceholderArtist ?? '发送聊天消息... (画手禁发答案)'
+                      : labels?.inputPlaceholderGuesser ?? '发送消息或猜词...'
+                  }
+                  aria-label={
+                    isDrawer
+                      ? labels?.inputAriaArtist ?? '发送聊天消息'
+                      : labels?.inputAriaGuesser ?? '发送消息或猜词'
+                  }
                   className="w-full h-10 pl-3 pr-8 rounded-full bg-muted/60 border border-border/80 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary,#5B5BF0)]"
                 />
                 <button
                   type="button"
                   onClick={() => setInputText((prev) => `${prev} 🎉`)}
-                  aria-label="插入表情符号"
+                  aria-label={labels?.insertEmojiAria ?? '插入表情符号'}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <Smile className="w-4 h-4" />
@@ -465,40 +588,40 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               <Button
                 type="submit"
                 disabled={!inputText.trim()}
-                aria-label="发送消息"
+                aria-label={labels?.sendAria ?? '发送消息'}
                 className="h-10 px-4 rounded-full font-black text-xs gap-1 shrink-0 shadow-md cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>发送</span>
+                <span>{labels?.send ?? '发送'}</span>
               </Button>
             </form>
 
             {/* Voice Mode Footer */}
             <div className="flex items-center justify-between px-4 py-1.5 bg-muted/30 border-t border-border/60 text-[11px] font-bold text-muted-foreground shrink-0 pb-safe">
               <div className="flex items-center gap-2">
-                <span>语音模式:</span>
+                <span>{labels?.voiceModeLabel ?? '语音模式:'}</span>
                 <div className="inline-flex rounded-full bg-muted p-0.5 border border-border/60">
                   <button
                     type="button"
                     onClick={() => onSetVoiceMode?.('hold')}
-                    aria-label="切换到按住说话模式"
+                    aria-label={labels?.modeHoldAria ?? '切换到按住说话模式'}
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition-colors cursor-pointer ${
                       voiceMode === 'hold' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground'
                     }`}
                   >
-                    按住说话
+                    {labels?.modeHold ?? '按住说话'}
                   </button>
                   <button
                     type="button"
                     onClick={() => onSetVoiceMode?.('open')}
-                    aria-label="切换到自由麦模式"
+                    aria-label={labels?.modeOpenAria ?? '切换到自由麦模式'}
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition-colors cursor-pointer ${
                       voiceMode === 'open'
                         ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-xs'
                         : 'text-muted-foreground'
                     }`}
                   >
-                    自由麦
+                    {labels?.modeOpen ?? '自由麦'}
                   </button>
                 </div>
               </div>
@@ -507,12 +630,16 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                 {voiceStatus === 'connected' ? (
                   <>
                     <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                    <span className="text-emerald-600 dark:text-emerald-400">实时语音已连麦</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {labels?.statusConnected ?? '实时语音已连麦'}
+                    </span>
                   </>
                 ) : voiceStatus === 'connecting' ? (
                   <>
                     <Radio className="w-3.5 h-3.5 text-amber-500 animate-ping" />
-                    <span className="text-amber-600 dark:text-amber-400">语音连接中...</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {labels?.statusConnecting ?? '语音连接中...'}
+                    </span>
                   </>
                 ) : voiceStatus === 'error' ? (
                   <>
@@ -520,16 +647,18 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                     <button
                       type="button"
                       onClick={onToggleMute}
-                      aria-label="语音连接异常，点击重试开麦"
+                      aria-label={labels?.statusErrorAria ?? '语音连接异常，点击重试开麦'}
                       className="text-rose-500 underline cursor-pointer hover:opacity-80"
                     >
-                      连接异常 (重试)
+                      {labels?.statusError ?? '连接异常 (重试)'}
                     </button>
                   </>
                 ) : (
                   <>
                     <Radio className="w-3.5 h-3.5 text-muted-foreground/50" />
-                    <span className="text-muted-foreground">语音未开启</span>
+                    <span className="text-muted-foreground">
+                      {labels?.statusOff ?? '语音未开启'}
+                    </span>
                   </>
                 )}
               </div>
