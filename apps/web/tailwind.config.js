@@ -8,7 +8,7 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
+        colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',
         card: {
@@ -18,18 +18,6 @@ export default {
         popover: {
           DEFAULT: 'var(--card)',
           foreground: 'var(--card-foreground)',
-        },
-        primary: {
-          DEFAULT: 'var(--theme-primary, #5B5BF0)',
-          foreground: '#FFFFFF',
-        },
-        secondary: {
-          DEFAULT: '#FF6B5E',
-          foreground: '#FFFFFF',
-        },
-        tertiary: {
-          DEFAULT: '#2EC4A6',
-          foreground: '#FFFFFF',
         },
         muted: {
           DEFAULT: 'var(--muted)',
@@ -42,6 +30,54 @@ export default {
         border: 'var(--border)',
         input: 'var(--input)',
         ring: 'var(--theme-primary, #5B5BF0)',
+
+        // Stitch Design System Colors
+        'surface-container': '#ececff',
+        'outline-variant': '#c7c4d7',
+        'on-secondary': '#ffffff',
+        'primary-container': '#5b5bf0',
+        'on-primary-fixed-variant': '#2e29c6',
+        'error-container': '#ffdad6',
+        'on-surface': '#161a30',
+        'on-primary-fixed': '#09006b',
+        'primary-fixed': '#e1dfff',
+        'surface-tint': '#4948de',
+        'on-tertiary': '#ffffff',
+        error: '#ba1a1a',
+        'secondary-container': '#fc695c',
+        'on-background': '#161a30',
+        'inverse-primary': '#c1c1ff',
+        'tertiary-container': '#007e69',
+        primary: '#413fd6',
+        'on-primary-container': '#f6f2ff',
+        'on-tertiary-fixed': '#002019',
+        'surface-container-lowest': '#ffffff',
+        'on-secondary-container': '#690005',
+        'primary-fixed-dim': '#c1c1ff',
+        'on-surface-variant': '#464555',
+        'on-secondary-fixed-variant': '#8c1715',
+        tertiary: '#006352',
+        'on-tertiary-container': '#caffee',
+        'inverse-on-surface': '#f0efff',
+        'tertiary-fixed-dim': '#50dcbd',
+        'on-secondary-fixed': '#410002',
+        'surface-bright': '#fbf8ff',
+        outline: '#767586',
+        'on-primary': '#ffffff',
+        'surface-variant': '#dee1ff',
+        'tertiary-fixed': '#71f9d9',
+        surface: '#fbf8ff',
+        secondary: '#ae3029',
+        'surface-container-high': '#e5e6ff',
+        'surface-container-low': '#f4f2ff',
+        'on-error': '#ffffff',
+        'on-error-container': '#93000a',
+        'inverse-surface': '#2b2f46',
+        'secondary-fixed': '#ffdad6',
+        'surface-dim': '#d5d8f6',
+        'secondary-fixed-dim': '#ffb4ab',
+        'on-tertiary-fixed-variant': '#005142',
+        'surface-container-highest': '#dee1ff',
       },
       borderRadius: {
         lg: '1rem',

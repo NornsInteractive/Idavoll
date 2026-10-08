@@ -1,32 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import {
-  Timer,
-  Maximize2,
-  Minimize2,
-  Trophy,
-  Send,
-  Sparkles,
-  ChevronLeft,
-  CheckCircle2,
-  MessageSquare,
-  Zap,
-} from 'lucide-react';
-import {
-  Card,
-  Button,
-  Badge,
-  Avatar,
-  DrawBoard,
-  ChatWindow,
-  InGameChatDrawer,
-  DanmakuOverlay,
-  VoiceDock,
-  Input,
-} from '@idavoll/ui';
+import { DrawBoard, InGameChatDrawer } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
@@ -44,12 +20,44 @@ export const InGameGuesserPage: React.FC = () => {
     initDemoGame,
   } = useGameStore();
 
-  const [guessInput, setGuessInput] = useState('');
+  const [guessInput, setGuessInput] = useState('旋转木马');
   const [hasGuessedCorrect, setHasGuessedCorrect] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(48);
-  const [isDanmakuEnabled, setIsDanmakuEnabled] = useState(true);
-  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(38);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
+  const [revealedHint, setRevealedHint] = useState('旋');
+  const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string }[]>([]);
+
+  const [guessFeed, setGuessFeed] = useState([
+    {
+      id: 'f1',
+      type: 'system_clue',
+      text: '系统：画手 小明 使用了提示卡，公布首字「旋」',
+    },
+    {
+      id: 'f2',
+      type: 'wrong_guess',
+      sender: '浩浩 (你)',
+      content: '碰碰车？',
+      badge: '不对',
+      time: '36s',
+    },
+    {
+      id: 'f3',
+      type: 'close_guess',
+      sender: '糖糖',
+      content: '摩天轮？',
+      badge: '差一点',
+      time: '34s',
+    },
+    {
+      id: 'f4',
+      type: 'correct_guess',
+      sender: '阿雅 (Aya)',
+      text: '猜中了正确答案！',
+      score: '+100分',
+    },
+  ]);
 
   useEffect(() => {
     if (!gameState) {
@@ -57,7 +65,7 @@ export const InGameGuesserPage: React.FC = () => {
     }
   }, [gameState, userId, initDemoGame]);
 
-  // Timer countdown
+  // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -73,16 +81,45 @@ export const InGameGuesserPage: React.FC = () => {
   }, [navigate]);
 
   const currentStrokes = gameState?.strokes || [];
-  const currentScores = gameState?.scores || [];
 
-  const handleGuessSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGuessSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!guessInput.trim() || hasGuessedCorrect) return;
 
     const trimmed = guessInput.trim();
     const isCorrect = submitGuess(trimmed, userId, nickname);
 
-    // Also add to chat / danmaku
+    if (isCorrect) {
+      setHasGuessedCorrect(true);
+      setGuessFeed((prev) => [
+        ...prev,
+        {
+          id: `f_${Date.now()}`,
+          type: 'correct_guess',
+          sender: '浩浩 (你)',
+          text: `猜中了正确答案！【${currentWord}】`,
+          score: '+100分 ⚡',
+        },
+      ]);
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 },
+      });
+    } else {
+      setGuessFeed((prev) => [
+        ...prev,
+        {
+          id: `f_${Date.now()}`,
+          type: 'wrong_guess',
+          sender: '浩浩 (你)',
+          content: `${trimmed}？`,
+          badge: '不对',
+          time: `${timeLeft}s`,
+        },
+      ]);
+    }
+
     addMessage({
       version: 'v1',
       seq: Date.now(),
@@ -92,26 +129,23 @@ export const InGameGuesserPage: React.FC = () => {
       payload: {
         id: `msg_${Date.now()}`,
         type: isCorrect ? 'correct_guess' : 'guess',
-        content: isCorrect ? `🎉 猜对了！答案就是【${currentWord}】` : trimmed,
-        senderNickname: nickname,
+        content: isCorrect ? `🎉 猜对了！答案是【${currentWord}】` : trimmed,
+        senderNickname: '浩浩',
         senderAvatar: avatar,
         isDanmaku: true,
       },
     });
 
-    if (isCorrect) {
-      setHasGuessedCorrect(true);
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    }
-
     setGuessInput('');
   };
 
-  const handleSendMessage = (content: string, isDanmaku?: boolean) => {
+  const triggerFloatingEmoji = (emoji: string) => {
+    const newId = `emoji_${Date.now()}_${Math.random()}`;
+    setFloatingEmojis((prev) => [...prev, { id: newId, emoji }]);
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((item) => item.id !== newId));
+    }, 2800);
+
     addMessage({
       version: 'v1',
       seq: Date.now(),
@@ -121,15 +155,15 @@ export const InGameGuesserPage: React.FC = () => {
       payload: {
         id: `msg_${Date.now()}`,
         type: 'text',
-        content,
-        senderNickname: nickname,
+        content: emoji,
+        senderNickname: '浩浩',
         senderAvatar: avatar,
-        isDanmaku: !!isDanmaku,
+        isDanmaku: true,
       },
     });
   };
 
-  const toggleFullscreenMode = () => {
+  const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
     try {
       if (!isFullscreen) {
@@ -146,555 +180,516 @@ export const InGameGuesserPage: React.FC = () => {
     }
   };
 
-  const [revealedHint, setRevealedHint] = useState('旋');
-  const [guessHistory, setGuessHistory] = useState([
-    { id: 'h1', text: '🎉 系统：阿雅 (Aya) 猜中了正确答案！(+100分)', type: 'correct' },
-    { id: 'h2', text: '浩浩 (你)：碰碰车？ ❌ 不对', type: 'wrong' },
-    { id: 'h3', text: '糖糖：摩天轮？ ❌ 差一点', type: 'close' },
-    { id: 'h4', text: '系统：画手 小明 使用了提示卡，公布首字「旋」', type: 'system' },
-  ]);
-
-  const quickPhrases = ['💡 申请提示', '🎠 旋转木马', '🎡 摩天轮', '🏎️ 碰碰车', '👏 太像了！'];
-  const reactionEmojis = ['👏', '😂', '❤️', '🔥', '🎉'];
-
-  const sendReaction = (emoji: string) => {
-    handleSendMessage(emoji, true);
-  };
-
-  const requestHint = () => {
-    setRevealedHint('旋');
-    handleSendMessage('💡 浩浩 向画手申请了字数线索！', false);
-  };
+  const quickPhrases = ['旋木', '旋转木马', '旋转飞椅', '旋转滑梯'];
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden flex flex-col bg-background select-none touch-none overscroll-none">
-      {/* =========================================================================
-          FULLSCREEN GUESSER IMMERSION MODE (切换全屏功能)
-         ========================================================================= */}
-      {isFullscreen ? (
-        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden touch-none overscroll-none select-none">
-          {/* Floating Top Controls HUD */}
-          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 flex items-center justify-between pointer-events-none pt-safe">
-            <div className="flex items-center gap-2 pointer-events-auto">
-              <Badge className="bg-[var(--theme-primary,#5B5BF0)] text-white border-0 font-black px-3 py-1 text-xs shadow-md">
-                🔍 猜词全屏沉浸
-              </Badge>
-              {/* Word Hint Character Slots */}
-              <div className="flex items-center gap-1 bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-xs font-bold shadow-xs">
-                <span className="text-[10px] opacity-80 mr-1">{gameState?.wordCategory || '游乐场设施'}:</span>
-                <span className="w-5 h-5 rounded bg-amber-400 text-slate-950 flex items-center justify-center font-black text-xs shadow-xs">
-                  {revealedHint}
-                </span>
-                <span className="w-5 h-5 rounded bg-white/30 flex items-center justify-center font-black text-xs">
-                  _
-                </span>
-                <span className="w-5 h-5 rounded bg-white/30 flex items-center justify-center font-black text-xs">
-                  _
-                </span>
-                <span className="w-5 h-5 rounded bg-white/30 flex items-center justify-center font-black text-xs">
-                  _
-                </span>
+    <div className={`bg-background text-on-surface antialiased flex justify-center items-center h-screen overflow-hidden selection:bg-surface-variant selection:text-primary ${isFullscreen ? 'fixed inset-0 z-50 p-0 m-0 w-screen h-screen' : ''}`}>
+      {/* Mobile Viewport Container 390px (Exact Stitch Container) */}
+      <main className={`w-full ${isFullscreen ? 'max-w-none h-full' : 'max-w-[390px] h-full max-h-[844px]'} flex flex-col justify-between bg-surface shadow-2xl relative overflow-hidden select-none`}>
+        {/* ========================================================================= */}
+        {/* TOP BAR / GAME HUD (Shared Specs + Guesser Identity)                      */}
+        {/* ========================================================================= */}
+        <header className="w-full bg-surface-container-lowest px-3 pt-2 pb-1.5 shadow-xs flex flex-col gap-1 shrink-0 z-20">
+          {/* Upper Status Row */}
+          <div className="flex items-center justify-between">
+            {/* Room & Round Chips */}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">
+                <span className="material-symbols-outlined text-[13px] text-primary">tag</span>
+                <span className="font-label-sm text-[12px] font-bold tracking-tight">84920</span>
+              </div>
+              <span className="text-[11px] font-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-bold">
+                第 2/5 轮
+              </span>
+              {/* Identity Badge: Guesser */}
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-bold">
+                <span className="material-symbols-outlined text-[13px]">visibility</span>
+                <span className="text-[11px] font-label-sm">猜题者</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pointer-events-auto">
-              <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/80 backdrop-blur-md text-white text-xs font-mono font-black shadow-md">
-                <Timer className="w-3.5 h-3.5" />
+            {/* Timer & Top Controls */}
+            <div className="flex items-center gap-1.5">
+              {/* Circular Countdown Timer */}
+              <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-error-container text-secondary font-extrabold text-[12px] shadow-xs">
+                <div className="absolute inset-0 rounded-full border-2 border-secondary-container timer-ring"></div>
                 <span>{timeLeft}s</span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsChatDrawerOpen(true)}
-                className="relative w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white flex items-center justify-center cursor-pointer shadow-md"
-                title="打开聊天"
-              >
-                <MessageSquare className="w-4 h-4" />
-                {messages.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500" />
-                )}
-              </button>
-
-              <Button
-                size="sm"
-                variant="surface"
-                onClick={toggleFullscreenMode}
-                className="h-8 px-3 text-xs gap-1 font-bold bg-white/20 hover:bg-white/30 text-white border-0 shadow-md backdrop-blur-md cursor-pointer"
-              >
-                <Minimize2 className="w-3.5 h-3.5" />
-                <span>退出全屏</span>
-              </Button>
+              {/* Utility Icons */}
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setIsChatDrawerOpen(true)}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
+                  title="房间规则"
+                >
+                  <span className="material-symbols-outlined text-[16px]">help</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsChatDrawerOpen(true)}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
+                  title="设置与聊天"
+                >
+                  <span className="material-symbols-outlined text-[16px]">settings</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/room/room_idavoll_demo')}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-error-container active:scale-95 text-error cursor-pointer"
+                  title="退出房间"
+                >
+                  <span className="material-symbols-outlined text-[16px]">logout</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Canvas with Danmaku */}
-          <div className="relative flex-1 w-full h-full">
-            <DanmakuOverlay
-              items={messages.map((m) => ({
-                id: m.payload.id,
-                text: m.payload.content,
-                color: m.payload.color || '#5B5BF0',
-                fontSize: 18,
-                topPercent: Math.random() * 55 + 15,
-                senderNickname: m.payload.senderNickname,
-                timestamp: m.timestamp,
-              }))}
-              enabled={true}
-            />
+          {/* Player Seats Row (Horizontal Mini Seats) */}
+          <div className="flex items-center justify-between pt-1 border-t border-surface-container-high/60 px-0.5 overflow-x-auto no-scrollbar gap-1">
+            {/* Player 1: Painter (小明) */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary-fixed border border-primary/20 shadow-xs shrink-0">
+              <div className="relative w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-[10px] font-bold">
+                明
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-secondary-container text-on-primary flex items-center justify-center shadow-xs">
+                  <span className="material-symbols-outlined text-[8px] pencil-anim">edit</span>
+                </span>
+              </div>
+              <div className="flex flex-col leading-none">
+                <div className="flex items-center gap-1">
+                  <span className="font-label-sm text-[11px] font-bold text-on-primary-fixed truncate max-w-[36px]">
+                    小明
+                  </span>
+                  <span className="text-[8px] px-1 rounded-full bg-primary-container text-on-primary-container font-bold">
+                    作画
+                  </span>
+                </div>
+                <span className="text-[9px] font-body-sm text-on-primary-fixed-variant font-bold">
+                  240分
+                </span>
+              </div>
+            </div>
 
-            <DrawBoard
-              strokes={currentStrokes}
-              isDrawer={false}
-              width={1280}
-              height={960}
-              className="w-full h-full rounded-none border-0 pointer-events-none"
-            />
+            {/* Player 2: Guessed Correctly (阿雅) */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-low border border-tertiary-fixed-dim/40 shrink-0">
+              <div className="relative w-5 h-5 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary text-[10px] font-bold">
+                雅
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shadow-xs">
+                  <span className="material-symbols-outlined text-[9px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    check
+                  </span>
+                </span>
+              </div>
+              <div className="flex flex-col leading-none">
+                <div className="flex items-center gap-1">
+                  <span className="font-label-sm text-[11px] font-bold text-on-surface truncate max-w-[36px]">
+                    阿雅
+                  </span>
+                  <span className="text-[8px] font-bold text-tertiary">已猜对</span>
+                </div>
+                <span className="text-[9px] font-body-sm text-tertiary font-bold">+100分</span>
+              </div>
+            </div>
 
-            {/* Floating Floating Reaction Emojis in Fullscreen */}
-            <div className="absolute right-3 bottom-20 z-30 flex flex-col gap-1.5 pointer-events-auto">
-              {reactionEmojis.map((emoji) => (
+            {/* Player 3: Current User (浩浩 - 猜词中) */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container border border-primary-container shrink-0">
+              <div className="relative w-5 h-5 rounded-full bg-surface-tint flex items-center justify-center text-on-primary text-[10px] font-bold">
+                浩
+                <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-tertiary-fixed border border-surface-container-lowest"></span>
+              </div>
+              <div className="flex flex-col leading-none">
+                <div className="flex items-center gap-1">
+                  <span className="font-label-sm text-[11px] font-bold text-primary truncate max-w-[32px]">
+                    你
+                  </span>
+                  <span className="text-[8px] px-1 rounded-full bg-surface-variant text-primary font-bold">
+                    {hasGuessedCorrect ? '猜中' : '待猜'}
+                  </span>
+                </div>
+                <span className="text-[9px] font-body-sm text-on-surface-variant font-bold">
+                  {hasGuessedCorrect ? '280分' : '180分'}
+                </span>
+              </div>
+            </div>
+
+            {/* Player 4: Other Guesser (糖糖) */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-low shrink-0">
+              <div className="relative w-5 h-5 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant text-[10px] font-bold">
+                糖
+                <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-tertiary-fixed border border-surface-container-lowest"></span>
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-label-sm text-[11px] text-on-surface-variant truncate max-w-[36px]">
+                  糖糖
+                </span>
+                <span className="text-[9px] font-body-sm text-outline font-bold">90分</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* ========================================================================= */}
+        {/* SECRET WORD HINT CARD (Crucial Guesser Perspective Banner)                */}
+        {/* ========================================================================= */}
+        <section className="mx-3 mt-1.5 bg-gradient-to-r from-primary/10 via-surface-container-high to-surface-variant rounded-xl px-2.5 py-1.5 flex items-center justify-between border border-primary/15 shadow-xs shrink-0">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-[11px] font-bold">
+                <span className="material-symbols-outlined text-[13px]">lightbulb</span>
+                提示分类
+              </span>
+              <span className="font-label-md text-label-md font-extrabold text-primary tracking-tight">
+                {gameState?.wordCategory || '游乐场设施'} · 4个字
+              </span>
+            </div>
+            {/* Word Blanks & Partial Clue */}
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <span className="text-body-sm font-label-sm text-on-surface-variant font-bold">
+                字数卡槽：
+              </span>
+              <div className="flex items-center gap-1">
+                {/* Hint revealed first character */}
+                <div className="w-7 h-7 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center font-display-hero-mobile text-[16px] font-black shadow-xs ring-2 ring-primary/30">
+                  {revealedHint}
+                </div>
+                {/* Blank Slot 2 */}
+                <div className="w-7 h-7 rounded-lg bg-surface-container-lowest border-2 border-dashed border-outline-variant flex items-center justify-center font-headline-sm text-outline">
+                  {hasGuessedCorrect ? '转' : '_'}
+                </div>
+                {/* Blank Slot 3 */}
+                <div className="w-7 h-7 rounded-lg bg-surface-container-lowest border-2 border-dashed border-outline-variant flex items-center justify-center font-headline-sm text-outline">
+                  {hasGuessedCorrect ? '木' : '_'}
+                </div>
+                {/* Blank Slot 4 */}
+                <div className="w-7 h-7 rounded-lg bg-surface-container-lowest border-2 border-dashed border-outline-variant flex items-center justify-center font-headline-sm text-outline">
+                  {hasGuessedCorrect ? '马' : '_'}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Action: Hint Help / Skip Vote */}
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setRevealedHint('旋');
+                addMessage({
+                  version: 'v1',
+                  seq: Date.now(),
+                  timestamp: Date.now(),
+                  senderId: userId,
+                  type: 'chat:message',
+                  payload: {
+                    id: `msg_${Date.now()}`,
+                    type: 'system',
+                    content: '浩浩 向画手申请了更多提示！',
+                    senderNickname: '系统',
+                    senderAvatar: '',
+                    isDanmaku: true,
+                  },
+                });
+              }}
+              className="px-2.5 py-1 rounded-full bg-surface-container-lowest text-primary hover:bg-surface-container active:scale-95 shadow-xs border border-primary/20 flex items-center gap-1 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[15px] text-secondary-container">tips_and_updates</span>
+              <span className="text-[11px] font-label-sm font-bold">申请提示</span>
+            </button>
+            <span className="text-[10px] text-on-surface-variant">首字已解锁 (1/4)</span>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* LIVE DRAWING CANVAS (Spectator View with Live Carousel Art)               */}
+        {/* ========================================================================= */}
+        <section className="mx-3 mt-1.5 flex flex-col relative shrink-0">
+          <div className="w-full h-[190px] bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs overflow-hidden relative flex flex-col justify-between">
+            {/* Canvas Status & Floating Controls Overlay */}
+            <div className="absolute top-1.5 left-2 right-2 flex items-center justify-between z-10 pointer-events-none">
+              {/* Live Painter Indicator */}
+              <div className="pointer-events-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-inverse-surface/80 backdrop-blur-xs text-inverse-on-surface shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-secondary-container -ml-3"></span>
+                <span className="text-[11px] font-label-sm">小明 正在实时作画中...</span>
+              </div>
+              {/* Canvas Action Tools */}
+              <div className="pointer-events-auto flex items-center gap-1.5">
                 <button
-                  key={emoji}
                   type="button"
-                  onClick={() => sendReaction(emoji)}
-                  className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md flex items-center justify-center text-lg active:scale-125 transition-transform shadow-md cursor-pointer"
+                  onClick={toggleFullscreen}
+                  className="w-6 h-6 rounded-full bg-surface-container-lowest/90 backdrop-blur-xs shadow-xs flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 cursor-pointer"
+                  title="全屏查看"
                 >
-                  {emoji}
+                  <span className="material-symbols-outlined text-[14px]">
+                    {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
+                  </span>
                 </button>
+              </div>
+            </div>
+
+            {/* The Live Canvas Artwork (Drawing Carousel - 旋转木马) */}
+            <div className="w-full h-full relative flex items-center justify-center bg-[#fafaff] overflow-hidden">
+              {/* Subtle Grid Texture for Drawing Paper Feel */}
+              <div
+                className="absolute inset-0 opacity-15 pointer-events-none"
+                style={{
+                  backgroundImage: 'radial-gradient(#413fd6 0.8px, transparent 0.8px)',
+                  backgroundSize: '14px 14px',
+                }}
+              ></div>
+
+              {/* Embedded Live Canvas Stroke Board */}
+              <DrawBoard
+                strokes={currentStrokes}
+                isDrawer={false}
+                width={700}
+                height={400}
+                className="w-full h-full pointer-events-none z-10 border-0 rounded-none"
+              />
+
+              {/* Floating Cheers / Reaction Emojis */}
+              {floatingEmojis.map((item) => (
+                <div key={item.id} className="absolute bottom-6 right-8 pointer-events-none flex flex-col items-center z-20">
+                  <span className="emoji-float text-xl select-none">{item.emoji}</span>
+                </div>
               ))}
             </div>
+
+            {/* Canvas Footer: Quick Reactions Bar Overlay */}
+            <div className="w-full bg-surface-container-low/95 px-2.5 py-1 flex items-center justify-between border-t border-surface-container">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-label-sm text-outline font-bold">画板反应:</span>
+                <button
+                  type="button"
+                  onClick={() => triggerFloatingEmoji('👏')}
+                  className="px-2 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant active:scale-90 text-[11px] shadow-xs cursor-pointer"
+                >
+                  👏 棒
+                </button>
+                <button
+                  type="button"
+                  onClick={() => triggerFloatingEmoji('😂')}
+                  className="px-2 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant active:scale-90 text-[11px] shadow-xs cursor-pointer"
+                >
+                  😂 抽象
+                </button>
+                <button
+                  type="button"
+                  onClick={() => triggerFloatingEmoji('❤️')}
+                  className="px-2 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant active:scale-90 text-[11px] shadow-xs cursor-pointer"
+                >
+                  ❤️ 懂了
+                </button>
+              </div>
+              <span className="text-[10px] font-label-sm font-bold text-primary">实时笔画同步中</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* LIVE CHAT & GUESS FEED (中间历史记录区域)                                  */}
+        {/* ========================================================================= */}
+        <section className="mx-3 my-1.5 flex-1 min-h-0 bg-surface-container-lowest rounded-xl p-2 shadow-xs border border-surface-container flex flex-col justify-between overflow-hidden">
+          {/* Feed Header */}
+          <div className="flex items-center justify-between pb-1.5 border-b border-surface-container-high/60">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-primary">forum</span>
+              <span className="font-label-sm text-label-sm font-bold text-on-surface">实时竞猜与动态</span>
+            </div>
+            <span className="text-[10px] font-label-sm text-outline">答案保护已开启（防剧透）</span>
           </div>
 
-          {/* Floating Bottom Guess Bar in Fullscreen */}
-          <div className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xl px-3 z-30 pb-safe">
-            <form
-              onSubmit={handleGuessSubmit}
-              className="p-1.5 bg-card/95 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl flex items-center gap-1.5"
-            >
-              <div className="pl-3 text-xs font-black text-[var(--theme-primary,#5B5BF0)] shrink-0">
-                🚀 抢答:
-              </div>
+          {/* Scrollable Message Stream */}
+          <div className="flex-1 overflow-y-auto space-y-2 py-1.5 pr-1 custom-scroll text-[13px]">
+            {guessFeed.map((item) => {
+              if (item.type === 'system_clue') {
+                return (
+                  <div key={item.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-container-low text-on-surface-variant text-[11px] border-l-2 border-primary">
+                    <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+                    <span>{item.text}</span>
+                  </div>
+                );
+              }
+              if (item.type === 'wrong_guess') {
+                return (
+                  <div key={item.id} className="flex items-start gap-1.5">
+                    <span className="font-bold text-primary text-label-sm shrink-0">{item.sender}:</span>
+                    <div className="flex items-center gap-1 bg-surface-container px-2 py-0.5 rounded-full text-on-surface font-body-sm">
+                      <span>{item.content}</span>
+                      <span className="text-error font-bold text-[11px] flex items-center">
+                        <span className="material-symbols-outlined text-[13px]">close</span> {item.badge}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-outline ml-auto self-center">{item.time}</span>
+                  </div>
+                );
+              }
+              if (item.type === 'close_guess') {
+                return (
+                  <div key={item.id} className="flex items-start gap-1.5">
+                    <span className="font-bold text-on-surface-variant text-label-sm shrink-0">{item.sender}:</span>
+                    <div className="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded-full text-on-surface font-body-sm">
+                      <span>{item.content}</span>
+                      <span className="text-secondary font-bold text-[11px] flex items-center">
+                        <span className="material-symbols-outlined text-[13px]">priority_high</span> {item.badge}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-outline ml-auto self-center">{item.time}</span>
+                  </div>
+                );
+              }
+              if (item.type === 'correct_guess') {
+                return (
+                  <div key={item.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-tertiary-fixed/30 border border-tertiary-fixed-dim text-on-tertiary-fixed">
+                    <span className="text-[14px]">🎉</span>
+                    <div className="flex items-center gap-1 flex-1">
+                      <span className="font-bold font-label-sm">系统：{item.sender}</span>
+                      <span className="text-[12px]">{item.text}</span>
+                    </div>
+                    <span className="font-extrabold text-[12px] text-tertiary">{item.score}</span>
+                  </div>
+                );
+              }
+              return null;
+            })}
 
+            {/* Live Typing Alert for others */}
+            <div className="flex items-center gap-1 text-[11px] text-outline font-body-sm pl-1 italic">
+              <span className="w-1.5 h-1.5 rounded-full bg-outline animate-bounce"></span>
+              <span>糖糖 正在输入猜测...</span>
+            </div>
+          </div>
+
+          {/* Quick Guess Phrase Pills (黄金触控快捷候选项) */}
+          <div className="pt-1.5 border-t border-surface-container-high/60 flex items-center gap-1 overflow-x-auto no-scrollbar">
+            {quickPhrases.map((phrase) => (
+              <button
+                key={phrase}
+                type="button"
+                onClick={() => {
+                  setGuessInput(phrase);
+                }}
+                className="px-2 py-0.5 rounded-full bg-surface-container text-primary font-label-sm text-[11px] font-bold shrink-0 hover:bg-surface-variant active:scale-95 cursor-pointer"
+              >
+                {phrase}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* GUESS INPUT & INTERACTION CORE BAR (底部黄金触控交互区)                    */}
+        {/* ========================================================================= */}
+        <footer className="w-full bg-surface-container-lowest px-3 pt-2 pb-3 shadow-lg border-t border-surface-container flex flex-col gap-1.5 shrink-0 z-30">
+          {/* Primary Input Field + Send Button */}
+          <form onSubmit={handleGuessSubmit} className="flex items-center gap-2">
+            <div className="flex-1 relative flex items-center">
+              <span className="absolute left-3 text-outline material-symbols-outlined text-[18px]">search</span>
               <input
                 type="text"
                 value={guessInput}
                 onChange={(e) => setGuessInput(e.target.value)}
-                placeholder={hasGuessedCorrect ? '已猜对！可继续为好友加油~' : '输入你的猜测词（如：旋转木马）...'}
-                disabled={hasGuessedCorrect}
-                className="flex-1 bg-transparent px-3 py-1.5 text-xs sm:text-sm font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
+                placeholder="输入你的猜测词（如：旋转木马）..."
+                className="w-full pl-9 pr-8 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[14px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold"
               />
+              {guessInput && (
+                <button
+                  type="button"
+                  onClick={() => setGuessInput('')}
+                  className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer"
+                  title="清空"
+                >
+                  <span className="material-symbols-outlined text-[16px]">cancel</span>
+                </button>
+              )}
+            </div>
 
-              <Button
-                type="submit"
-                size="sm"
-                disabled={hasGuessedCorrect || !guessInput.trim()}
-                className="h-9 px-5 font-black gap-1 shrink-0 rounded-full bg-[var(--theme-primary,#5B5BF0)] text-white"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>猜词</span>
-              </Button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        /* =========================================================================
-            STANDARD GUESSER MODE (你画我猜-猜题者界面 - 6eb7224b014e469d9bd9d93ef5d011a5)
-            Strictly 100dvh, zero page scroll!
-           ========================================================================= */
-        <>
-          {/* Top Header HUD (Stitch standard height 52px) */}
-          <header className="h-13 shrink-0 px-3 sm:px-4 flex items-center justify-between border-b border-border/80 bg-card/90 backdrop-blur-md z-20">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Big Send / Guess Button */}
+            <button
+              type="submit"
+              disabled={hasGuessedCorrect || !guessInput.trim()}
+              className="px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-md font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              <span>猜词</span>
+              <span className="material-symbols-outlined text-[16px]">send</span>
+            </button>
+          </form>
+
+          {/* Voice Chat & Functional Row */}
+          <div className="flex items-center justify-between pt-0.5">
+            {/* Push to Talk Voice Control */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate('/room/room_idavoll_demo')}
-                className="w-8 h-8 rounded-full bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-                title="退出房间"
+                onClick={toggleMute}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-primary hover:bg-surface-variant active:scale-95 transition-transform shadow-xs cursor-pointer"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <span className="material-symbols-outlined text-[18px]">{isMuted ? 'mic_off' : 'mic'}</span>
+                <span className="font-label-sm text-label-sm font-bold">{isMuted ? '开麦' : '按住说话'}</span>
               </button>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-black font-mono text-[var(--theme-primary,#5B5BF0)]">
-                    #84920
-                  </span>
-                  <span className="text-[11px] font-bold text-muted-foreground">
-                    第 2/5 轮
-                  </span>
-                  <Badge variant="mint" className="font-black text-[10px] px-1.5 py-0 shrink-0">
-                    猜词者
-                  </Badge>
-                </div>
-                <div className="text-xs font-bold text-foreground truncate">
-                  当前画手:{' '}
-                  <span className="font-black text-[var(--theme-primary,#5B5BF0)]">
-                    {gameState?.drawerNickname || '小明'}
-                  </span>
-                </div>
+              {/* Voice Channel Status */}
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-tertiary-fixed/30 text-tertiary">
+                <span className="w-2 h-2 rounded-full bg-tertiary"></span>
+                <span className="text-[11px] font-bold">语音已连通</span>
               </div>
             </div>
 
-            {/* Right HUD status and buttons */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Round Countdown Timer */}
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 font-black text-xs sm:text-sm shadow-xs">
-                <Timer className="w-3.5 h-3.5 animate-spin" />
-                <span className="font-mono">{timeLeft}s</span>
-              </div>
-
-              {/* Fullscreen Button */}
-              <button
-                type="button"
-                onClick={toggleFullscreenMode}
-                className="h-7 sm:h-8 px-2 sm:px-2.5 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 hover:bg-[var(--theme-primary,#5B5BF0)]/20 text-[var(--theme-primary,#5B5BF0)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                title="全屏查看画板"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-                <span className="text-xs">全屏</span>
-              </button>
-
-              {/* Mobile Chat Drawer Trigger */}
+            {/* Right Side Utility Badges */}
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setIsChatDrawerOpen(true)}
-                className="lg:hidden relative w-8 h-8 rounded-full bg-[var(--theme-primary,#5B5BF0)] text-white flex items-center justify-center cursor-pointer shadow-sm active:scale-95 transition-transform"
-                title="打开聊天与语音"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container active:scale-95 shadow-xs cursor-pointer"
               >
-                <MessageSquare className="w-4 h-4" />
-                {messages.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-card" />
-                )}
+                <span className="material-symbols-outlined text-[17px] text-secondary-container">leaderboard</span>
+                <span className="font-label-sm text-label-sm font-bold">积分榜</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsChatDrawerOpen(true)}
+                className="w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container active:scale-95 flex items-center justify-center shadow-xs cursor-pointer"
+                title="互动与表情"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_reaction</span>
               </button>
             </div>
-          </header>
-
-          {/* Word Hint Card & Character Slots (Crucial for Guesser in Stitch design) */}
-          <div className="shrink-0 px-3 py-1.5 bg-card/60 border-b border-border/40 flex items-center justify-between gap-2 z-15">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[11px] font-bold text-muted-foreground shrink-0">
-                提示类别:
-              </span>
-              <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] shrink-0">
-                {gameState?.wordCategory || '游乐场设施'} / 4个字
-              </span>
-
-              {/* Character Box Slots */}
-              <div className="flex items-center gap-1 shrink-0 ml-1">
-                <span className="w-6 h-6 rounded-md bg-[var(--theme-primary,#5B5BF0)] text-white flex items-center justify-center font-black text-xs shadow-xs border border-[var(--theme-primary,#5B5BF0)] animate-pulse">
-                  {revealedHint}
-                </span>
-                <span className="w-6 h-6 rounded-md bg-muted border border-border flex items-center justify-center font-bold text-xs text-muted-foreground">
-                  _
-                </span>
-                <span className="w-6 h-6 rounded-md bg-muted border border-border flex items-center justify-center font-bold text-xs text-muted-foreground">
-                  _
-                </span>
-                <span className="w-6 h-6 rounded-md bg-muted border border-border flex items-center justify-center font-bold text-xs text-muted-foreground">
-                  _
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={requestHint}
-              className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer shrink-0"
-            >
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              <span>申请提示</span>
-            </button>
           </div>
+        </footer>
+      </main>
 
-          {/* Horizontal Player Seats Strip (Avatars + Scores + Guessed Checkmarks) */}
-          <div className="shrink-0 px-3 py-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-muted/15 border-b border-border/40 z-10">
-            {currentScores.map((score, idx) => {
-              const isDrawerPlayer = score.nickname.includes('小明') || score.playerId === gameState?.drawerId;
-              const isMe = score.playerId === userId;
-              return (
-                <div
-                  key={score.playerId}
-                  className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-xs ${
-                    isMe
-                      ? 'bg-[var(--theme-primary,#5B5BF0)]/15 border-[var(--theme-primary,#5B5BF0)]/40 text-foreground font-black'
-                      : isDrawerPlayer
-                      ? 'bg-amber-500/10 border-amber-500/30 text-foreground font-bold'
-                      : score.hasGuessedCorrectly
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-foreground font-bold'
-                      : 'bg-card border-border/80 text-foreground'
-                  }`}
-                >
-                  <Avatar src={score.avatar} alt={score.nickname} size="xs" />
-                  <span className="text-[11px] font-bold truncate max-w-[55px] sm:max-w-[70px]">
-                    {score.nickname}
-                  </span>
-                  <span className="text-[10px] font-mono font-black text-[var(--theme-primary,#5B5BF0)]">
-                    {score.score}
-                  </span>
-
-                  {score.hasGuessedCorrectly && (
-                    <span className="px-1 py-0 rounded-full bg-emerald-500 text-white text-[9px] font-black">
-                      ✓
-                    </span>
-                  )}
-                  {isDrawerPlayer && (
-                    <span className="px-1 py-0 rounded-full bg-amber-500 text-white text-[9px] font-black">
-                      🎨
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Main Content Area (Strictly flex-1 min-h-0: Fits remaining screen with NO page scroll) */}
-          <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3">
-            {/* Left: Leaderboard & Voice Dock (Desktop only) */}
-            <div className="hidden lg:flex flex-col w-64 shrink-0 space-y-3">
-              <Card className="p-3.5 flex-1 flex flex-col space-y-2 overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
-                  <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1">
-                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                    <span>实时积分榜</span>
-                  </span>
-                  <Badge variant="subtle" className="text-[10px]">
-                    {currentScores.length} 玩家
-                  </Badge>
-                </div>
-
-                <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
-                  {currentScores.map((score, idx) => (
-                    <div
-                      key={score.playerId}
-                      className={`flex items-center justify-between p-2 rounded-xl transition-all ${
-                        score.playerId === userId
-                          ? 'bg-[var(--theme-primary,#5B5BF0)]/15 border border-[var(--theme-primary,#5B5BF0)]/30'
-                          : 'bg-muted/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-muted-foreground w-4 text-center">
-                          {idx + 1}
-                        </span>
-                        <Avatar src={score.avatar} alt={score.nickname} size="sm" />
-                        <div>
-                          <h6 className="text-xs font-bold text-foreground truncate max-w-[80px]">
-                            {score.nickname}
-                          </h6>
-                          {score.hasGuessedCorrectly && (
-                            <span className="text-[10px] font-bold text-emerald-500">已猜对 ✓</span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-xs font-black font-mono text-[var(--theme-primary,#5B5BF0)]">
-                        {score.score}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="shrink-0 pt-2 border-t border-border">
-                  <VoiceDock
-                    players={room?.players || []}
-                    currentUserId={userId}
-                    isMuted={isMuted}
-                    onToggleMute={toggleMute}
-                    speakingUserIds={speakingUserIds}
-                  />
-                </div>
-              </Card>
-            </div>
-
-            {/* Center Canvas + Direct Live Guess Feed Area */}
-            <div className="flex-1 min-h-0 flex flex-col relative w-full h-full gap-1.5">
-              {/* Drawing Board Container (Spectator View) */}
-              <div className="relative flex-1 min-h-0 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border border-border bg-white dark:bg-slate-900">
-                {/* Floating Drawer Status Badge */}
-                <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/90 backdrop-blur-md border border-border shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[11px] font-bold text-foreground">
-                    {gameState?.drawerNickname || '小明'} 正在实时绘制中... ✍️
-                  </span>
-                </div>
-
-                {/* Floating Danmaku Switch & Reactions on Canvas */}
-                <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
-                  {reactionEmojis.slice(0, 3).map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => sendReaction(emoji)}
-                      className="w-7 h-7 rounded-full bg-card/80 hover:bg-card backdrop-blur-md flex items-center justify-center text-xs active:scale-125 transition-transform shadow-xs cursor-pointer border border-border"
-                      title="发送互动表情"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => setIsDanmakuEnabled(!isDanmakuEnabled)}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black border transition-all cursor-pointer backdrop-blur-md shadow-xs ${
-                      isDanmakuEnabled
-                        ? 'bg-card/90 text-[var(--theme-primary,#5B5BF0)] border-[var(--theme-primary,#5B5BF0)]/30'
-                        : 'bg-card/60 text-muted-foreground border-border'
-                    }`}
-                  >
-                    {isDanmakuEnabled ? '🚀' : '关'}
-                  </button>
-                </div>
-
-                {/* Realtime Danmaku Barrage */}
-                <DanmakuOverlay
-                  items={messages.map((m) => ({
-                    id: m.payload.id,
-                    text: m.payload.content,
-                    color: m.payload.color || '#5B5BF0',
-                    fontSize: 16,
-                    topPercent: Math.random() * 60 + 15,
-                    senderNickname: m.payload.senderNickname,
-                    timestamp: m.timestamp,
-                  }))}
-                  enabled={isDanmakuEnabled}
-                />
-
-                {/* Drawing Board */}
-                <DrawBoard
-                  strokes={currentStrokes}
-                  isDrawer={false}
-                  width={1000}
-                  height={750}
-                  className="w-full h-full pointer-events-none"
-                />
-
-                {/* Correct guess celebration banner overlay */}
-                <AnimatePresence>
-                  {hasGuessedCorrect && (
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0, y: -10 }}
-                      animate={{ scale: 1, opacity: 1, y: 0 }}
-                      className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-emerald-500 text-white font-black text-xs shadow-xl flex items-center gap-1.5 z-30"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>🎉 恭喜！你已猜出正确答案！等待本轮结束</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Direct Visible Guess & Chat Feed (画板下方历史聊天与猜词记录 - Stitch Screen 4) */}
-              <div className="shrink-0 h-16 sm:h-20 bg-muted/30 rounded-xl sm:rounded-2xl border border-border/60 p-1.5 sm:p-2 overflow-y-auto no-scrollbar flex flex-col gap-1 text-[11px]">
-                {guessHistory.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`px-2 py-0.5 rounded-md flex items-center justify-between font-bold leading-tight ${
-                      item.type === 'correct'
-                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
-                        : item.type === 'close'
-                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                        : item.type === 'system'
-                        ? 'bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)]'
-                        : 'bg-card text-foreground border border-border/40'
-                    }`}
-                  >
-                    <span className="truncate">{item.text}</span>
-                    <span className="text-[9px] text-muted-foreground ml-1 shrink-0">刚刚</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right: Reusable Chat Window (Desktop only) */}
-            <div className="hidden lg:flex flex-col w-80 shrink-0">
-              <ChatWindow
-                messages={messages}
-                currentUserId={userId}
-                onSendMessage={handleSendMessage}
-                title="实时猜词流与聊天"
-                placeholder="输入猜测或与好友畅聊..."
-                className="flex-1"
-              />
-            </div>
-          </div>
-
-          {/* Bottom Guess & Interaction Dock (黄金触控区 - Guesser Core Controls) */}
-          <footer className="shrink-0 px-2 sm:px-4 py-2 bg-card/95 backdrop-blur-md border-t border-border z-20 pb-safe">
-            <div className="max-w-4xl mx-auto flex flex-col gap-1.5">
-              {/* Quick Phrases / Category suggestions */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                {quickPhrases.map((phrase) => (
-                  <button
-                    key={phrase}
-                    type="button"
-                    onClick={() => {
-                      if (phrase.includes('申请提示')) {
-                        requestHint();
-                      } else {
-                        setGuessInput(phrase.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, ''));
-                      }
-                    }}
-                    className="shrink-0 px-2.5 py-1 rounded-full bg-muted/60 hover:bg-muted text-[11px] font-bold text-foreground border border-border/60 active:scale-95 transition-all cursor-pointer"
-                  >
-                    {phrase}
-                  </button>
-                ))}
-              </div>
-
-              {/* High-priority Guess input form */}
-              <form onSubmit={handleGuessSubmit} className="flex items-center gap-2">
-                {/* Voice & Quick trigger button */}
-                <button
-                  type="button"
-                  onClick={() => setIsChatDrawerOpen(true)}
-                  className="w-10 h-10 rounded-full bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center shrink-0 cursor-pointer transition-colors"
-                  title="语音与聊天"
-                >
-                  <Zap className="w-4 h-4 text-amber-500" />
-                </button>
-
-                {/* Guess input */}
-                <div className="relative flex-1">
-                  <Input
-                    value={guessInput}
-                    onChange={(e) => setGuessInput(e.target.value)}
-                    placeholder={hasGuessedCorrect ? '已猜中！可为好友加油~' : '输入你的猜测词（如：旋转木马）...'}
-                    disabled={hasGuessedCorrect}
-                    className="h-10 font-bold text-xs sm:text-sm rounded-full pl-3.5 pr-3 border-border/80 bg-muted/40 focus:bg-background"
-                  />
-                </div>
-
-                {/* Send / Guess Submit button */}
-                <Button
-                  type="submit"
-                  disabled={hasGuessedCorrect || !guessInput.trim()}
-                  className="h-10 px-5 rounded-full font-black text-xs sm:text-sm gap-1 whitespace-nowrap shadow-md shrink-0 bg-[var(--theme-primary,#5B5BF0)] text-white hover:opacity-95"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>猜词</span>
-                </Button>
-              </form>
-            </div>
-          </footer>
-        </>
-      )}
-
-      {/* Reusable InGameChatDrawer (Exact Stitch replication) */}
+      {/* Reusable InGameChatDrawer */}
       <InGameChatDrawer
         isOpen={isChatDrawerOpen}
         onClose={() => setIsChatDrawerOpen(false)}
         messages={messages}
         currentUserId={userId}
-        onSendMessage={handleSendMessage}
+        onSendMessage={(content) => {
+          addMessage({
+            version: 'v1',
+            seq: Date.now(),
+            timestamp: Date.now(),
+            senderId: userId,
+            type: 'chat:message',
+            payload: {
+              id: `msg_${Date.now()}`,
+              type: 'text',
+              content,
+              senderNickname: nickname,
+              senderAvatar: avatar,
+              isDanmaku: false,
+            },
+          });
+        }}
         players={room?.players || []}
         isMuted={isMuted}
         onToggleMute={toggleMute}
         speakingUserIds={speakingUserIds}
         roomCode="84920"
         roundInfo="第 2/5 轮"
-        currentDrawerNickname={gameState?.drawerNickname || '小明'}
+        currentDrawerNickname="小明"
         isDrawer={false}
       />
     </div>
   );
 };
-

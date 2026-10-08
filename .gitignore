@@ -11,3 +11,4 @@ build
 mcp_config.json
 .mcp.json
 .agents/mcp_config.json
+temp/
