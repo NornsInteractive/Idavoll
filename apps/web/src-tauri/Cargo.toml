@@ -2,7 +2,7 @@
 name = "idavoll-desktop"
 version = "1.0.0"
 description = "Idavoll PlayHub Desktop App"
-authors = ["Naruto9Kurama"]
+authors = ["NornsInteractive"]
 edition = "2021"
 
 [dependencies]
