@@ -17,10 +17,10 @@
 
 1. 确认本次必要验证通过，记录 git diff/status，确保不提交 .cache、.dev.vars、mcp私密配置、构建产物或令牌。
 2. 从 Cloudflare Worker secrets API GET /accounts/{account_id}/workers/scripts/idavoll-server/secrets 只核验名称，不输出值。不存在 JWT_SECRET 时，在进程内 secrets.token_urlsafe(48) 生成并 PUT 对应 secret；已有密钥必须保留，不轮换现有身份密钥。接口 secret body 为 {name:'JWT_SECRET',type:'secret_text',text:<value>}。
-3. 用户要求优先自有 TURN，未配置默认 Cloudflare TURN。核验 TURN_SERVERS_JSON/TURN_KEY_ID/TURN_KEY_API_TOKEN 名称；自有TURN已配置则保持。未有Cloudflare TURN key时，GET /accounts/{account_id}/calls/turn_keys（该账号已确认当前列表为空），然后POST同路径body {name:'idavoll-voice'} 创建一次，取result.uid与result.key。仅把值在内存中分别 PUT 到 Worker 的 TURN_KEY_ID、TURN_KEY_API_TOKEN secrets。禁止写入文档/日志/源码/前端。如重试先查询已有密钥，不能重复新建。无法取回已有key时读取已有Worker Secret名称，保持既有配置并验证语音接口；不要自动删除key。
-4. Cloudflare API 请求用 urllib.request 或现有客户端，token仅从环境读取；任何响应先删去 key/text/token/password/credential 才输出，创建密钥响应不能直接打印。错误报告保留HTTP状态和errors.message即可。
+3. 用户要求优先自有 TURN，未配置默认 Cloudflare TURN。核验 TURN_SERVERS_JSON/TURN_KEY_ID/TURN_KEY_API_TOKEN 名称；自有TURN已配置则保持。未有Cloudflare TURN key时，GET /accounts/{account_id}/calls/turn_keys，然后POST同路径body {name:'idavoll-voice'} 创建一次，取result.uid与 `result.secret || result.key`。2026-10-08实际创建响应为secret字段；必须在同一进程内验证凭据生成并绑定Secrets，不能只打印字段后退出丢失secret。仅把值在内存中分别 PUT 到 Worker 的 TURN_KEY_ID、TURN_KEY_API_TOKEN secrets，禁止写入文档/日志/源码/前端。重试先核验已有Worker secret名称，保留现有已绑定密钥。只有本轮创建且明确未使用的失效/未绑定key可替换并清理；不能删除其他已有key。
+4. Cloudflare API 请求用 urllib.request 或现有客户端，token仅从环境读取；请求带20–30秒timeout。读取Worker secret列表失败必须停止，不能当空列表覆盖身份密钥。任何响应先删去 secret/key/text/token/password/credential 才输出，创建密钥响应不能直接打印。错误报告保留HTTP状态和errors.message即可。
 5. pnpm --filter @idavoll/server exec wrangler d1 migrations apply DB --remote，确认迁移成功，不清库，不用 schema.sql 覆盖。执行前可使用 Wrangler backup 创建数据库备份（如已有数据）。
-6. pnpm --filter @idavoll/server deploy。核验 Worker 健康检查和绑定、Secrets 名称及真实guest API可用，不用健康200代替登录成功。
+6. pnpm --filter @idavoll/server run deploy（必须有run，避免调用pnpm自身的deploy命令）。核验 Worker 健康检查和绑定、Secrets 名称及真实guest API可用，不用健康200代替登录成功。
 7. 提交完整变更并推送 main（常规 push，不force），记录commit。让原生Git集成构建Pages，查询部署状态并确认生产commit一致；失败读取构建日志修复。不要用手工直传dist伪装Git部署成功。
 8. 返回 GitHub commit链接、Worker版本/部署结果、Pages生产deployment id/url和commit、D1迁移结果、语音配置完成与否、任何失败或未覆盖项。不要宣称测试全部通过——最终线上验收由OpenCode执行。
 

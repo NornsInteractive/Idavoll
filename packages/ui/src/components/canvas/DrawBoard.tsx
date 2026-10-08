@@ -33,6 +33,7 @@ export const DrawBoard: React.FC<DrawBoardProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
   const currentPointsRef = useRef<Point[]>([]);
   const currentStrokeIdRef = useRef<string>('');
@@ -117,15 +118,27 @@ export const DrawBoard: React.FC<DrawBoardProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!offscreenCanvasRef.current) {
+      offscreenCanvasRef.current = document.createElement('canvas');
+    }
+    const offscreen = offscreenCanvasRef.current;
+    if (offscreen.width !== canvas.width || offscreen.height !== canvas.height) {
+      offscreen.width = canvas.width;
+      offscreen.height = canvas.height;
+    }
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) return;
+
+    // Render strokes on transparent offscreen layer so erasers punch through cleanly
+    offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
 
     for (const stroke of strokes) {
-      renderStroke(ctx, stroke);
+      renderStroke(offCtx, stroke);
     }
 
     // Draw active drawing stroke if drawer is currently drawing
     if (isDrawingRef.current && currentPointsRef.current.length > 0) {
-      renderStroke(ctx, {
+      renderStroke(offCtx, {
         id: currentStrokeIdRef.current,
         points: currentPointsRef.current,
         color: currentColor,
@@ -134,6 +147,11 @@ export const DrawBoard: React.FC<DrawBoardProps> = ({
         timestamp: Date.now(),
       });
     }
+
+    // Composite onto main canvas with permanent white paper background (always white in dark mode and after eraser)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(offscreen, 0, 0);
   }, [strokes, renderStroke, currentColor, currentSize, isEraser]);
 
   useEffect(() => {
@@ -300,17 +318,18 @@ export const DrawBoard: React.FC<DrawBoardProps> = ({
     >
       <div
         style={{ width: `${boxSize.width}px`, height: `${boxSize.height}px` }}
-        className="relative flex items-center justify-center shrink-0"
+        className="relative flex items-center justify-center shrink-0 bg-white rounded-lg shadow-sm overflow-hidden"
       >
         <canvas
           ref={canvasRef}
           width={width}
           height={height}
+          style={{ backgroundColor: '#ffffff' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className={`w-full h-full block touch-none ${canDraw ? 'cursor-crosshair' : 'cursor-default'}`}
+          className={`w-full h-full block touch-none bg-white ${canDraw ? 'cursor-crosshair' : 'cursor-default'}`}
         />
       </div>
     </div>
