@@ -44,9 +44,9 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
   disabled = false,
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-card/90 backdrop-blur-md rounded-2xl border border-border shadow-md">
-      {/* Colors Swatches */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex items-center justify-between gap-2 p-2 sm:p-2.5 bg-card/90 backdrop-blur-md rounded-2xl border border-border shadow-sm max-w-full overflow-hidden">
+      {/* Colors Swatches (Scrollable row) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink min-w-0 pr-1">
         {COLOR_SWATCHES.map((color) => {
           const isSelected = !isEraser && currentColor.toLowerCase() === color.toLowerCase();
           return (
@@ -59,7 +59,7 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
                 onEraserToggle(false);
                 onColorChange(color);
               }}
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-transform cursor-pointer shadow-sm ${
+              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 transition-transform cursor-pointer shrink-0 shadow-xs ${
                 isSelected
                   ? 'border-indigo-600 dark:border-white scale-110 ring-2 ring-indigo-400'
                   : 'border-white/80 dark:border-white/20 hover:scale-105'

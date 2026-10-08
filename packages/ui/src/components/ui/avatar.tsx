@@ -4,11 +4,12 @@ import { cn } from '../../lib/utils';
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   src?: string;
   alt?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   status?: 'online' | 'busy' | 'drawing' | 'offline';
 }
 
 const sizeClasses = {
+  xs: 'w-6 h-6 text-[10px]',
   sm: 'w-8 h-8 text-xs',
   md: 'w-11 h-11 text-sm',
   lg: 'w-16 h-16 text-lg',

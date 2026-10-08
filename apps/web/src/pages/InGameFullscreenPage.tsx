@@ -46,9 +46,9 @@ export const InGameFullscreenPage: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden touch-none overscroll-none select-none">
       {/* Floating Top Controls HUD */}
-      <div className="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 flex items-center justify-between pointer-events-none pt-safe">
         <div className="flex items-center gap-2 pointer-events-auto">
           <Badge className="bg-white/20 backdrop-blur-md text-white border border-white/30 font-black px-3 py-1 text-xs">
             沉浸全屏模式
