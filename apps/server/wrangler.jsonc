@@ -4,6 +4,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-03-01",
   "compatibility_flags": ["nodejs_compat"],
+  "account_id": "d34e7a1f00e18858047410e2af90f073",
   "durable_objects": {
     "bindings": [
       {
@@ -22,13 +23,13 @@
     {
       "binding": "DB",
       "database_name": "idavoll-d1",
-      "database_id": "idavoll-local-d1-placeholder"
+      "database_id": "60b180c3-0321-45a1-aef5-9f763a120e62"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "CONFIG_KV",
-      "id": "idavoll-config-kv-placeholder"
+      "id": "5ea56e957db74cc5a64b072bc22c37c8"
     }
   ],
   "r2_buckets": [
