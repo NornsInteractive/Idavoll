@@ -15,7 +15,7 @@ pnpm --filter @idavoll/web dev
 
 在 `apps/server/.dev.vars` 配置至少 32 字符的 `JWT_SECRET`，该文件被 Git 忽略。Vite 将 `/api` 和 WebSocket 转发至本地 8787 端口。生产 API 地址在 `apps/web/.env.production`，它是公开地址，不包含密钥。
 
-语音优先读取 Worker Secret `TURN_SERVERS_JSON`（JSON 格式的 `RTCIceServer[]`）；未配置时使用 Cloudflare TURN 的 `TURN_KEY_ID` 和 `TURN_KEY_API_TOKEN`。所有长期密钥保留在服务端，浏览器只获取语音连接凭据。Cloudflare TURN 超出免费额度后按量计费。没有有效配置时明确显示语音不可用。
+语音优先读取 Worker Secret `TURN_SERVERS_JSON`（JSON 格式的 `RTCIceServer[]`）；未配置时使用 Cloudflare TURN 的 `TURN_KEY_ID` 和 `TURN_KEY_API_TOKEN`。Cloudflare 的长期 API 密钥保留在服务端。自建 TURN 的固定用户名和密码会下发给房间成员的浏览器用于连接，当前未接入自建 TURN 动态短期凭据。配置自建 TURN 后，故障时不会自动切换至 Cloudflare；删除 `TURN_SERVERS_JSON` 可恢复默认服务。Cloudflare TURN 超出免费额度后按量计费。没有有效配置时明确显示语音不可用。
 
 ## 规则与数据
 
