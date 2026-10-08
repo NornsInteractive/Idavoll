@@ -136,9 +136,10 @@ export const InGameGuesserPage: React.FC = () => {
   const totalRounds = gameState.totalRounds || room.settings?.totalRounds || 3;
   const timeLeft = gameState.timeLeft ?? 0;
   const drawerNickname = gameState.drawerNickname || '';
-  const wordCategory = gameState.wordCategory || '日常词汇';
+  const wordCategory = gameState.wordCategory || '';
   const wordLength = gameState.currentWordLength || 0;
   const wordHint = gameState.wordHint || '';
+  const isSelectingWord = gameState.status === 'selecting_word';
   const players = room.players || [];
 
   // Determine if current user has guessed correctly
@@ -180,12 +181,10 @@ export const InGameGuesserPage: React.FC = () => {
   };
 
   // Determine character slots (revealing hint character if available)
-  const slotCount = Math.max(1, wordLength || 4);
   const firstChar = wordHint ? wordHint.replace(/^[^\w\u4e00-\u9fa5]*/, '').slice(0, 1) : '';
-  const slots = Array.from({ length: slotCount }).map((_, idx) => {
-    if (idx === 0 && firstChar) return firstChar;
-    return '_';
-  });
+  const slots = wordLength > 0
+    ? Array.from({ length: wordLength }).map((_, idx) => (idx === 0 && firstChar ? firstChar : '_'))
+    : [];
 
   return (
     <div
@@ -220,7 +219,7 @@ export const InGameGuesserPage: React.FC = () => {
                   </span>
                 </button>
                 <span className="text-[11px] font-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-bold">
-                  第 {currentRound}/{totalRounds} 轮
+                  {t('inGame.turnNumGuesser', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮` })}
                 </span>
                 {/* Identity Badge: Guesser */}
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-bold">
@@ -360,17 +359,19 @@ export const InGameGuesserPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-[11px] font-bold">
                   <span className="material-symbols-outlined text-[13px]">lightbulb</span>
-                  提示分类
+                  {t('inGame.hintCategory', '提示分类')}
                 </span>
                 <span className="font-label-md text-label-md font-extrabold text-primary tracking-tight">
-                  {wordCategory} · {wordLength || 4}个字
+                  {isSelectingWord
+                    ? t('inGame.drawerSelectingWord', '画手正在挑选词语...')
+                    : `${wordCategory ? `${wordCategory} · ` : ''}${wordLength > 0 ? t('inGame.wordCharsDesktop', { length: wordLength, defaultValue: `${wordLength}个字` }) : ''}`}
                 </span>
               </div>
               {/* Word Blanks & Partial Clue */}
               <div className="flex items-center gap-1.5 pt-0.5">
-                <span className="text-body-sm font-label-sm text-on-surface-variant font-bold">字数卡槽：</span>
+                <span className="text-body-sm font-label-sm text-on-surface-variant font-bold">{t('inGame.wordSlots', '字数卡槽：')}</span>
                 <div className="flex items-center gap-1">
-                  {gameState.status === 'selecting_word' ? (
+                  {isSelectingWord || slots.length === 0 ? (
                     <span className="text-xs font-bold text-secondary animate-pulse">
                       {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
                     </span>
@@ -403,10 +404,10 @@ export const InGameGuesserPage: React.FC = () => {
                 <span className="material-symbols-outlined text-[15px] text-secondary-container">
                   tips_and_updates
                 </span>
-                <span className="text-[11px] font-label-sm font-bold">申请提示</span>
+                <span className="text-[11px] font-label-sm font-bold">{t('inGame.requestHint', '申请提示')}</span>
               </button>
               <span className="text-[10px] text-on-surface-variant">
-                {wordHint ? `已公布线索: ${wordHint}` : '提示未解锁'}
+                {wordHint ? t('inGame.revealedClue', { clue: wordHint }) : t('inGame.hintLocked', '提示未解锁')}
               </span>
             </div>
           </section>
@@ -555,10 +556,20 @@ export const InGameGuesserPage: React.FC = () => {
                       >
                         <span className="text-[14px]">🎉</span>
                         <div className="flex items-center gap-1 flex-1">
-                          <span className="font-bold font-label-sm">系统：{m.payload.senderNickname}</span>
-                          <span className="text-[12px]">猜中了正确答案！</span>
+                          <span className="font-bold font-label-sm">
+                            {t('inGame.systemPrefix', '系统：')}{m.payload.senderNickname}
+                          </span>
+                          <span className="text-[12px]">{t('inGame.guessedCorrectlyShort', '猜中了！')}</span>
                         </div>
-                        <span className="font-extrabold text-[12px] text-tertiary">+100分</span>
+                        {isMe && guessResult?.earned ? (
+                          <span className="font-extrabold text-[12px] text-tertiary">
+                            +{guessResult.earned} {t('inGame.scorePoints', '分')}
+                          </span>
+                        ) : (
+                          <span className="font-extrabold text-[11px] text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
+                            ✓
+                          </span>
+                        )}
                       </div>
                     );
                   }
@@ -591,20 +602,22 @@ export const InGameGuesserPage: React.FC = () => {
               )}
             </div>
 
-            {/* Quick Guess Phrase Pills */}
+            {/* Quick Interaction / Feedback Phrase Pills */}
             <div className="pt-1.5 border-t border-surface-container-high/60 flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
-              {['旋转木马', '碰碰车', '过山车', '海盗船', '摩天轮'].map((phrase) => (
+              {[
+                { key: 'awesome', text: t('inGame.quickPillAwesome', '👍 太神了') },
+                { key: 'hint', text: t('inGame.quickPillHint', '💡 求提示') },
+                { key: 'hard', text: t('inGame.quickPillHard', '🤔 有点难') },
+                { key: 'artist', text: t('inGame.quickPillArtist', '🎨 灵魂画手') },
+                { key: 'go', text: t('inGame.quickPillGo', '🔥 冲冲冲') },
+              ].map((pill) => (
                 <button
-                  key={phrase}
+                  key={pill.key}
                   type="button"
-                  onClick={() => {
-                    if (!hasGuessedCorrect) {
-                      submitGuess(phrase);
-                    }
-                  }}
-                  className="tactile-btn px-2 py-0.5 rounded-full bg-surface-container text-primary font-label-sm text-[11px] font-bold shrink-0 hover:bg-surface-variant cursor-pointer"
+                  onClick={() => sendMessage(pill.text, true)}
+                  className="tactile-btn px-2.5 py-0.5 rounded-full bg-surface-container text-primary font-label-sm text-[11px] font-bold shrink-0 hover:bg-surface-variant cursor-pointer"
                 >
-                  {phrase}
+                  {pill.text}
                 </button>
               ))}
             </div>
@@ -622,7 +635,9 @@ export const InGameGuesserPage: React.FC = () => {
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={hasGuessedCorrect}
                   placeholder={
-                    hasGuessedCorrect ? '你已猜中！静候其他玩家抢答...' : '输入你的猜测词（如：旋转木马）...'
+                    hasGuessedCorrect
+                      ? t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
+                      : t('inGame.guessInputPlaceholder', '输入你猜测的词语（按 Enter 立即抢答）...')
                   }
                   className="w-full pl-9 pr-8 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[14px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
                 />
@@ -631,7 +646,7 @@ export const InGameGuesserPage: React.FC = () => {
                     type="button"
                     onClick={() => setGuessInput('')}
                     className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer"
-                    title="清空"
+                    title={t('inGame.clear', '清空')}
                   >
                     <span className="material-symbols-outlined text-[16px]">cancel</span>
                   </button>
@@ -643,7 +658,7 @@ export const InGameGuesserPage: React.FC = () => {
                 disabled={hasGuessedCorrect || !guessInput.trim()}
                 className="tactile-btn px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-md font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
               >
-                <span>猜词</span>
+                <span>{t('inGame.submitGuess', '猜一猜')}</span>
                 <span className="material-symbols-outlined text-[16px]">send</span>
               </button>
             </form>
@@ -735,10 +750,10 @@ export const InGameGuesserPage: React.FC = () => {
                   ></span>
                   <span>
                     {voiceStatus === 'connected'
-                      ? '语音已连通'
+                      ? t('voice.connected', '已连麦')
                       : voiceStatus === 'connecting'
-                      ? '正在连接'
-                      : '未连接'}
+                      ? t('voice.connecting', '连接中...')
+                      : t('voice.off', '未开启')}
                   </span>
                 </div>
               </div>
@@ -754,14 +769,14 @@ export const InGameGuesserPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[17px] text-secondary-container">
                     leaderboard
                   </span>
-                  <span className="font-label-sm text-label-sm font-bold">积分榜</span>
+                  <span className="font-label-sm text-label-sm font-bold">{t('inGame.leaderboard', '积分榜')}</span>
                 </button>
                 {/* Quick Reaction Trigger */}
                 <button
                   type="button"
                   onClick={() => handleSendReaction('🔥')}
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container flex items-center justify-center shadow-xs cursor-pointer"
-                  title="快速喝彩"
+                  title={t('inGame.quickReaction', '快速喝彩')}
                 >
                   <span className="material-symbols-outlined text-[18px]">add_reaction</span>
                 </button>
@@ -800,7 +815,7 @@ export const InGameGuesserPage: React.FC = () => {
             </button>
 
             <span className="text-xs font-label-sm px-3 py-1 rounded-full bg-surface-container-high text-primary font-bold">
-              第 {currentRound}/{totalRounds} 轮 · 竞猜进行中
+              {t('inGame.turnNumGuesser', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮 · 竞猜进行中` })}
             </span>
 
             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-highest text-primary font-bold text-xs">
@@ -883,13 +898,13 @@ export const InGameGuesserPage: React.FC = () => {
             <button
               type="button"
               onClick={toggleDeafen}
-              aria-label={isDeafened ? '取消闭音' : '闭音'}
+              aria-label={isDeafened ? t('voice.undeafen', '取消闭音') : t('voice.deafen', '闭音')}
               className={`tactile-btn p-2 rounded-full border text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
                 isDeafened
                   ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
                   : 'bg-surface-container text-muted-foreground border-outline-variant/50'
               }`}
-              title={isDeafened ? '取消闭音' : '闭音'}
+              title={isDeafened ? t('voice.undeafen', '取消闭音') : t('voice.deafen', '闭音')}
             >
               <span className="material-symbols-outlined text-[18px]">
                 {isDeafened ? 'volume_off' : 'volume_up'}
@@ -903,7 +918,7 @@ export const InGameGuesserPage: React.FC = () => {
                 isDanmakuOn ? 'bg-primary-fixed text-primary' : 'bg-surface-container text-outline'
               }`}
             >
-              {isDanmakuOn ? '弹幕: 开' : '弹幕: 关'}
+              {isDanmakuOn ? t('inGame.danmakuOn', '弹幕: 开') : t('inGame.danmakuOff', '弹幕: 关')}
             </button>
 
             <button
@@ -911,7 +926,7 @@ export const InGameGuesserPage: React.FC = () => {
               onClick={handleLeave}
               className="tactile-btn px-3 py-1.5 rounded-full bg-error-container text-error text-xs font-bold hover:bg-rose-500/20 transition-colors cursor-pointer"
             >
-              退出房间
+              {t('inGame.exitRoom', '退出房间')}
             </button>
           </div>
         </header>
@@ -925,15 +940,17 @@ export const InGameGuesserPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-label-sm text-xs font-bold shadow-xs">
                   <span className="material-symbols-outlined text-[15px]">lightbulb</span>
-                  提示分类
+                  {t('inGame.hintCategory', '提示分类')}
                 </span>
                 <span className="font-headline-sm text-base font-extrabold text-primary">
-                  {wordCategory} · {wordLength || 4}个字
+                  {isSelectingWord
+                    ? t('inGame.drawerSelectingWord', '画手正在挑选词语...')
+                    : `${wordCategory ? `${wordCategory} · ` : ''}${wordLength > 0 ? t('inGame.wordCharsDesktop', { length: wordLength, defaultValue: `${wordLength}个字` }) : ''}`}
                 </span>
                 <div className="h-4 w-[1px] bg-primary/20"></div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-on-surface-variant">字数卡槽：</span>
-                  {gameState.status === 'selecting_word' ? (
+                  <span className="text-xs font-bold text-on-surface-variant">{t('inGame.wordSlots', '字数卡槽：')}</span>
+                  {isSelectingWord || slots.length === 0 ? (
                     <span className="text-xs font-bold text-secondary animate-pulse">
                       {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
                     </span>
@@ -956,7 +973,7 @@ export const InGameGuesserPage: React.FC = () => {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-on-surface-variant">
-                  {wordHint ? `已公布线索: ${wordHint}` : '提示未解锁'}
+                  {wordHint ? t('inGame.revealedClue', { clue: wordHint }) : t('inGame.hintLocked', '提示未解锁')}
                 </span>
                 <button
                   type="button"
@@ -966,7 +983,7 @@ export const InGameGuesserPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[16px] text-secondary-container">
                     tips_and_updates
                   </span>
-                  <span>申请提示</span>
+                  <span>{t('inGame.requestHint', '申请提示')}</span>
                 </button>
               </div>
             </section>
@@ -1039,7 +1056,7 @@ export const InGameGuesserPage: React.FC = () => {
               {/* Canvas Footer */}
               <div className="w-full bg-surface-container-low px-4 py-1.5 flex items-center justify-between border-t border-surface-container shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-label-sm text-outline font-bold">画板实时反应:</span>
+                  <span className="text-xs font-label-sm text-outline font-bold">{t('inGame.boardReactions', '画板实时反应:')}</span>
                   {['👏 棒', '😂 抽象', '❤️ 懂了', '🎨 灵魂', '🔥 热烈'].map((emoji) => (
                     <button
                       key={emoji}
@@ -1051,7 +1068,7 @@ export const InGameGuesserPage: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <span className="text-xs font-label-sm font-bold text-primary">实时笔画高精同步中</span>
+                <span className="text-xs font-label-sm font-bold text-primary">{t('inGame.strokesSyncing', '实时笔画高精同步中')}</span>
               </div>
             </section>
 
@@ -1069,8 +1086,8 @@ export const InGameGuesserPage: React.FC = () => {
                     disabled={hasGuessedCorrect}
                     placeholder={
                       hasGuessedCorrect
-                        ? '你已猜中！静候其他玩家抢答...'
-                        : '输入你的猜测词（如：旋转木马，按回车提交）...'
+                        ? t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
+                        : t('inGame.guessInputPlaceholderDesktop', '输入你的猜测词，按回车提交...')
                     }
                     className="w-full pl-10 pr-9 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
                   />
@@ -1079,7 +1096,7 @@ export const InGameGuesserPage: React.FC = () => {
                       type="button"
                       onClick={() => setGuessInput('')}
                       className="absolute right-3 text-outline hover:text-on-surface cursor-pointer"
-                      title="清空"
+                      title={t('inGame.clear', '清空')}
                     >
                       <span className="material-symbols-outlined text-[18px]">cancel</span>
                     </button>
@@ -1090,7 +1107,7 @@ export const InGameGuesserPage: React.FC = () => {
                   disabled={hasGuessedCorrect || !guessInput.trim()}
                   className="tactile-btn px-6 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-sm font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
                 >
-                  <span>抢先猜词</span>
+                  <span>{t('inGame.submitGuess', '抢先猜词')}</span>
                   <span className="material-symbols-outlined text-[18px]">send</span>
                 </button>
               </form>
@@ -1100,7 +1117,7 @@ export const InGameGuesserPage: React.FC = () => {
                 type="button"
                 onClick={() => handleSendReaction('🔥')}
                 className="tactile-btn w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant shadow-xs cursor-pointer"
-                title="热烈反应"
+                title={t('inGame.quickReaction', '热烈反应')}
               >
                 <span className="material-symbols-outlined text-[20px]">add_reaction</span>
               </button>
@@ -1116,10 +1133,10 @@ export const InGameGuesserPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[18px] text-secondary-container">
                     leaderboard
                   </span>
-                  <span className="font-label-sm text-sm font-bold text-on-surface">实时积分榜</span>
+                  <span className="font-label-sm text-sm font-bold text-on-surface">{t('inGame.leaderboard', '实时积分榜')}</span>
                 </div>
                 <span className="text-xs text-outline font-bold">
-                  {players.length}/{room.settings?.maxPlayers || 8}人在线
+                  {players.filter((p) => p.isOnline).length}/{room.settings?.maxPlayers || 8} {t('inGame.playersOnline', '人在线')}
                 </span>
               </div>
 
@@ -1231,9 +1248,17 @@ export const InGameGuesserPage: React.FC = () => {
                           <span className="text-base">🎉</span>
                           <div className="flex items-center gap-1 flex-1">
                             <span className="font-bold">{m.payload.senderNickname}</span>
-                            <span>猜中了正确答案！</span>
+                            <span>{t('inGame.guessedCorrectly', '猜中了正确答案！')}</span>
                           </div>
-                          <span className="font-black text-tertiary">+100分</span>
+                          {isMe && guessResult?.earned ? (
+                            <span className="font-black text-tertiary">
+                              +{guessResult.earned} {t('inGame.scorePoints', '分')}
+                            </span>
+                          ) : (
+                            <span className="font-black text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
+                              ✓
+                            </span>
+                          )}
                         </div>
                       );
                     }
@@ -1264,20 +1289,22 @@ export const InGameGuesserPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Quick Guess Phrase Pills */}
+              {/* Quick Reaction Phrase Pills */}
               <div className="pt-2 border-t border-surface-container-high/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                {['旋转木马', '碰碰车', '过山车', '海盗船', '摩天轮', '旋转滑梯'].map((phrase) => (
+                {[
+                  { key: 'awesome', text: t('inGame.quickPillAwesome', '👍 太神了') },
+                  { key: 'hint', text: t('inGame.quickPillHint', '💡 求提示') },
+                  { key: 'hard', text: t('inGame.quickPillHard', '🤔 有点难') },
+                  { key: 'artist', text: t('inGame.quickPillArtist', '🎨 灵魂画手') },
+                  { key: 'go', text: t('inGame.quickPillGo', '🔥 冲冲冲') },
+                ].map((pill) => (
                   <button
-                    key={phrase}
+                    key={pill.key}
                     type="button"
-                    onClick={() => {
-                      if (!hasGuessedCorrect) {
-                        submitGuess(phrase);
-                      }
-                    }}
+                    onClick={() => sendMessage(pill.text, true)}
                     className="tactile-btn px-2.5 py-1 rounded-full bg-surface-container text-primary font-label-sm text-xs font-bold shrink-0 hover:bg-surface-variant cursor-pointer"
                   >
-                    {phrase}
+                    {pill.text}
                   </button>
                 ))}
               </div>

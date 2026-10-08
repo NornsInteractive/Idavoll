@@ -254,7 +254,7 @@ export const InGameDrawerPage: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
                   </div>
                   <span className="font-label-sm text-[10px] text-primary font-bold">
-                    第 {currentRound}/{totalRounds} 轮 · 画手
+                    {t('inGame.roundDrawerInfo', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮 · 画手` })}
                   </span>
                 </div>
               </div>
@@ -275,19 +275,31 @@ export const InGameDrawerPage: React.FC = () => {
                   type="button"
                   onClick={() => setIsChatDrawerOpen(true)}
                   className="tactile-btn flex items-center gap-1 bg-surface-container text-on-surface px-2 py-1 rounded-full cursor-pointer"
-                  title="语音频道"
+                  title={t('voice.channel', '语音频道')}
                 >
-                  <span className="material-symbols-outlined text-[14px] text-tertiary-container animate-bounce">
-                    mic
+                  <span
+                    className={`material-symbols-outlined text-[14px] ${
+                      voiceStatus === 'connected' ? 'text-tertiary-container animate-bounce' : 'text-outline'
+                    }`}
+                  >
+                    {voiceStatus === 'connected' ? 'mic' : voiceStatus === 'connecting' ? 'hourglass_top' : 'mic_off'}
                   </span>
-                  <span className="font-label-sm text-[11px] font-bold">{players.length}人</span>
+                  <span className="font-label-sm text-[11px] font-bold">
+                    {voiceStatus === 'connected'
+                      ? speakingUserIds.length > 0
+                        ? t('inGame.speakingCount', { count: speakingUserIds.length, defaultValue: `${speakingUserIds.length}人说话` })
+                        : t('inGame.voiceConnected', '已连麦')
+                      : voiceStatus === 'connecting'
+                      ? t('voice.connecting', '连接中...')
+                      : t('voice.channel', '语音')}
+                  </span>
                 </button>
                 {/* Fullscreen Mode Switcher */}
                 <button
                   type="button"
                   onClick={toggleFullscreen}
                   className="tactile-btn flex items-center gap-1 bg-primary text-on-primary px-2.5 py-1 rounded-full shadow-sm hover:bg-primary-container cursor-pointer"
-                  title="切换全屏画板"
+                  title={t('inGame.fullscreenBoard', '全屏画板')}
                 >
                   <span
                     className="material-symbols-outlined text-[15px]"
@@ -295,7 +307,7 @@ export const InGameDrawerPage: React.FC = () => {
                   >
                     fullscreen
                   </span>
-                  <span className="font-label-sm text-[11px] font-extrabold">全屏画板</span>
+                  <span className="font-label-sm text-[11px] font-extrabold">{t('inGame.fullscreenBoard', '全屏画板')}</span>
                 </button>
               </div>
             </div>
@@ -317,9 +329,11 @@ export const InGameDrawerPage: React.FC = () => {
                   <span className="font-headline-sm text-[14px] font-black text-primary tracking-wide truncate">
                     【 {wordToDraw || t('inGame.waitingWordSelect', '等待选词')} 】
                   </span>
-                  <span className="font-label-sm text-[10px] text-outline px-1.5 py-0.2 rounded-full bg-surface-container-highest shrink-0">
-                    {wordLength || (wordToDraw ? wordToDraw.length : 0)}字
-                  </span>
+                  {wordLength > 0 && (
+                    <span className="font-label-sm text-[10px] text-outline px-1.5 py-0.2 rounded-full bg-surface-container-highest shrink-0">
+                      {t('inGame.wordChars', { length: wordLength, defaultValue: `${wordLength}字` })}
+                    </span>
+                  )}
                 </div>
                 {/* Reroll button */}
                 <button
@@ -330,7 +344,7 @@ export const InGameDrawerPage: React.FC = () => {
                   title={`换词 (剩${rerollsLeft}次)`}
                 >
                   <span className="material-symbols-outlined text-[12px]">autorenew</span>
-                  <span>换词</span>
+                  <span>{t('inGame.reroll', '换词')}</span>
                 </button>
               </div>
 
@@ -383,7 +397,7 @@ export const InGameDrawerPage: React.FC = () => {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface">
                   <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
                   <span className="font-label-sm text-[11px] text-on-surface font-extrabold">
-                    你的画板 · 黄金触控区
+                    {t('inGame.goldenReachZone', '你的画板 · 黄金触控区')}
                   </span>
                 </div>
                 {/* Quick Editing Tools: Undo, Redo, Clear Screen & Fullscreen Expand button */}
@@ -424,8 +438,8 @@ export const InGameDrawerPage: React.FC = () => {
                     type="button"
                     onClick={toggleFullscreen}
                     className="tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-primary bg-primary-fixed hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                    title="收起/全屏缩放"
-                    aria-label="收起/全屏缩放"
+                    title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
+                    aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                   >
                     <span className="material-symbols-outlined text-[18px]">open_in_full</span>
                   </button>
@@ -443,10 +457,10 @@ export const InGameDrawerPage: React.FC = () => {
                       celebration
                     </span>
                     <span className="font-label-sm text-[12px] font-black">
-                      {correctGuess.payload.senderNickname} 猜中了！
+                      {correctGuess.payload.senderNickname} {t('inGame.guessedCorrectlyShort', '猜中了！')}
                     </span>
                     <span className="bg-white/25 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
-                      +100分 ⚡
+                      ✓
                     </span>
                   </div>
                 )}
@@ -485,11 +499,11 @@ export const InGameDrawerPage: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[15px] text-primary">touch_app</span>
                   <span className="font-label-sm text-[11px] font-bold text-on-surface">
-                    大拇指黄金触控区已就绪
+                    {t('inGame.goldenReachReady', '大拇指黄金触控区已就绪')}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="font-label-sm text-[11px] text-outline">笔画实时同步</span>
+                  <span className="font-label-sm text-[11px] text-outline">{t('inGame.strokesSyncing', '笔画实时同步')}</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 </div>
               </div>
@@ -590,7 +604,7 @@ export const InGameDrawerPage: React.FC = () => {
                     >
                       edit
                     </span>
-                    <span>画笔</span>
+                    <span>{t('inGame.penTool', '画笔')}</span>
                   </button>
 
                   {/* Eraser */}
@@ -604,7 +618,7 @@ export const InGameDrawerPage: React.FC = () => {
                     }`}
                   >
                     <span className="material-symbols-outlined text-[16px]">ink_eraser</span>
-                    <span>橡皮</span>
+                    <span>{t('inGame.eraserTool', '橡皮')}</span>
                   </button>
                 </div>
 
@@ -881,13 +895,13 @@ export const InGameDrawerPage: React.FC = () => {
             <button
               type="button"
               onClick={toggleDeafen}
-              aria-label={isDeafened ? '取消闭音' : '闭音'}
+              aria-label={isDeafened ? t('voice.undeafen', '取消闭音') : t('voice.deafen', '闭音')}
               className={`tactile-btn p-2 rounded-full border text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
                 isDeafened
                   ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
                   : 'bg-surface-container text-muted-foreground border-outline-variant/50'
               }`}
-              title={isDeafened ? '取消闭音' : '闭音'}
+              title={isDeafened ? t('voice.undeafen', '取消闭音') : t('voice.deafen', '闭音')}
             >
               <span className="material-symbols-outlined text-[18px]">
                 {isDeafened ? 'volume_off' : 'volume_up'}
@@ -901,7 +915,7 @@ export const InGameDrawerPage: React.FC = () => {
                 isDanmakuOn ? 'bg-primary-fixed text-primary' : 'bg-surface-container text-outline'
               }`}
             >
-              {isDanmakuOn ? '弹幕: 开' : '弹幕: 关'}
+              {isDanmakuOn ? t('inGame.danmakuOn', '弹幕: 开') : t('inGame.danmakuOff', '弹幕: 关')}
             </button>
 
             <button
@@ -909,7 +923,7 @@ export const InGameDrawerPage: React.FC = () => {
               onClick={handleLeave}
               className="tactile-btn px-3 py-1.5 rounded-full bg-error-container text-error text-xs font-bold hover:bg-rose-500/20 transition-colors cursor-pointer"
             >
-              退出房间
+              {t('inGame.exitRoom', '退出房间')}
             </button>
           </div>
         </header>
@@ -918,14 +932,14 @@ export const InGameDrawerPage: React.FC = () => {
         <div className="w-full bg-surface-container-low px-6 py-2 border-b border-surface-container flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 rounded-full bg-primary text-on-primary text-xs font-extrabold">
-              当前作画题目
+              {t('inGame.drawingWord', '当前作画题目')}
             </span>
             <span className="font-headline-sm text-lg font-black text-primary tracking-wide">
               【 {wordToDraw || t('inGame.waitingWordSelect', '等待选词')} 】
             </span>
             <span className="text-xs font-bold text-outline">
-              {wordCategory ? `类别: ${wordCategory} · ` : ''}
-              {wordLength || (wordToDraw ? wordToDraw.length : 0)}个字
+              {wordCategory ? `${t('inGame.hintCategory', '提示分类')}: ${wordCategory} · ` : ''}
+              {t('inGame.wordCharsDesktop', { length: wordLength || (wordToDraw ? wordToDraw.length : 0), defaultValue: `${wordLength || (wordToDraw ? wordToDraw.length : 0)}个字` })}
             </span>
           </div>
 
@@ -936,7 +950,7 @@ export const InGameDrawerPage: React.FC = () => {
                 onClick={revealHint}
                 className="tactile-btn px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-bold hover:bg-amber-500/20 cursor-pointer"
               >
-                公布首字提示 (剩{hintsLeft}次)
+                {t('inGame.publishFirstHint', { count: hintsLeft, defaultValue: `公布首字提示 (剩${hintsLeft}次)` })}
               </button>
             )}
             <button
@@ -945,7 +959,7 @@ export const InGameDrawerPage: React.FC = () => {
               disabled={rerollsLeft <= 0 || hasGuessedAnyone}
               className="tactile-btn px-3 py-1.5 rounded-full bg-surface border border-outline-variant/60 hover:bg-surface-variant text-xs font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-40"
             >
-              换题 (剩{rerollsLeft}次)
+              {t('inGame.changeWordDesktop', { count: rerollsLeft, defaultValue: `换题 (剩${rerollsLeft}次)` })}
             </button>
           </div>
         </div>
@@ -960,7 +974,7 @@ export const InGameDrawerPage: React.FC = () => {
               <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-30 pointer-events-auto">
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface">
                   <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-                  <span className="font-label-sm text-xs font-black">你的画板 · 黄金绘作区</span>
+                  <span className="font-label-sm text-xs font-black">{t('inGame.goldenReachZone', '你的画板 · 黄金触控区')}</span>
                 </div>
 
                 {/* Edit cluster: Undo, Redo, Clear, Fullscreen */}
@@ -974,7 +988,7 @@ export const InGameDrawerPage: React.FC = () => {
                     aria-label={t('inGame.undo', '撤销')}
                   >
                     <span className="material-symbols-outlined text-[16px]">undo</span>
-                    <span>撤销</span>
+                    <span>{t('inGame.undo', '撤销')}</span>
                   </button>
                   <button
                     type="button"
@@ -985,7 +999,7 @@ export const InGameDrawerPage: React.FC = () => {
                     aria-label={t('inGame.redo', '重做')}
                   >
                     <span className="material-symbols-outlined text-[16px]">redo</span>
-                    <span>重做</span>
+                    <span>{t('inGame.redo', '重做')}</span>
                   </button>
                   <div className="w-px h-4 bg-outline-variant my-auto"></div>
                   <button
@@ -997,15 +1011,15 @@ export const InGameDrawerPage: React.FC = () => {
                     aria-label={t('inGame.clear', '清屏')}
                   >
                     <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
-                    <span>清屏</span>
+                    <span>{t('inGame.clear', '清屏')}</span>
                   </button>
                   <div className="w-px h-4 bg-outline-variant my-auto"></div>
                   <button
                     type="button"
                     onClick={toggleFullscreen}
                     className="tactile-btn p-1.5 rounded-full text-primary bg-primary-fixed hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                    title="全屏模式"
-                    aria-label="全屏模式"
+                    title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
+                    aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenBoard', '全屏画板')}
                   >
                     <span className="material-symbols-outlined text-[16px]">open_in_full</span>
                   </button>
@@ -1100,7 +1114,7 @@ export const InGameDrawerPage: React.FC = () => {
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">edit</span>
-                    <span>画笔</span>
+                    <span>{t('inGame.penTool', '画笔')}</span>
                   </button>
                   <button
                     type="button"
@@ -1112,7 +1126,7 @@ export const InGameDrawerPage: React.FC = () => {
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">ink_eraser</span>
-                    <span>橡皮</span>
+                    <span>{t('inGame.eraserTool', '橡皮')}</span>
                   </button>
                 </div>
 
@@ -1146,10 +1160,10 @@ export const InGameDrawerPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[18px] text-secondary-container">
                     leaderboard
                   </span>
-                  <span className="font-label-sm text-sm font-bold text-on-surface">实时玩家榜</span>
+                  <span className="font-label-sm text-sm font-bold text-on-surface">{t('inGame.leaderboard', '实时积分榜')}</span>
                 </div>
                 <span className="text-xs text-outline font-bold">
-                  {players.length}/{room.settings?.maxPlayers || 8}人在线
+                  {players.filter((p) => p.isOnline).length}/{room.settings?.maxPlayers || 8} {t('inGame.playersOnline', '人在线')}
                 </span>
               </div>
 
@@ -1271,9 +1285,11 @@ export const InGameDrawerPage: React.FC = () => {
                           <span className="text-base">🎉</span>
                           <div className="flex items-center gap-1 flex-1">
                             <span className="font-bold">{m.payload.senderNickname}</span>
-                            <span>猜中了正确答案！</span>
+                            <span>{t('inGame.guessedCorrectly', '猜中了正确答案！')}</span>
                           </div>
-                          <span className="font-black text-tertiary">+100分</span>
+                          <span className="font-black text-tertiary px-1.5 py-0.5 rounded-md bg-tertiary-fixed/40">
+                            ✓
+                          </span>
                         </div>
                       );
                     }
@@ -1313,7 +1329,7 @@ export const InGameDrawerPage: React.FC = () => {
                   type="text"
                   value={danmakuInput}
                   onChange={(e) => setDanmakuInput(e.target.value)}
-                  placeholder="发送互动弹幕...（禁发答案）"
+                  placeholder={t('inGame.danmakuPlaceholderDrawer', '发弹幕互动...（画手禁发答案）')}
                   className="flex-1 bg-surface-container-low px-3 py-2 rounded-xl text-xs font-bold border border-outline-variant/60 focus:outline-none focus:border-primary"
                 />
                 <button
@@ -1321,7 +1337,7 @@ export const InGameDrawerPage: React.FC = () => {
                   disabled={!danmakuInput.trim()}
                   className="tactile-btn px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-black disabled:opacity-40 cursor-pointer"
                 >
-                  发送
+                  {t('inGame.send', '发送')}
                 </button>
               </form>
             </section>
