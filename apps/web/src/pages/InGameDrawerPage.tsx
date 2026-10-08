@@ -382,16 +382,16 @@ export const InGameDrawerPage: React.FC = () => {
           <main className="flex-1 px-3 flex flex-col justify-start min-h-[380px] relative z-10 pt-1 pb-1">
             <div className="w-full flex-1 bg-surface-container-lowest rounded-2xl canvas-border-active relative border border-primary/30 flex flex-col overflow-hidden shadow-lg select-none">
               {/* Top Action Floating Controls (Canvas Header Bar) */}
-              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-auto z-30">
+              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-30">
                 {/* Drawer Status Pill */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface pointer-events-none select-none">
                   <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
                   <span className="font-label-sm text-[11px] text-on-surface font-extrabold">
                     {t('inGame.goldenReachZone', '你的画板 · 黄金触控区')}
                   </span>
                 </div>
                 {/* Quick Editing Tools: Undo, Redo, Clear Screen & Fullscreen Expand button */}
-                <div className="flex items-center gap-1 bg-surface-container-lowest/95 backdrop-blur-md p-1 rounded-full shadow-md border border-surface-container">
+                <div className="pointer-events-auto flex items-center gap-1 bg-surface-container-lowest/95 backdrop-blur-md p-1 rounded-full shadow-md border border-surface-container">
                   <button
                     type="button"
                     onClick={undoStroke}
@@ -966,14 +966,14 @@ export const InGameDrawerPage: React.FC = () => {
             {/* Maximized Canvas Card */}
             <section className="flex-1 bg-surface-container-lowest rounded-2xl border border-primary/30 canvas-border-active canvas-shadow flex flex-col justify-between overflow-hidden relative min-h-[360px]">
               {/* Canvas Header Floating Controls */}
-              <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-30 pointer-events-auto">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface">
+              <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-30 pointer-events-none">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface pointer-events-none select-none">
                   <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
                   <span className="font-label-sm text-xs font-black">{t('inGame.goldenReachZone', '你的画板 · 黄金触控区')}</span>
                 </div>
 
                 {/* Edit cluster: Undo, Redo, Clear, Fullscreen */}
-                <div className="flex items-center gap-1.5 bg-surface-container-lowest/95 backdrop-blur-md p-1 rounded-full shadow-md border border-surface-container">
+                <div className="pointer-events-auto flex items-center gap-1.5 bg-surface-container-lowest/95 backdrop-blur-md p-1 rounded-full shadow-md border border-surface-container">
                   <button
                     type="button"
                     onClick={undoStroke}
