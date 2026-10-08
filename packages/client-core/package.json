@@ -1,0 +1,16 @@
+{
+  "name": "@idavoll/client-core",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@idavoll/protocol": "workspace:*",
+    "@idavoll/game-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

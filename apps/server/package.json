@@ -1,0 +1,22 @@
+{
+  "name": "@idavoll/server",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@idavoll/protocol": "workspace:*",
+    "@idavoll/game-draw-and-guess": "workspace:*",
+    "drizzle-orm": "^0.39.3",
+    "hono": "^4.7.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250224.0",
+    "drizzle-kit": "^0.30.4",
+    "typescript": "^5.8.2",
+    "wrangler": "^3.111.0"
+  }
+}

@@ -1,0 +1,13 @@
+node_modules
+dist
+.turbo
+.cache
+coverage
+build
+.wrangler
+*.local
+.DS_Store
+.agents/skills/taste-skill/.git
+mcp_config.json
+.mcp.json
+.agents/mcp_config.json

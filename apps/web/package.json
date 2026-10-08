@@ -1,0 +1,46 @@
+{
+  "name": "@idavoll/web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@idavoll/protocol": "workspace:*",
+    "@idavoll/game-sdk": "workspace:*",
+    "@idavoll/client-core": "workspace:*",
+    "@idavoll/game-draw-and-guess": "workspace:*",
+    "@idavoll/ui": "workspace:*",
+    "@hookform/resolvers": "^4.1.3",
+    "@tanstack/react-query": "^5.66.11",
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.4.7",
+    "i18next": "^24.2.2",
+    "lucide-react": "^0.477.0",
+    "partysocket": "^1.0.2",
+    "perfect-freehand": "^1.2.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
+    "react-i18next": "^15.4.1",
+    "react-router-dom": "^7.2.0",
+    "tailwind-merge": "^3.0.2",
+    "zod": "^3.24.2",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}

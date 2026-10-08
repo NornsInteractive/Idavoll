@@ -1,0 +1,8 @@
+packages:
+  - 'packages/*'
+  - 'packages/games/*'
+  - 'apps/*'
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true

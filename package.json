@@ -1,0 +1,19 @@
+{
+  "name": "idavoll",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Idavoll (PlayHub) - Next-Gen Multiplayer Social Gaming Platform",
+  "packageManager": "pnpm@11.20.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "vitest run",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  }
+}
