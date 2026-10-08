@@ -251,7 +251,7 @@ export const InGameDrawerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={undoStroke}
-                  disabled={!strokes.length}
+                  disabled={!strokes.length || gameState.status !== 'drawing'}
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface disabled:opacity-40 transition-colors cursor-pointer"
                   title={t('inGame.undo', '撤销')}
                   aria-label={t('inGame.undo', '撤销')}
@@ -261,7 +261,8 @@ export const InGameDrawerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={redoStroke}
-                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface transition-colors cursor-pointer"
+                  disabled={gameState.status !== 'drawing'}
+                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface disabled:opacity-40 transition-colors cursor-pointer"
                   title={t('inGame.redo', '重做')}
                   aria-label={t('inGame.redo', '重做')}
                 >
@@ -809,7 +810,9 @@ export const InGameDrawerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={undoStroke}
-                  disabled={!strokes.length}
+                  disabled={!strokes.length || gameState.status !== 'drawing'}
+                  title={t('inGame.undo', '撤销')}
+                  aria-label={t('inGame.undo', '撤销')}
                   className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer disabled:opacity-40"
                 >
                   {t('inGame.undo', '撤销')}
@@ -817,8 +820,22 @@ export const InGameDrawerPage: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={redoStroke}
+                  disabled={gameState.status !== 'drawing'}
+                  title={t('inGame.redo', '重做')}
+                  aria-label={t('inGame.redo', '重做')}
+                  className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  {t('inGame.redo', '重做')}
+                </button>
+
+                <button
+                  type="button"
                   onClick={clearStrokes}
-                  className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition-colors cursor-pointer"
+                  disabled={gameState.status !== 'drawing'}
+                  title={t('inGame.clear', '清屏')}
+                  aria-label={t('inGame.clear', '清屏')}
+                  className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition-colors cursor-pointer disabled:opacity-40"
                 >
                   {t('inGame.clear', '清屏')}
                 </button>
