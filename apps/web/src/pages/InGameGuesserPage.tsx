@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import confetti from 'canvas-confetti';
 import { Loader2 } from 'lucide-react';
-import { DrawBoard, InGameChatDrawer, DanmakuOverlay, Button } from '@idavoll/ui';
+import { DrawBoard, InGameChatDrawer, DanmakuOverlay } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
@@ -39,49 +39,11 @@ export const InGameGuesserPage: React.FC = () => {
   const [guessInput, setGuessInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isDanmakuOn, setIsDanmakuOn] = useState(true);
+  const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string; delay: number }[]>([]);
   const [copiedCode, setCopiedCode] = useState(false);
-
-  // If room or game state is missing (e.g. initial connection pending), show loading
-  if (!room || !gameState) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-[var(--theme-primary,#5B5BF0)]" />
-        <h2 className="text-xl font-bold text-foreground">{t('inGame.loadingRoom', '正在同步游戏状态...')}</h2>
-        <p className="text-xs text-muted-foreground">{t('inGame.loadingHint', '如果长时间未加载，请尝试返回大厅')}</p>
-        <Button variant="outline" onClick={() => navigate('/lobby')}>
-          {t('inGame.backToLobby', '返回大厅')}
-        </Button>
-      </div>
-    );
-  }
-
-  const strokes = gameState.strokes || [];
-  const roomCode = room.roomCode;
-  const currentRound = gameState.currentRound || room.currentRound || 1;
-  const totalRounds = gameState.totalRounds || room.settings?.totalRounds || 3;
-  const timeLeft = gameState.timeLeft ?? 0;
-  const drawerNickname = gameState.drawerNickname || '';
-  const wordCategory = gameState.wordCategory || '';
-  const wordLength = gameState.currentWordLength || 0;
-  const wordHint = gameState.wordHint || '';
-  const players = room.players || [];
-
-  // Determine if current user has guessed correctly
-  const myScoreItem = gameState?.scores.find((s) => s.playerId === userId);
-  const hasGuessedCorrect =
-    (myScoreItem?.hasGuessedCorrectly ?? false) || (guessResult?.correct ?? false);
-
-  // Trigger celebration on correct guess
-  useEffect(() => {
-    if (guessResult?.correct) {
-      confetti({
-        particleCount: 100,
-        spread: 80,
-        origin: { y: 0.6 },
-      });
-    }
-  }, [guessResult?.correct, guessResult?.timestamp]);
 
   // Spacebar push-to-talk handler on desktop
   const isHoldingSpaceRef = useRef(false);
@@ -136,6 +98,56 @@ export const InGameGuesserPage: React.FC = () => {
     };
   }, [voiceMode]);
 
+  // Trigger celebration on correct guess
+  useEffect(() => {
+    if (guessResult?.correct) {
+      confetti({
+        particleCount: 100,
+        spread: 80,
+        origin: { y: 0.6 },
+      });
+    }
+  }, [guessResult?.correct, guessResult?.timestamp]);
+
+  // Loading state
+  if (!room || !gameState) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 space-y-4 select-none">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <h2 className="text-xl font-bold text-on-surface">{t('inGame.loadingRoom', '正在同步游戏状态...')}</h2>
+        <p className="text-xs text-outline">{t('inGame.loadingHint', '如果长时间未加载，请尝试返回大厅')}</p>
+        <button
+          type="button"
+          onClick={() => {
+            leaveRoom();
+            navigate('/lobby');
+          }}
+          className="px-4 py-2 rounded-full bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+        >
+          {t('inGame.backToLobby', '返回大厅')}
+        </button>
+      </div>
+    );
+  }
+
+  const strokes = gameState.strokes || [];
+  const roomCode = room.roomCode;
+  const currentRound = gameState.currentRound || room.currentRound || 1;
+  const totalRounds = gameState.totalRounds || room.settings?.totalRounds || 3;
+  const timeLeft = gameState.timeLeft ?? 0;
+  const drawerNickname = gameState.drawerNickname || '';
+  const wordCategory = gameState.wordCategory || '日常词汇';
+  const wordLength = gameState.currentWordLength || 0;
+  const wordHint = gameState.wordHint || '';
+  const players = room.players || [];
+
+  // Determine if current user has guessed correctly
+  const myScoreItem = gameState.scores?.find((s) => s.playerId === userId);
+  const hasGuessedCorrect =
+    (myScoreItem?.hasGuessedCorrectly ?? false) || (guessResult?.correct ?? false);
+
+  const scoresMap = new Map(gameState.scores?.map((s) => [s.playerId, s]) || []);
+
   const handleGuessSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!guessInput.trim() || hasGuessedCorrect) return;
@@ -146,6 +158,11 @@ export const InGameGuesserPage: React.FC = () => {
 
   const handleSendReaction = (emoji: string) => {
     sendMessage(emoji, true);
+    const newEmoji = { id: `${Date.now()}-${Math.random()}`, emoji, delay: 0 };
+    setFloatingEmojis((prev) => [...prev.slice(-8), newEmoji]);
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((item) => item.id !== newEmoji.id));
+    }, 2800);
   };
 
   const handleCopyCode = () => {
@@ -162,144 +179,172 @@ export const InGameGuesserPage: React.FC = () => {
     navigate('/lobby');
   };
 
-  // Word slots keep blank placeholders based on wordLength (hint is displayed separately as text)
-  const slots = Array.from({ length: Math.max(0, wordLength) }).map(() => '_');
-
-  const scoresMap = new Map(gameState?.scores.map((s) => [s.playerId, s]) || []);
+  // Determine character slots (revealing hint character if available)
+  const slotCount = Math.max(1, wordLength || 4);
+  const firstChar = wordHint ? wordHint.replace(/^[^\w\u4e00-\u9fa5]*/, '').slice(0, 1) : '';
+  const slots = Array.from({ length: slotCount }).map((_, idx) => {
+    if (idx === 0 && firstChar) return firstChar;
+    return '_';
+  });
 
   return (
     <div
-      className={`h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-background select-none font-body-md antialiased ${
+      className={`h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-background text-on-surface select-none font-body-md antialiased flex flex-col ${
         isFullscreen ? 'fixed inset-0 z-50 p-0 m-0 w-screen h-screen' : ''
       }`}
     >
       {/* =========================================================================
-          1. MOBILE VIEW (< lg: 1024px) - 100% Exact match to temp/stitch_idavoll/playhub
+          1. MOBILE VIEWPORT CONTAINER (< lg: 1024px) - 100% Match to playhub/code.html
          ========================================================================= */}
-      <div className="lg:hidden w-full h-full flex justify-center items-start overflow-hidden">
-        <div
+      <div className="lg:hidden w-full h-full flex justify-center items-center overflow-hidden">
+        <main
           className={`w-full ${
             isFullscreen ? 'max-w-none h-full' : 'max-w-[390px] h-full max-h-[844px]'
-          } flex flex-col justify-between bg-surface relative overflow-hidden shadow-2xl`}
+          } flex flex-col justify-between bg-surface shadow-2xl relative overflow-hidden select-none`}
         >
-          {/* Top Status Header */}
-          <header className="pt-2 px-3 pb-1 bg-surface shrink-0 z-20">
-            <div className="flex items-center justify-between gap-1.5 h-11">
+          {/* TOP BAR / GAME HUD */}
+          <header className="w-full bg-surface-container-lowest px-3 pt-2 pb-1.5 shadow-xs flex flex-col gap-1 shrink-0 z-20">
+            {/* Upper Status Row */}
+            <div className="flex items-center justify-between">
+              {/* Room & Round Chips & Identity Badge */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={handleLeave}
-                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
-                  title="退出房间"
+                  onClick={handleCopyCode}
+                  className="tactile-btn flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
+                  title={t('inGame.copyRoomCode', '点击复制房号')}
                 >
-                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                </button>
-                <div className="flex flex-col leading-tight">
-                  <div className="flex items-center gap-1">
-                    <span className="font-label-sm text-[12px] font-bold tracking-tight">
-                      #{roomCode}
-                    </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
-                  </div>
-                  <span className="font-label-sm text-[10px] text-primary font-bold">
-                    第 {currentRound}/{totalRounds} 轮 · 猜词
+                  <span className="material-symbols-outlined text-[13px] text-primary">tag</span>
+                  <span className="font-label-sm text-[12px] font-bold tracking-tight">
+                    {roomCode} {copiedCode ? '✓' : ''}
                   </span>
+                </button>
+                <span className="text-[11px] font-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-bold">
+                  第 {currentRound}/{totalRounds} 轮
+                </span>
+                {/* Identity Badge: Guesser */}
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-bold">
+                  <span className="material-symbols-outlined text-[13px]">visibility</span>
+                  <span className="text-[11px] font-label-sm">{t('inGame.guesserRole', '猜题者')}</span>
                 </div>
               </div>
 
-              {/* Countdown */}
-              <div className="flex items-center gap-1.5 bg-secondary-fixed/50 border border-secondary/20 px-2.5 py-1 rounded-full shadow-xs">
-                <span className="material-symbols-outlined text-secondary text-[16px] animate-pulse">
-                  timer
-                </span>
-                <span className="font-headline-sm text-[14px] font-black text-secondary tracking-tight leading-none">
-                  {timeLeft}s
-                </span>
-              </div>
-
-              {/* Action Buttons */}
+              {/* Timer & Top Controls */}
               <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsDanmakuOn((p) => !p)}
-                  className={`tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-on-surface transition-colors cursor-pointer ${
-                    isDanmakuOn ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-surface-container'
-                  }`}
-                  title={isDanmakuOn ? '关闭弹幕' : '开启弹幕'}
-                  aria-label={isDanmakuOn ? '关闭弹幕' : '开启弹幕'}
-                >
-                  <span className="material-symbols-outlined text-[18px]">subtitles</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsFullscreen((p) => !p)}
-                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface transition-colors cursor-pointer"
-                  title="全屏"
-                  aria-label={isFullscreen ? '退出全屏' : '进入全屏'}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsChatDrawerOpen(true)}
-                  className="tactile-btn relative w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed transition-colors cursor-pointer"
-                  title="聊天抽屉"
-                  aria-label="打开聊天抽屉"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chat</span>
-                  {messages.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-secondary border border-surface"></span>
-                  )}
-                </button>
+                {/* Circular Countdown Timer */}
+                <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-error-container text-secondary font-extrabold text-[12px] shadow-xs">
+                  <div className="absolute inset-0 rounded-full border-2 border-secondary-container timer-ring"></div>
+                  <span>{timeLeft}s</span>
+                </div>
+                {/* Utility Icons */}
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsRulesOpen(true)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
+                    title={t('gameDetail.overviewTitle', '房间规则')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">help</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatDrawerOpen(true)}
+                    className="relative w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
+                    title={t('inGame.chatAndVoice', '聊天抽屉')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">chat</span>
+                    {messages.length > 0 && (
+                      <span className="absolute 0 0 w-2 h-2 rounded-full bg-secondary"></span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreen((prev) => !prev)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
+                    title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLeave}
+                    className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-error-container active:scale-95 text-error cursor-pointer"
+                    title={t('inGame.exitRoom', '退出房间')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">logout</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Players Ribbon */}
-            <div className="flex items-center gap-2 overflow-x-auto py-1.5 no-scrollbar scroll-smooth">
+            {/* Player Seats Row (Horizontal Mini Seats) */}
+            <div className="flex items-center justify-between pt-1 border-t border-surface-container-high/60 px-0.5 overflow-x-auto no-scrollbar gap-1">
               {players.map((p) => {
                 const isSpeaking = speakingUserIds.includes(p.id);
                 const scoreItem = scoresMap.get(p.id);
                 const scoreVal = scoreItem?.score ?? p.score;
                 const isMe = p.id === userId;
-                const isDrawer = p.id === gameState?.drawerId;
+                const isDrawer = p.id === gameState.drawerId;
                 const hasCorrect = scoreItem?.hasGuessedCorrectly;
+
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded-full shrink-0 border ${
-                      isMe
-                        ? 'bg-primary-fixed/40 border-primary/40'
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full shrink-0 border shadow-xs ${
+                      isDrawer
+                        ? 'bg-primary-fixed border-primary/20'
                         : hasCorrect
-                        ? 'bg-emerald-500/10 border-emerald-500/30'
-                        : 'bg-surface-container-low border-surface-variant/40'
+                        ? 'bg-surface-container-low border-tertiary-fixed-dim/40'
+                        : isMe
+                        ? 'bg-surface-container border-primary-container'
+                        : 'bg-surface-container-low border-surface-container'
                     }`}
                   >
-                    <div className="relative">
-                      <img
-                        className={`w-6 h-6 rounded-full object-cover ${
-                          isSpeaking ? 'ring-2 ring-emerald-500 scale-105' : ''
-                        }`}
-                        alt={p.nickname}
-                        src={p.avatar}
-                      />
+                    <div className="relative w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-[10px] font-bold overflow-hidden">
+                      {p.avatar ? (
+                        <img src={p.avatar} alt={p.nickname} className="w-full h-full object-cover" />
+                      ) : (
+                        p.nickname.slice(0, 1)
+                      )}
                       {isDrawer && (
-                        <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 text-[8px]">
-                          🎨
+                        <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-secondary-container text-on-primary flex items-center justify-center shadow-xs">
+                          <span className="material-symbols-outlined text-[8px] pencil-anim">edit</span>
                         </span>
                       )}
                       {hasCorrect && !isDrawer && (
-                        <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 text-[8px]">
-                          ✓
+                        <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shadow-xs">
+                          <span
+                            className="material-symbols-outlined text-[9px]"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            check
+                          </span>
                         </span>
                       )}
+                      {isSpeaking && (
+                        <span className="absolute inset-0 rounded-full ring-2 ring-emerald-500 animate-pulse"></span>
+                      )}
                     </div>
-                    <div className="flex flex-col text-left pr-1">
-                      <span className="font-label-sm text-[10px] font-bold text-on-surface truncate max-w-[50px]">
-                        {p.nickname}
-                      </span>
-                      <span className="font-label-sm text-[9px] font-extrabold text-primary">
+                    <div className="flex flex-col leading-none">
+                      <div className="flex items-center gap-1">
+                        <span className="font-label-sm text-[11px] font-bold text-on-surface truncate max-w-[36px]">
+                          {isMe ? `${p.nickname} (你)` : p.nickname}
+                        </span>
+                        <span
+                          className={`text-[8px] px-1 rounded-full font-bold ${
+                            isDrawer
+                              ? 'bg-primary-container text-on-primary-container'
+                              : hasCorrect
+                              ? 'text-tertiary'
+                              : 'bg-surface-variant text-primary'
+                          }`}
+                        >
+                          {isDrawer ? '作画' : hasCorrect ? '已猜对' : '待猜'}
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-body-sm font-bold text-on-surface-variant">
                         {scoreVal}分
                       </span>
                     </div>
@@ -309,171 +354,430 @@ export const InGameGuesserPage: React.FC = () => {
             </div>
           </header>
 
-          {/* Word Hint Banner & Slots */}
-          <div className="px-3 py-1.5 bg-surface shrink-0 z-20">
-            <div className="bg-surface-container-low border border-surface-variant/40 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
+          {/* SECRET WORD HINT CARD (Guesser Perspective Banner) */}
+          <section className="mx-3 mt-1.5 bg-gradient-to-r from-primary/10 via-surface-container-high to-surface-variant rounded-xl px-2.5 py-1.5 flex items-center justify-between border border-primary/15 shadow-xs shrink-0">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                {wordCategory && (
-                  <span className="font-label-sm text-[11px] font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">
-                    {wordCategory}
-                  </span>
-                )}
-                {wordHint && (
-                  <span className="font-label-sm text-[11px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                    <span>💡</span>
-                    <span>{wordHint}</span>
-                  </span>
-                )}
-                <span className="text-xs font-bold text-muted-foreground">
-                  画手: <span className="text-on-surface font-extrabold">{drawerNickname || '--'}</span>
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-[11px] font-bold">
+                  <span className="material-symbols-outlined text-[13px]">lightbulb</span>
+                  提示分类
+                </span>
+                <span className="font-label-md text-label-md font-extrabold text-primary tracking-tight">
+                  {wordCategory} · {wordLength || 4}个字
                 </span>
               </div>
-
-              {/* Character Slots or Selecting Word Message */}
-              {gameState.status === 'selecting_word' ? (
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 animate-pulse">
-                  {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
-                </span>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  {slots.map((char, idx) => (
-                    <div
-                      key={idx}
-                      className="w-7 h-7 rounded-xl bg-surface border-2 border-primary/30 flex items-center justify-center font-headline-sm text-sm font-black text-primary shadow-xs"
-                    >
-                      {char}
-                    </div>
-                  ))}
+              {/* Word Blanks & Partial Clue */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="text-body-sm font-label-sm text-on-surface-variant font-bold">字数卡槽：</span>
+                <div className="flex items-center gap-1">
+                  {gameState.status === 'selecting_word' ? (
+                    <span className="text-xs font-bold text-secondary animate-pulse">
+                      {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
+                    </span>
+                  ) : (
+                    slots.map((char, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-black shadow-xs ${
+                          char !== '_'
+                            ? 'bg-primary-container text-on-primary-container text-[16px] ring-2 ring-primary/30'
+                            : 'bg-surface-container-lowest border-2 border-dashed border-outline-variant text-outline text-sm'
+                        }`}
+                      >
+                        {char}
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Canvas Viewing Area */}
-          <main className="flex-1 w-full relative bg-slate-900 overflow-hidden flex items-center justify-center">
-            <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
-
-            <div className="w-full h-full flex items-center justify-center p-1">
-              <DrawBoard
-                strokes={strokes}
-                isDrawer={false}
-                width={800}
-                height={600}
-                className="w-full h-full aspect-[4/3] max-w-[800px] max-h-[600px] rounded-2xl shadow-xl pointer-events-none"
-              />
-            </div>
-
-            {hasGuessedCorrect && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-emerald-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg flex items-center gap-1.5 animate-bounce">
-                <span>🎉 恭喜！你已猜中正确答案</span>
               </div>
-            )}
-          </main>
-
-          {/* Mobile Bottom Guess Input Bar */}
-          <footer className="bg-surface border-t border-surface-variant/40 p-2.5 shrink-0 z-20 space-y-2">
-            {/* Quick Reactions */}
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                {['👏', '🎨', '💡', '🔥', '😂'].map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => handleSendReaction(emoji)}
-                    className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-sm hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-
+            </div>
+            {/* Action: Hint Help */}
+            <div className="flex flex-col items-end gap-1">
               <button
                 type="button"
-                aria-label={
-                  voiceMode === 'hold'
-                    ? !isMuted
-                      ? t('voice.releaseToMuteAria', '松开静音')
-                      : t('voice.holdToTalkAria', '按住说话')
-                    : isMuted
-                    ? t('voice.unmuteAria', '开麦')
-                    : t('voice.muteAria', '静音')
-                }
-                {...(voiceMode === 'hold'
-                  ? {
-                      onPointerDown: (e) => {
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        holdToTalk(true);
-                      },
-                      onPointerUp: (e) => {
-                        try {
-                          e.currentTarget.releasePointerCapture(e.pointerId);
-                        } catch {}
-                        holdToTalk(false);
-                      },
-                      onPointerCancel: () => holdToTalk(false),
-                      onLostPointerCapture: () => holdToTalk(false),
-                      onKeyDown: (e) => {
-                        if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-                          e.preventDefault();
-                          holdToTalk(true);
-                        }
-                      },
-                      onKeyUp: (e) => {
-                        if (e.code === 'Space' || e.code === 'Enter') {
-                          e.preventDefault();
-                          holdToTalk(false);
-                        }
-                      },
-                      onBlur: () => holdToTalk(false),
-                    }
-                  : {
-                      onClick: toggleMute,
-                    })}
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors select-none touch-none cursor-pointer ${
-                  !isMuted
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm animate-pulse'
-                    : 'bg-surface-container text-muted-foreground border-outline-variant/50'
-                }`}
+                onClick={() => {
+                  sendMessage('申请提示 💡', false);
+                }}
+                className="tactile-btn px-2.5 py-1 rounded-full bg-surface-container-lowest text-primary hover:bg-surface-container shadow-xs border border-primary/20 flex items-center gap-1 cursor-pointer"
               >
-                {voiceMode === 'hold'
-                  ? !isMuted
-                    ? t('voice.releaseToMute', '松开发言')
-                    : t('voice.holdToTalk', '按住说话')
-                  : isMuted
-                  ? t('voice.unmute', '开麦')
-                  : t('voice.mute', '静音')}
+                <span className="material-symbols-outlined text-[15px] text-secondary-container">
+                  tips_and_updates
+                </span>
+                <span className="text-[11px] font-label-sm font-bold">申请提示</span>
               </button>
+              <span className="text-[10px] text-on-surface-variant">
+                {wordHint ? `已公布线索: ${wordHint}` : '提示未解锁'}
+              </span>
+            </div>
+          </section>
+
+          {/* LIVE DRAWING CANVAS (Spectator View with Live Art) */}
+          <section className="mx-3 mt-1.5 flex flex-col relative shrink-0">
+            <div className="w-full h-[190px] bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs overflow-hidden relative flex flex-col justify-between">
+              {/* Canvas Status & Floating Controls Overlay */}
+              <div className="absolute top-1.5 left-2 right-2 flex items-center justify-between z-10 pointer-events-none">
+                {/* Live Painter Indicator */}
+                <div className="pointer-events-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-inverse-surface/80 backdrop-blur-xs text-inverse-on-surface shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-secondary-container -ml-3"></span>
+                  <span className="text-[11px] font-label-sm">
+                    {drawerNickname || '画手'} 正在实时作画中...
+                  </span>
+                </div>
+                {/* Canvas Action Tools */}
+                <div className="pointer-events-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreen((prev) => !prev)}
+                    className="w-6 h-6 rounded-full bg-surface-container-lowest/90 backdrop-blur-xs shadow-xs flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 cursor-pointer"
+                    title={t('inGame.fullscreenDanmaku', '全屏查看')}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">fullscreen</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* The Live Canvas Drawing Area */}
+              <div className="w-full h-full relative flex items-center justify-center bg-white overflow-hidden">
+                {/* Subtle Grid Texture for Drawing Paper Feel */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(#413fd6 0.8px, transparent 0.8px)',
+                    backgroundSize: '14px 14px',
+                  }}
+                />
+
+                {/* Danmaku Overlay */}
+                <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
+
+                {/* Real Live Canvas */}
+                <div className="w-full h-full flex items-center justify-center p-1 pointer-events-none">
+                  <DrawBoard
+                    strokes={strokes}
+                    isDrawer={false}
+                    width={800}
+                    height={600}
+                    className="w-full h-full aspect-[4/3] max-w-[800px] max-h-[600px] rounded-lg border-0 shadow-none pointer-events-none"
+                  />
+                </div>
+
+                {/* Floating Cheers / Reaction Emojis */}
+                {floatingEmojis.map((item) => (
+                  <div
+                    key={item.id}
+                    className="absolute bottom-5 right-6 pointer-events-none flex flex-col items-center"
+                  >
+                    <span className="emoji-float text-2xl select-none">{item.emoji}</span>
+                  </div>
+                ))}
+
+                {hasGuessedCorrect && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-emerald-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg flex items-center gap-1.5 animate-bounce pointer-events-none">
+                    <span>🎉 恭喜！你已猜中正确答案</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Canvas Footer: Quick Reactions Bar Overlay */}
+              <div className="w-full bg-surface-container-low/95 px-2.5 py-1 flex items-center justify-between border-t border-surface-container shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-label-sm text-outline font-bold">画板反应:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSendReaction('👏 棒')}
+                    className="tactile-btn px-2 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant text-[11px] shadow-xs cursor-pointer"
+                  >
+                    👏 棒
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendReaction('😂 抽象')}
+                    className="tactile-btn px-2 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant text-[11px] shadow-xs cursor-pointer"
+                  >
+                    😂 抽象
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendReaction('❤️ 懂了')}
+                    className="tactile-btn px-2 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant text-[11px] shadow-xs cursor-pointer"
+                  >
+                    ❤️ 懂了
+                  </button>
+                </div>
+                <span className="text-[10px] font-label-sm font-bold text-primary">实时笔画同步中</span>
+              </div>
+            </div>
+          </section>
+
+          {/* LIVE CHAT & GUESS FEED (中间历史记录区域) */}
+          <section className="mx-3 my-1.5 flex-1 min-h-0 bg-surface-container-lowest rounded-xl p-2 shadow-xs border border-surface-container flex flex-col justify-between overflow-hidden">
+            {/* Feed Header */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-surface-container-high/60 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-primary">forum</span>
+                <span className="font-label-sm text-[12px] font-bold text-on-surface">实时竞猜与动态</span>
+              </div>
+              <span className="text-[10px] font-label-sm text-outline">答案保护已开启（防剧透）</span>
             </div>
 
-            {/* Guess Input Field */}
+            {/* Scrollable Message Stream */}
+            <div className="flex-1 overflow-y-auto space-y-2 py-1.5 pr-1 custom-scroll text-[13px]">
+              {/* System Clue Alert */}
+              {wordHint && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-container-low text-on-surface-variant text-[11px] border-l-2 border-primary">
+                  <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+                  <span>
+                    系统：画手 <strong className="text-primary">{drawerNickname || '画手'}</strong> 公布了线索「
+                    <strong className="text-primary">{wordHint}</strong>」
+                  </span>
+                </div>
+              )}
+
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-outline font-medium">
+                  暂无猜词记录，大家的猜测将显示于此
+                </div>
+              ) : (
+                messages.map((m) => {
+                  const isCorrect = m.payload.type === 'correct_guess';
+                  const isMe = m.senderId === userId;
+                  const timeStr = new Date(m.timestamp).toLocaleTimeString([], {
+                    minute: '2-digit',
+                    second: '2-digit',
+                  });
+
+                  if (isCorrect) {
+                    return (
+                      <div
+                        key={m.payload.id}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-tertiary-fixed/30 border border-tertiary-fixed-dim text-on-tertiary-fixed"
+                      >
+                        <span className="text-[14px]">🎉</span>
+                        <div className="flex items-center gap-1 flex-1">
+                          <span className="font-bold font-label-sm">系统：{m.payload.senderNickname}</span>
+                          <span className="text-[12px]">猜中了正确答案！</span>
+                        </div>
+                        <span className="font-extrabold text-[12px] text-tertiary">+100分</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={m.payload.id} className="flex items-start gap-1.5">
+                      <span
+                        className={`font-bold text-label-sm shrink-0 ${
+                          isMe ? 'text-primary' : 'text-on-surface-variant'
+                        }`}
+                      >
+                        {m.payload.senderNickname} {isMe ? '(你)' : ''}:
+                      </span>
+                      <div className="flex items-center gap-1 bg-surface-container px-2 py-0.5 rounded-full text-on-surface font-body-sm text-[12px]">
+                        <span>{m.payload.content}</span>
+                        {m.payload.isDanmaku ? (
+                          <span className="text-secondary font-bold text-[10px] flex items-center">
+                            <span className="material-symbols-outlined text-[12px]">chat</span>
+                          </span>
+                        ) : (
+                          <span className="text-error font-bold text-[11px] flex items-center">
+                            <span className="material-symbols-outlined text-[13px]">close</span> 不对
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-outline ml-auto self-center">{timeStr}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Quick Guess Phrase Pills */}
+            <div className="pt-1.5 border-t border-surface-container-high/60 flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
+              {['旋转木马', '碰碰车', '过山车', '海盗船', '摩天轮'].map((phrase) => (
+                <button
+                  key={phrase}
+                  type="button"
+                  onClick={() => {
+                    if (!hasGuessedCorrect) {
+                      submitGuess(phrase);
+                    }
+                  }}
+                  className="tactile-btn px-2 py-0.5 rounded-full bg-surface-container text-primary font-label-sm text-[11px] font-bold shrink-0 hover:bg-surface-variant cursor-pointer"
+                >
+                  {phrase}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* GUESS INPUT & INTERACTION CORE BAR (底部黄金触控交互区) */}
+          <footer className="w-full bg-surface-container-lowest px-3 pt-2 pb-3 shadow-lg border-t border-surface-container flex flex-col gap-1.5 shrink-0 z-30">
+            {/* Primary Input Field + Send Button */}
             <form onSubmit={handleGuessSubmit} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={guessInput}
-                onChange={(e) => setGuessInput(e.target.value)}
-                disabled={hasGuessedCorrect}
-                placeholder={hasGuessedCorrect ? '你已猜中！等待本轮结束...' : '输入你的猜测词（回车提交）...'}
-                className="flex-1 bg-surface-container-low px-4 py-2.5 rounded-2xl text-xs font-extrabold border border-surface-variant/60 focus:outline-none focus:border-primary disabled:opacity-60"
-              />
+              <div className="flex-1 relative flex items-center">
+                <span className="absolute left-3 text-outline material-symbols-outlined text-[18px]">search</span>
+                <input
+                  type="text"
+                  value={guessInput}
+                  onChange={(e) => setGuessInput(e.target.value)}
+                  disabled={hasGuessedCorrect}
+                  placeholder={
+                    hasGuessedCorrect ? '你已猜中！静候其他玩家抢答...' : '输入你的猜测词（如：旋转木马）...'
+                  }
+                  className="w-full pl-9 pr-8 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[14px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
+                />
+                {guessInput && (
+                  <button
+                    type="button"
+                    onClick={() => setGuessInput('')}
+                    className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer"
+                    title="清空"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                  </button>
+                )}
+              </div>
+              {/* Big Send / Guess Button */}
               <button
                 type="submit"
                 disabled={hasGuessedCorrect || !guessInput.trim()}
-                className="px-5 py-2.5 rounded-2xl bg-primary text-on-primary text-xs font-black shadow-md disabled:opacity-40 cursor-pointer"
+                className="tactile-btn px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-md font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
               >
-                抢答
+                <span>猜词</span>
+                <span className="material-symbols-outlined text-[16px]">send</span>
               </button>
             </form>
+
+            {/* Voice Chat & Functional Row */}
+            <div className="flex items-center justify-between pt-0.5">
+              {/* Push to Talk Voice Control */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={
+                    voiceMode === 'hold'
+                      ? !isMuted
+                        ? t('voice.releaseToMuteAria', '松开静音')
+                        : t('voice.holdToTalkAria', '按住说话')
+                      : isMuted
+                      ? t('voice.unmuteAria', '开麦')
+                      : t('voice.muteAria', '静音')
+                  }
+                  {...(voiceMode === 'hold'
+                    ? {
+                        onPointerDown: (e) => {
+                          e.currentTarget.setPointerCapture(e.pointerId);
+                          holdToTalk(true);
+                        },
+                        onPointerUp: (e) => {
+                          try {
+                            e.currentTarget.releasePointerCapture(e.pointerId);
+                          } catch {}
+                          holdToTalk(false);
+                        },
+                        onPointerCancel: () => holdToTalk(false),
+                        onLostPointerCapture: () => holdToTalk(false),
+                        onKeyDown: (e) => {
+                          if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+                            e.preventDefault();
+                            holdToTalk(true);
+                          }
+                        },
+                        onKeyUp: (e) => {
+                          if (e.code === 'Space' || e.code === 'Enter') {
+                            e.preventDefault();
+                            holdToTalk(false);
+                          }
+                        },
+                        onBlur: () => holdToTalk(false),
+                      }
+                    : {
+                        onClick: toggleMute,
+                      })}
+                  className={`tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform shadow-xs cursor-pointer select-none touch-none ${
+                    !isMuted
+                      ? 'bg-emerald-600 text-white shadow-md animate-pulse'
+                      : 'bg-surface-container text-primary hover:bg-surface-variant'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {!isMuted ? 'mic' : 'mic_none'}
+                  </span>
+                  <span className="font-label-sm text-label-sm font-bold">
+                    {voiceMode === 'hold'
+                      ? !isMuted
+                        ? t('voice.releaseToMute', '松开发言')
+                        : t('voice.holdToTalk', '按住说话')
+                      : isMuted
+                      ? t('voice.unmute', '开麦')
+                      : t('voice.mute', '静音')}
+                  </span>
+                </button>
+
+                {/* Voice Channel Status */}
+                <div
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold ${
+                    voiceStatus === 'connected'
+                      ? 'bg-tertiary-fixed/30 text-tertiary'
+                      : voiceStatus === 'connecting'
+                      ? 'bg-amber-500/20 text-amber-600'
+                      : 'bg-surface-container text-outline'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      voiceStatus === 'connected'
+                        ? 'bg-tertiary animate-pulse'
+                        : voiceStatus === 'connecting'
+                        ? 'bg-amber-500 animate-ping'
+                        : 'bg-outline'
+                    }`}
+                  ></span>
+                  <span>
+                    {voiceStatus === 'connected'
+                      ? '语音已连通'
+                      : voiceStatus === 'connecting'
+                      ? '正在连接'
+                      : '未连接'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Side Utility Badges */}
+              <div className="flex items-center gap-1">
+                {/* Rank & Scoreboard Modal Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsLeaderboardOpen(true)}
+                  className="tactile-btn flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container shadow-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[17px] text-secondary-container">
+                    leaderboard
+                  </span>
+                  <span className="font-label-sm text-label-sm font-bold">积分榜</span>
+                </button>
+                {/* Quick Reaction Trigger */}
+                <button
+                  type="button"
+                  onClick={() => handleSendReaction('🔥')}
+                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container flex items-center justify-center shadow-xs cursor-pointer"
+                  title="快速喝彩"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_reaction</span>
+                </button>
+              </div>
+            </div>
           </footer>
-        </div>
+        </main>
       </div>
 
       {/* =========================================================================
-          2. DESKTOP VIEW (>= lg: 1024px) - 3-Column Professional Widescreen Layout
+          2. DESKTOP VIEWPORT CONTAINER (>= lg: 1024px) - PlayHub Responsive Grid
          ========================================================================= */}
-      <div className="hidden lg:flex w-full h-full flex-col bg-surface overflow-hidden">
-        {/* Desktop Navbar */}
-        <header className="h-14 px-6 bg-surface-container-low border-b border-surface-variant/40 flex items-center justify-between shrink-0 z-30">
-          <div className="flex items-center gap-4">
+      <div className="hidden lg:flex flex-col w-full h-full bg-surface overflow-hidden">
+        {/* DESKTOP TOP BAR / GAME HUD */}
+        <header className="w-full bg-surface-container-lowest px-6 py-2.5 border-b border-surface-container shadow-xs flex items-center justify-between shrink-0 z-30">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-primary text-on-primary flex items-center justify-center font-black">
                 🔍
@@ -481,47 +785,38 @@ export const InGameGuesserPage: React.FC = () => {
               <span className="font-headline-sm text-lg font-black text-on-surface">PlayHub</span>
             </div>
             <div className="h-4 w-[1px] bg-outline-variant/60"></div>
-            <div className="flex items-center gap-2">
-              <span className="font-label-sm text-xs font-extrabold text-on-surface">
-                {room?.settings?.title || '你画我猜房间'}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className="px-2 py-0.5 rounded-full bg-surface border border-outline-variant/50 text-[11px] font-mono font-bold text-primary hover:bg-surface-variant cursor-pointer"
-                title="点击复制房号"
-              >
+
+            {/* Room Tag Chip */}
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="tactile-btn flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
+              title="点击复制房号"
+            >
+              <span className="material-symbols-outlined text-[15px] text-primary">tag</span>
+              <span className="font-label-sm text-xs font-bold tracking-tight">
                 #{roomCode} {copiedCode ? '✓' : ''}
-              </button>
-            </div>
-            <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-              第 {currentRound}/{totalRounds} 轮 · 抢答进行中
+              </span>
+            </button>
+
+            <span className="text-xs font-label-sm px-3 py-1 rounded-full bg-surface-container-high text-primary font-bold">
+              第 {currentRound}/{totalRounds} 轮 · 竞猜进行中
             </span>
+
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-highest text-primary font-bold text-xs">
+              <span className="material-symbols-outlined text-[15px]">visibility</span>
+              <span>猜题者</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Timer */}
-            <div className="flex items-center gap-1.5 bg-secondary-fixed/50 border border-secondary/30 px-3 py-1 rounded-full shadow-xs">
-              <span className="material-symbols-outlined text-secondary text-[18px] animate-pulse">
-                timer
-              </span>
-              <span className="font-headline-sm text-base font-black text-secondary">
-                {timeLeft}s 倒计时
-              </span>
+            {/* Circular Countdown Timer */}
+            <div className="flex items-center gap-2 bg-error-container text-secondary font-black px-3 py-1 rounded-full shadow-xs">
+              <span className="material-symbols-outlined text-[18px] animate-pulse">timer</span>
+              <span className="font-headline-sm text-sm">{timeLeft}s 倒计时</span>
             </div>
 
-            {/* Push to talk indicator / hold space */}
-            <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground font-semibold px-2">
-              <span>
-                {voiceMode === 'hold'
-                  ? !isMuted
-                    ? t('voice.speakingNow', '正在讲话...')
-                    : t('voice.holdSpaceToTalk', '按住空格讲话')
-                  : t('voice.openMicMode', '自由麦模式')}
-              </span>
-            </div>
-
-            {/* Mic & Deafen */}
+            {/* Push to talk voice */}
             <button
               type="button"
               aria-label={
@@ -564,341 +859,524 @@ export const InGameGuesserPage: React.FC = () => {
                 : {
                     onClick: toggleMute,
                   })}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
+              className={`tactile-btn px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
                 !isMuted
-                  ? 'bg-emerald-600/10 text-emerald-600 border-emerald-500/30 animate-pulse'
-                  : 'bg-surface-container text-muted-foreground border-outline-variant/50'
+                  ? 'bg-emerald-600 text-white shadow-sm animate-pulse'
+                  : 'bg-surface-container text-on-surface hover:bg-surface-variant'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">
-                {isMuted ? 'mic_off' : 'mic'}
+                {!isMuted ? 'mic' : 'mic_off'}
               </span>
               <span>
                 {voiceMode === 'hold'
                   ? !isMuted
                     ? t('voice.speakingNow', '发言中...')
-                    : t('voice.holdToTalk', '按住说话')
+                    : t('voice.holdToTalk', '按住说话 (Space)')
                   : isMuted
                   ? t('voice.unmute', '开麦')
                   : t('voice.mute', '静音')}
               </span>
             </button>
 
+            {/* Deafen toggle */}
             <button
               type="button"
               onClick={toggleDeafen}
               aria-label={isDeafened ? '取消闭音' : '闭音'}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`tactile-btn p-2 rounded-full border text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
                 isDeafened
                   ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
                   : 'bg-surface-container text-muted-foreground border-outline-variant/50'
               }`}
+              title={isDeafened ? '取消闭音' : '闭音'}
             >
-              <span className="material-symbols-outlined text-[16px]">
+              <span className="material-symbols-outlined text-[18px]">
                 {isDeafened ? 'volume_off' : 'volume_up'}
               </span>
-              <span>{isDeafened ? '取消闭音' : '闭音'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsDanmakuOn((prev) => !prev)}
+              className={`tactile-btn px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer ${
+                isDanmakuOn ? 'bg-primary-fixed text-primary' : 'bg-surface-container text-outline'
+              }`}
+            >
+              {isDanmakuOn ? '弹幕: 开' : '弹幕: 关'}
             </button>
 
             <button
               type="button"
               onClick={handleLeave}
-              className="px-3 py-1.5 rounded-xl bg-surface-container hover:bg-rose-500/10 hover:text-rose-600 text-xs font-black transition-colors cursor-pointer"
+              className="tactile-btn px-3 py-1.5 rounded-full bg-error-container text-error text-xs font-bold hover:bg-rose-500/20 transition-colors cursor-pointer"
             >
               退出房间
             </button>
           </div>
         </header>
 
-        {/* 3-Column Layout */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Column (288px): Scores & Players */}
-          <aside className="w-72 bg-surface-container-lowest border-r border-surface-variant/40 flex flex-col justify-between p-4 shrink-0 overflow-y-auto">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-sm text-on-surface">实时积分榜</h4>
-                <span className="text-xs font-bold text-muted-foreground">
-                  {players.length}/{room?.settings?.maxPlayers || 8}人
+        {/* DESKTOP BODY 12-COLUMN FLUID CONTAINER (max 1440px) */}
+        <div className="flex-1 max-w-[1440px] w-full mx-auto flex gap-4 p-4 min-h-0 overflow-hidden">
+          {/* LEFT / CENTER COLUMN (Game Board + Clues + Input) */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0 min-h-0 overflow-hidden">
+            {/* Secret Word Hint Card */}
+            <section className="bg-gradient-to-r from-primary/10 via-surface-container-high to-surface-variant rounded-2xl px-4 py-2.5 flex items-center justify-between border border-primary/15 shadow-xs shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-label-sm text-xs font-bold shadow-xs">
+                  <span className="material-symbols-outlined text-[15px]">lightbulb</span>
+                  提示分类
+                </span>
+                <span className="font-headline-sm text-base font-extrabold text-primary">
+                  {wordCategory} · {wordLength || 4}个字
+                </span>
+                <div className="h-4 w-[1px] bg-primary/20"></div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-on-surface-variant">字数卡槽：</span>
+                  {gameState.status === 'selecting_word' ? (
+                    <span className="text-xs font-bold text-secondary animate-pulse">
+                      {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
+                    </span>
+                  ) : (
+                    slots.map((char, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-black shadow-xs ${
+                          char !== '_'
+                            ? 'bg-primary-container text-on-primary-container text-lg ring-2 ring-primary/30'
+                            : 'bg-surface-container-lowest border-2 border-dashed border-outline-variant text-outline text-base'
+                        }`}
+                      >
+                        {char}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-on-surface-variant">
+                  {wordHint ? `已公布线索: ${wordHint}` : '提示未解锁'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => sendMessage('申请提示 💡', false)}
+                  className="tactile-btn px-3 py-1.5 rounded-full bg-surface-container-lowest text-primary hover:bg-surface-container shadow-xs border border-primary/20 flex items-center gap-1 cursor-pointer font-bold text-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px] text-secondary-container">
+                    tips_and_updates
+                  </span>
+                  <span>申请提示</span>
+                </button>
+              </div>
+            </section>
+
+            {/* Live Drawing Canvas Card */}
+            <section className="flex-1 bg-surface-container-lowest rounded-2xl border border-surface-container canvas-shadow flex flex-col justify-between overflow-hidden relative min-h-[360px]">
+              {/* Canvas Header Floating Controls */}
+              <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-10 pointer-events-none">
+                <div className="pointer-events-auto flex items-center gap-2 px-3 py-1 rounded-full bg-inverse-surface/85 backdrop-blur-md text-inverse-on-surface shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-secondary-container animate-ping"></span>
+                  <span className="w-2 h-2 rounded-full bg-secondary-container -ml-4"></span>
+                  <span className="text-xs font-label-sm font-bold">
+                    {drawerNickname || '画手'} 正在实时挥毫作画中...
+                  </span>
+                </div>
+                <div className="pointer-events-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreen((prev) => !prev)}
+                    className="tactile-btn px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-xs flex items-center gap-1 text-on-surface-variant hover:bg-surface-container text-xs font-bold cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">fullscreen</span>
+                    <span>全屏模式</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real Drawing Canvas Area */}
+              <div className="w-full flex-1 relative flex items-center justify-center bg-white overflow-hidden min-h-[300px]">
+                {/* Subtle Grid Texture for Paper Feel */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(#413fd6 0.8px, transparent 0.8px)',
+                    backgroundSize: '16px 16px',
+                  }}
+                />
+
+                {/* Danmaku Overlay */}
+                <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
+
+                {/* Real Canvas */}
+                <div className="w-full h-full flex items-center justify-center p-3 pointer-events-none">
+                  <DrawBoard
+                    strokes={strokes}
+                    isDrawer={false}
+                    width={800}
+                    height={600}
+                    className="w-full h-full aspect-[4/3] max-w-[800px] max-h-[600px] rounded-xl border-0 shadow-none pointer-events-none"
+                  />
+                </div>
+
+                {/* Floating Reaction Emojis */}
+                {floatingEmojis.map((item) => (
+                  <div
+                    key={item.id}
+                    className="absolute bottom-8 right-12 pointer-events-none flex flex-col items-center"
+                  >
+                    <span className="emoji-float text-3xl select-none">{item.emoji}</span>
+                  </div>
+                ))}
+
+                {hasGuessedCorrect && (
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 bg-emerald-500 text-white px-6 py-2 rounded-full text-sm font-black shadow-xl flex items-center gap-2 animate-bounce pointer-events-none">
+                    <span>🎉 恭喜！你已猜中正确答案</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Canvas Footer */}
+              <div className="w-full bg-surface-container-low px-4 py-1.5 flex items-center justify-between border-t border-surface-container shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-label-sm text-outline font-bold">画板实时反应:</span>
+                  {['👏 棒', '😂 抽象', '❤️ 懂了', '🎨 灵魂', '🔥 热烈'].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSendReaction(emoji)}
+                      className="tactile-btn px-2.5 py-0.5 rounded-full bg-surface-container-lowest hover:bg-surface-variant text-xs shadow-xs font-medium cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-label-sm font-bold text-primary">实时笔画高精同步中</span>
+              </div>
+            </section>
+
+            {/* Bottom Guess Input & Interaction Bar */}
+            <footer className="bg-surface-container-lowest p-3 rounded-2xl border border-surface-container shadow-xs flex items-center gap-3 shrink-0">
+              <form onSubmit={handleGuessSubmit} className="flex-1 flex items-center gap-2">
+                <div className="flex-1 relative flex items-center">
+                  <span className="absolute left-3.5 text-outline material-symbols-outlined text-[20px]">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    value={guessInput}
+                    onChange={(e) => setGuessInput(e.target.value)}
+                    disabled={hasGuessedCorrect}
+                    placeholder={
+                      hasGuessedCorrect
+                        ? '你已猜中！静候其他玩家抢答...'
+                        : '输入你的猜测词（如：旋转木马，按回车提交）...'
+                    }
+                    className="w-full pl-10 pr-9 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
+                  />
+                  {guessInput && (
+                    <button
+                      type="button"
+                      onClick={() => setGuessInput('')}
+                      className="absolute right-3 text-outline hover:text-on-surface cursor-pointer"
+                      title="清空"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">cancel</span>
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={hasGuessedCorrect || !guessInput.trim()}
+                  className="tactile-btn px-6 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-sm font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
+                >
+                  <span>抢先猜词</span>
+                  <span className="material-symbols-outlined text-[18px]">send</span>
+                </button>
+              </form>
+
+              {/* Quick Reaction Button */}
+              <button
+                type="button"
+                onClick={() => handleSendReaction('🔥')}
+                className="tactile-btn w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant shadow-xs cursor-pointer"
+                title="热烈反应"
+              >
+                <span className="material-symbols-outlined text-[20px]">add_reaction</span>
+              </button>
+            </footer>
+          </div>
+
+          {/* RIGHT COLUMN (Player Seats & Scoreboard + Live Chat & Guess Stream) */}
+          <div className="w-[360px] xl:w-[400px] shrink-0 flex flex-col gap-3 min-h-0 overflow-hidden">
+            {/* Player Seats & Leaderboard Card */}
+            <section className="bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col shrink-0">
+              <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[18px] text-secondary-container">
+                    leaderboard
+                  </span>
+                  <span className="font-label-sm text-sm font-bold text-on-surface">实时积分榜</span>
+                </div>
+                <span className="text-xs text-outline font-bold">
+                  {players.length}/{room.settings?.maxPlayers || 8}人在线
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="max-h-[180px] overflow-y-auto space-y-1.5 pt-2 custom-scroll">
                 {players.map((p, idx) => {
+                  const isSpeaking = speakingUserIds.includes(p.id);
                   const scoreItem = scoresMap.get(p.id);
                   const scoreVal = scoreItem?.score ?? p.score;
-                  const isSpeaking = speakingUserIds.includes(p.id);
                   const isMe = p.id === userId;
-                  const isCurDrawer = p.id === gameState?.drawerId;
+                  const isDrawer = p.id === gameState.drawerId;
                   const hasCorrect = scoreItem?.hasGuessedCorrectly;
+
                   return (
                     <div
                       key={p.id}
-                      className={`p-3 rounded-2xl flex items-center justify-between border transition-all ${
-                        hasCorrect
+                      className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition-all ${
+                        isDrawer
+                          ? 'bg-primary-fixed/50 border-primary/30'
+                          : hasCorrect
                           ? 'bg-emerald-500/10 border-emerald-500/30'
-                          : isCurDrawer
-                          ? 'bg-primary/10 border-primary/40'
-                          : 'bg-surface-container-low border-surface-variant/30'
+                          : isMe
+                          ? 'bg-surface-container border-primary-container'
+                          : 'bg-surface-container-low border-surface-container'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="relative">
-                          <img
-                            src={p.avatar}
-                            alt={p.nickname}
-                            className={`w-9 h-9 rounded-full object-cover ${
-                              isSpeaking ? 'ring-2 ring-emerald-500' : ''
-                            }`}
-                          />
-                          {idx === 0 && (
-                            <span className="absolute -top-1 -left-1 text-xs">👑</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="relative w-7 h-7 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-xs font-bold overflow-hidden shrink-0">
+                          {p.avatar ? (
+                            <img src={p.avatar} alt={p.nickname} className="w-full h-full object-cover" />
+                          ) : (
+                            p.nickname.slice(0, 1)
                           )}
-                          {isCurDrawer && (
-                            <span className="absolute -bottom-1 -right-1 text-xs">🎨</span>
+                          {isDrawer && (
+                            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-secondary-container text-on-primary flex items-center justify-center text-[8px]">
+                              🎨
+                            </span>
                           )}
-                          {hasCorrect && !isCurDrawer && (
-                            <span className="absolute -bottom-1 -right-1 text-xs">✓</span>
+                          {hasCorrect && !isDrawer && (
+                            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center text-[8px]">
+                              ✓
+                            </span>
                           )}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1">
-                            <span className="font-extrabold text-xs text-on-surface truncate max-w-[90px]">
+                            <span className="font-label-sm text-xs font-bold text-on-surface truncate max-w-[100px]">
                               {p.nickname}
                             </span>
-                            {isMe && <span className="text-[10px] text-primary font-bold">(我)</span>}
+                            {isMe && <span className="text-[10px] text-primary font-bold">(你)</span>}
+                            {idx === 0 && <span className="text-[10px]">👑</span>}
                           </div>
-                          <span className="text-[11px] text-muted-foreground font-semibold">
-                            {hasCorrect ? '✓ 已猜中' : isCurDrawer ? '正在作画' : '猜词中'}
+                          <span className="text-[10px] text-on-surface-variant font-medium">
+                            {isDrawer ? '作画中' : hasCorrect ? '✓ 已猜对' : '猜词中'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="font-black text-sm text-primary font-mono block">
-                          {scoreVal}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">积分</span>
+                      <div className="text-right shrink-0">
+                        <span className="font-black text-sm text-primary font-mono block">{scoreVal}</span>
+                        <span className="text-[9px] text-outline font-medium">积分</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
 
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              className="w-full py-2.5 rounded-xl border-2 border-dashed border-outline-variant/60 hover:border-primary/60 text-xs font-bold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-4"
-            >
-              <span>+ 邀请好友 (#{roomCode})</span>
-            </button>
-          </aside>
+            {/* Live Chat & Guess Feed Card */}
+            <section className="flex-1 bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col justify-between overflow-hidden min-h-0">
+              <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[18px] text-primary">forum</span>
+                  <span className="font-label-sm text-sm font-bold text-on-surface">实时竞猜与动态</span>
+                </div>
+                <span className="text-[10px] text-outline">答案保护已开启</span>
+              </div>
 
-          {/* Center Column: Live Drawing Board & Guess Input */}
-          <main className="flex-1 flex flex-col bg-slate-950 overflow-hidden relative">
-            {/* Center Subheader with Word Clue Slots */}
-            <div className="h-14 px-6 bg-surface-container-low/90 backdrop-blur-md border-b border-surface-variant/40 flex items-center justify-between shrink-0 z-20">
-              <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 rounded-full bg-primary text-on-primary text-xs font-black">
-                  画手: {drawerNickname || '--'}
-                </span>
-                {wordCategory && (
-                  <span className="text-xs text-muted-foreground font-bold">
-                    类别: <span className="text-on-surface font-extrabold">{wordCategory}</span> · {wordLength}个字
-                  </span>
-                )}
+              {/* Messages Stream */}
+              <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1 custom-scroll text-xs">
                 {wordHint && (
-                  <span className="font-label-sm text-xs font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-xl flex items-center gap-1">
-                    <span>💡</span>
-                    <span>{wordHint}</span>
-                  </span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-low text-on-surface-variant text-xs border-l-2 border-primary">
+                    <span className="material-symbols-outlined text-[16px] text-primary">auto_awesome</span>
+                    <span>
+                      系统：画手 <strong className="text-primary">{drawerNickname || '画手'}</strong> 公布了线索「
+                      <strong className="text-primary">{wordHint}</strong>」
+                    </span>
+                  </div>
+                )}
+
+                {messages.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-xs text-outline font-medium">
+                    暂无猜词记录，作画后玩家抢答将显示于此
+                  </div>
+                ) : (
+                  messages.map((m) => {
+                    const isCorrect = m.payload.type === 'correct_guess';
+                    const isMe = m.senderId === userId;
+                    const timeStr = new Date(m.timestamp).toLocaleTimeString([], {
+                      minute: '2-digit',
+                      second: '2-digit',
+                    });
+
+                    if (isCorrect) {
+                      return (
+                        <div
+                          key={m.payload.id}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-tertiary-fixed/30 border border-tertiary-fixed-dim text-on-tertiary-fixed font-medium"
+                        >
+                          <span className="text-base">🎉</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            <span className="font-bold">{m.payload.senderNickname}</span>
+                            <span>猜中了正确答案！</span>
+                          </div>
+                          <span className="font-black text-tertiary">+100分</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={m.payload.id} className="flex items-start gap-1.5">
+                        <span
+                          className={`font-bold shrink-0 ${isMe ? 'text-primary' : 'text-on-surface-variant'}`}
+                        >
+                          {m.payload.senderNickname} {isMe ? '(你)' : ''}:
+                        </span>
+                        <div className="flex items-center gap-1 bg-surface-container px-2.5 py-0.5 rounded-full text-on-surface font-body-sm text-xs">
+                          <span>{m.payload.content}</span>
+                          {m.payload.isDanmaku ? (
+                            <span className="text-secondary font-bold text-[10px] flex items-center">
+                              <span className="material-symbols-outlined text-[12px]">chat</span>
+                            </span>
+                          ) : (
+                            <span className="text-error font-bold text-[10px] flex items-center">
+                              <span className="material-symbols-outlined text-[12px]">close</span> 不对
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-outline ml-auto self-center">{timeStr}</span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
-              {/* Slots or Selecting Word Message */}
-              {gameState.status === 'selecting_word' ? (
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 animate-pulse">
-                  {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
-                </span>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-semibold">{t('inGame.clueSlots', '题目卡槽:')}</span>
-                  <div className="flex items-center gap-1.5">
-                    {slots.map((char, idx) => (
-                      <div
-                        key={idx}
-                        className="w-8 h-8 rounded-xl bg-surface border-2 border-primary/40 flex items-center justify-center font-headline-sm text-sm font-black text-primary shadow-xs"
-                      >
-                        {char}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Stage Canvas */}
-            <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden">
-              <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
-
-              <div className="w-full h-full max-w-[800px] max-h-[600px] aspect-[4/3] relative flex items-center justify-center shadow-2xl rounded-2xl overflow-hidden pointer-events-none">
-                <DrawBoard
-                  strokes={strokes}
-                  isDrawer={false}
-                  width={800}
-                  height={600}
-                  className="w-full h-full aspect-[4/3] rounded-2xl border-0"
-                />
-              </div>
-
-              {hasGuessedCorrect && (
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 bg-emerald-500 text-white px-6 py-2 rounded-full text-sm font-black shadow-xl flex items-center gap-2 animate-bounce">
-                  <span>🎉 恭喜！你已抢答成功</span>
-                </div>
-              )}
-            </div>
-
-            {/* Center Bottom: Guess Input Dock & Reaction Bar */}
-            <footer className="h-18 px-6 bg-surface-container-low border-t border-surface-variant/40 flex items-center justify-between gap-4 shrink-0 z-20">
-              {/* Quick Reactions */}
-              <div className="flex items-center gap-2">
-                {['👏', '🎨', '💡', '🔥', '😂'].map((emoji) => (
+              {/* Quick Guess Phrase Pills */}
+              <div className="pt-2 border-t border-surface-container-high/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                {['旋转木马', '碰碰车', '过山车', '海盗船', '摩天轮', '旋转滑梯'].map((phrase) => (
                   <button
-                    key={emoji}
+                    key={phrase}
                     type="button"
-                    onClick={() => handleSendReaction(emoji)}
-                    className="w-9 h-9 rounded-xl bg-surface border border-outline-variant/60 flex items-center justify-center text-base hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                    onClick={() => {
+                      if (!hasGuessedCorrect) {
+                        submitGuess(phrase);
+                      }
+                    }}
+                    className="tactile-btn px-2.5 py-1 rounded-full bg-surface-container text-primary font-label-sm text-xs font-bold shrink-0 hover:bg-surface-variant cursor-pointer"
                   >
-                    {emoji}
+                    {phrase}
                   </button>
                 ))}
               </div>
-
-              {/* Main Guess Form */}
-              <form onSubmit={handleGuessSubmit} className="flex-1 max-w-xl flex items-center gap-2">
-                <input
-                  type="text"
-                  value={guessInput}
-                  onChange={(e) => setGuessInput(e.target.value)}
-                  disabled={hasGuessedCorrect}
-                  placeholder={
-                    hasGuessedCorrect
-                      ? '你已猜中！静候其他玩家抢答...'
-                      : '输入你猜测的词语（按 Enter 立即抢答）...'
-                  }
-                  className="flex-1 bg-surface px-4 py-2.5 rounded-xl text-xs font-extrabold border border-outline-variant/60 focus:outline-none focus:border-primary disabled:opacity-60"
-                />
-                <button
-                  type="submit"
-                  disabled={hasGuessedCorrect || !guessInput.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-black shadow-md disabled:opacity-40 cursor-pointer"
-                >
-                  抢答提交
-                </button>
-              </form>
-            </footer>
-          </main>
-
-          {/* Right Column (352px): Real-time Guess & Chat Stream */}
-          <aside className="w-88 bg-surface-container-lowest border-l border-surface-variant/40 flex flex-col justify-between shrink-0 overflow-hidden">
-            <div className="h-12 px-4 border-b border-surface-variant/40 flex items-center justify-between shrink-0">
-              <span className="font-extrabold text-xs text-on-surface">实时猜词动态</span>
-              <button
-                type="button"
-                onClick={() => setIsDanmakuOn((p) => !p)}
-                className={`text-[11px] font-bold px-2 py-0.5 rounded-md cursor-pointer ${
-                  isDanmakuOn ? 'text-primary bg-primary/10' : 'text-muted-foreground'
-                }`}
-              >
-                {isDanmakuOn ? '弹幕: 开' : '弹幕: 关'}
-              </button>
-            </div>
-
-            {/* Stream */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-2.5">
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-medium">
-                  暂无猜词记录，大家的猜测将显示于此
-                </div>
-              ) : (
-                messages.map((m) => {
-                  const isCorrect = m.payload.type === 'correct_guess';
-                  return (
-                    <div
-                      key={m.payload.id}
-                      className={`p-2.5 rounded-xl text-xs ${
-                        isCorrect
-                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold'
-                          : 'bg-surface-container-low text-on-surface'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="font-extrabold text-[11px] text-primary">
-                          {m.payload.senderNickname}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(m.timestamp).toLocaleTimeString([], {
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                      <p className="leading-relaxed">{m.payload.content}</p>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Chat Bar */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!guessInput.trim()) return;
-                sendMessage(guessInput.trim(), false);
-                setGuessInput('');
-              }}
-              className="p-3 bg-surface-container-low border-t border-surface-variant/40 flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={guessInput}
-                onChange={(e) => setGuessInput(e.target.value)}
-                placeholder="发送闲聊消息..."
-                className="flex-1 bg-surface px-3 py-2 rounded-xl text-xs font-bold border border-outline-variant/60 focus:outline-none focus:border-primary"
-              />
-              <button
-                type="submit"
-                disabled={!guessInput.trim()}
-                className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-black disabled:opacity-40 cursor-pointer"
-              >
-                发言
-              </button>
-            </form>
-          </aside>
+            </section>
+          </div>
         </div>
       </div>
 
-      {/* Waiting for word selection banner */}
-      {gameState?.status === 'selecting_word' && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 bg-surface/90 backdrop-blur-md px-6 py-2.5 rounded-full border border-primary/30 shadow-xl flex items-center gap-2">
-          <span className="animate-spin text-primary">⏳</span>
-          <span className="text-xs font-extrabold text-on-surface">
-            {t('inGame.drawerSelectingWord', '画手正在挑选词语...')}
-          </span>
+      {/* Leaderboard Modal for Mobile */}
+      {isLeaderboardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-surface p-5 rounded-3xl border border-surface-container shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-surface-container">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-secondary-container">leaderboard</span>
+                <h3 className="font-headline-sm text-base font-extrabold text-on-surface">房间积分榜</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLeaderboardOpen(false)}
+                className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto space-y-2 custom-scroll">
+              {players.map((p, idx) => {
+                const scoreItem = scoresMap.get(p.id);
+                const scoreVal = scoreItem?.score ?? p.score;
+                const isMe = p.id === userId;
+                const isDrawer = p.id === gameState.drawerId;
+                const hasCorrect = scoreItem?.hasGuessedCorrectly;
+
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-2.5 rounded-2xl bg-surface-container-low border border-surface-container"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black w-4 text-center text-outline">
+                        {idx === 0 ? '👑' : `${idx + 1}`}
+                      </span>
+                      <img src={p.avatar} alt={p.nickname} className="w-8 h-8 rounded-full object-cover" />
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-xs text-on-surface">{p.nickname}</span>
+                          {isMe && <span className="text-[10px] text-primary font-bold">(你)</span>}
+                        </div>
+                        <span className="text-[10px] text-outline">
+                          {isDrawer ? '🎨 画手' : hasCorrect ? '✓ 已猜中' : '待猜'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-black text-sm text-primary font-mono">{scoreVal}</span>
+                      <span className="text-[10px] text-outline block">分</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Modal */}
+      {isRulesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-surface p-5 rounded-3xl border border-surface-container shadow-2xl space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-surface-container">
+              <h3 className="font-headline-sm text-base font-extrabold text-on-surface">游戏规则</h3>
+              <button
+                type="button"
+                onClick={() => setIsRulesOpen(false)}
+                className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+            <div className="space-y-2 text-xs leading-relaxed text-on-surface-variant">
+              <p>1. 每轮随机一名玩家担当画手，根据题目作画。</p>
+              <p>2. 其他玩家在竞猜栏输入答案，越快猜对积分越高。</p>
+              <p>3. 答案具有防剧透保护，猜错不扣分，鼓励多试！</p>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Turn End Summary Overlay */}
-      {gameState?.status === 'turn_ended' && gameState.turnSummary && (
+      {gameState.status === 'turn_ended' && gameState.turnSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-surface p-6 rounded-3xl border-2 border-border shadow-2xl space-y-4 text-center">
-            <span className="text-2xl">🎉</span>
+            <span className="text-3xl">🎉</span>
             <div className="space-y-1">
-              <h4 className="text-lg font-black text-on-surface">{t('inGame.turnEndedTitle')}</h4>
-              <p className="text-xs text-muted-foreground">
-                {t('inGame.correctAnswerIs')}
-                <span className="text-primary font-black text-sm ml-1">
+              <h4 className="text-lg font-black text-on-surface">{t('inGame.turnEndedTitle', '本轮作画已结束')}</h4>
+              <p className="text-xs text-outline">
+                {t('inGame.correctAnswerIs', '正确答案是：')}
+                <span className="text-primary font-black text-base ml-1">
                   【{gameState.turnSummary.secretWord}】
                 </span>
               </p>
@@ -908,11 +1386,11 @@ export const InGameGuesserPage: React.FC = () => {
                 {t('inGame.guesserEarnedReward', { score: gameState.turnSummary.guesserEarned[userId] })}
               </div>
             ) : (
-              <div className="p-3 rounded-2xl bg-surface-container text-muted-foreground text-xs font-bold">
-                {t('inGame.guesserMissedReward')}
+              <div className="p-3 rounded-2xl bg-surface-container text-outline text-xs font-bold">
+                {t('inGame.guesserMissedReward', '本轮未猜中，下一轮继续加油！')}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground animate-pulse">{t('inGame.preparingNextRound')}</p>
+            <p className="text-[11px] text-outline animate-pulse">{t('inGame.preparingNextRound', '正在准备下一轮...')}</p>
           </div>
         </div>
       )}

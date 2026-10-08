@@ -2,6 +2,10 @@
 
 用户要求：所有 UI 工作均由 Antigravity 完成，复用名为 idavoll 的原会话 d711e253-e519-446f-b7b2-84903676fdf0；完成后由此会话推送 GitHub 并更新 Cloudflare，再交 OpenCode 免费模型验收。
 
+用户最新明确分工优先于下文旧阶段说明：Codex只负责业务逻辑修复、接口约束和可复现的功能问题；UI样式、布局、界面结构、控件位置全部由agy原idavoll会话自行设计。后续任务只给功能验收条件，不由Codex规定UI设计。OpenCode免费模型仅负责测试、测试脚本与报告，禁止修复产品业务或UI。当前项目已发布，后续修复继续由agy提交推送和更新Cloudflare。
+
+最新UI目标：用户要求你画我猜界面重新恢复 `temp/stitch_idavoll` 内HTML的样式与结构，并具备响应式布局。此要求优先于下文“保留现有设计”的旧说明；agy独立读取参考HTML/资源并设计实现，Codex只提供真实功能接口与行为验收条件。
+
 当前阶段只实现 UI，暂不提交、推送或部署，等待 Codex 后续明确的发布任务。Codex 正在同步完善服务端、协议、services、stores；不要修改这些业务文件或后端、协议、依赖锁。你负责 apps/web/src/pages、components、routes.tsx、App.tsx、main.tsx、index.css 及 packages/ui 内的展示组件。保留 DESIGN.md 和现有设计、桌面/手机响应式结构，修复实际操作，不引入 UI 框架或新依赖。
 
 ## 已落地接口（Codex 负责，可据此接入）

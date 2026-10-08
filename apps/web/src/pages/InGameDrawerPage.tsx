@@ -50,6 +50,7 @@ export const InGameDrawerPage: React.FC = () => {
   const [desktopChatTab, setDesktopChatTab] = useState<'guess' | 'chat'>('guess');
   const [isDanmakuOn, setIsDanmakuOn] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
 
   // Spacebar push-to-talk handler on desktop
   const isHoldingSpaceRef = useRef(false);
@@ -104,20 +105,20 @@ export const InGameDrawerPage: React.FC = () => {
     };
   }, [voiceMode]);
 
-  // If room or game state is missing, show real syncing state
+  // Loading state
   if (!room || !gameState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-[var(--theme-primary,#5B5BF0)]" />
-        <h2 className="text-xl font-bold text-foreground">{t('inGame.loadingRoom', '正在同步游戏状态...')}</h2>
-        <p className="text-xs text-muted-foreground">{t('inGame.loadingHint', '如果长时间未加载，请尝试返回大厅')}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 space-y-4 select-none">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <h2 className="text-xl font-bold text-on-surface">{t('inGame.loadingRoom', '正在同步游戏状态...')}</h2>
+        <p className="text-xs text-outline">{t('inGame.loadingHint', '如果长时间未加载，请尝试返回大厅')}</p>
         <button
           type="button"
           onClick={() => {
             leaveRoom();
             navigate('/lobby');
           }}
-          className="px-4 py-2 rounded-xl bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+          className="px-4 py-2 rounded-full bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
         >
           {t('inGame.backToLobby', '返回大厅')}
         </button>
@@ -135,8 +136,9 @@ export const InGameDrawerPage: React.FC = () => {
   const wordLength = gameState.currentWordLength || (wordToDraw ? wordToDraw.length : 0);
   const rerollsLeft = gameState.rerollsLeft ?? 0;
   const hintsLeft = gameState.hintsLeft ?? 0;
-  const hasGuessedAnyone = gameState.scores.some((s) => s.hasGuessedCorrectly) ?? false;
+  const hasGuessedAnyone = gameState.scores?.some((s) => s.hasGuessedCorrectly) ?? false;
   const players = room.players || [];
+  const scoresMap = new Map(gameState.scores?.map((s) => [s.playerId, s]) || []);
 
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
@@ -160,6 +162,10 @@ export const InGameDrawerPage: React.FC = () => {
     if (!danmakuInput.trim()) return;
     sendMessage(danmakuInput.trim(), true);
     setDanmakuInput('');
+  };
+
+  const handleSendEmoji = (emoji: string) => {
+    sendMessage(emoji, true);
   };
 
   const handleCopyCode = () => {
@@ -195,17 +201,30 @@ export const InGameDrawerPage: React.FC = () => {
     '#8B5CF6', '#EC4899', '#8D5B4C', '#FDE047',
   ];
 
-  // Combined score map
-  const scoresMap = new Map(gameState?.scores.map((s) => [s.playerId, s]) || []);
+  // Latest guess message for mobile ticker
+  const latestGuessMessage = messages.filter((m) => !m.payload.isDanmaku).slice(-1)[0];
+  const correctGuess = messages.find((m) => m.payload.type === 'correct_guess');
 
   return (
     <div
-      className={`h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-background select-none font-body-md antialiased ${
+      className={`h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-background text-on-surface select-none font-body-md antialiased flex flex-col ${
         isFullscreen ? 'fixed inset-0 z-50 p-0 m-0 w-screen h-screen' : ''
       }`}
     >
+      {/* Hidden Color Picker Input */}
+      <input
+        ref={colorInputRef}
+        type="color"
+        value={currentColor}
+        onChange={(e) => {
+          setIsEraser(false);
+          setCurrentColor(e.target.value);
+        }}
+        className="hidden"
+      />
+
       {/* =========================================================================
-          1. MOBILE VIEW (< lg: 1024px) - 100% Exact match to temp/stitch_idavoll
+          1. MOBILE VIEWPORT CONTAINER (< lg: 1024px) - 100% Match to playhub_draw_guess_fullscreen
          ========================================================================= */}
       <div className="lg:hidden w-full h-full flex justify-center items-start overflow-hidden">
         <div
@@ -213,9 +232,11 @@ export const InGameDrawerPage: React.FC = () => {
             isFullscreen ? 'max-w-none h-full' : 'max-w-[390px] h-full max-h-[844px]'
           } flex flex-col justify-between bg-surface relative overflow-hidden shadow-2xl`}
         >
-          {/* Top Status Bar */}
+          {/* 1. COMPACT TOP STATUS BAR (STREAMLINED) */}
           <header className="pt-2 px-3 pb-1 bg-surface shrink-0 z-20">
+            {/* Row 1: Back + Room Info + Timer + Voice Pill + Mode Toggle */}
             <div className="flex items-center justify-between gap-1.5 h-11">
+              {/* Left: Exit + Room Round Info */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -233,11 +254,12 @@ export const InGameDrawerPage: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
                   </div>
                   <span className="font-label-sm text-[10px] text-primary font-bold">
-                    {t('inGame.roundDrawerInfo', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮 · 画手` })}
+                    第 {currentRound}/{totalRounds} 轮 · 画手
                   </span>
                 </div>
               </div>
 
+              {/* Center: Compact Timer Pill */}
               <div className="flex items-center gap-1.5 bg-secondary-fixed/50 border border-secondary/20 px-2.5 py-1 rounded-full shadow-xs">
                 <span className="material-symbols-outlined text-secondary text-[16px] animate-pulse">
                   timer
@@ -247,226 +269,499 @@ export const InGameDrawerPage: React.FC = () => {
                 </span>
               </div>
 
+              {/* Right: Voice + Fullscreen Toggle Button */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={undoStroke}
-                  disabled={!strokes.length || gameState.status !== 'drawing'}
-                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface disabled:opacity-40 transition-colors cursor-pointer"
-                  title={t('inGame.undo', '撤销')}
-                  aria-label={t('inGame.undo', '撤销')}
+                  onClick={() => setIsChatDrawerOpen(true)}
+                  className="tactile-btn flex items-center gap-1 bg-surface-container text-on-surface px-2 py-1 rounded-full cursor-pointer"
+                  title="语音频道"
                 >
-                  <span className="material-symbols-outlined text-[18px]">undo</span>
+                  <span className="material-symbols-outlined text-[14px] text-tertiary-container animate-bounce">
+                    mic
+                  </span>
+                  <span className="font-label-sm text-[11px] font-bold">{players.length}人</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={redoStroke}
-                  disabled={gameState.status !== 'drawing'}
-                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface disabled:opacity-40 transition-colors cursor-pointer"
-                  title={t('inGame.redo', '重做')}
-                  aria-label={t('inGame.redo', '重做')}
-                >
-                  <span className="material-symbols-outlined text-[18px]">redo</span>
-                </button>
+                {/* Fullscreen Mode Switcher */}
                 <button
                   type="button"
                   onClick={toggleFullscreen}
-                  className={`tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-on-surface transition-colors cursor-pointer ${
-                    isFullscreen ? 'bg-primary text-on-primary' : 'bg-surface-container'
-                  }`}
-                  title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏画板')}
-                  aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏画板')}
+                  className="tactile-btn flex items-center gap-1 bg-primary text-on-primary px-2.5 py-1 rounded-full shadow-sm hover:bg-primary-container cursor-pointer"
+                  title="切换全屏画板"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
+                  <span
+                    className="material-symbols-outlined text-[15px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    fullscreen
                   </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsChatDrawerOpen(true)}
-                  className="tactile-btn relative w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed transition-colors cursor-pointer"
-                  title={t('inGame.chatAndVoice', '聊天与猜词动态')}
-                  aria-label={t('inGame.chatAndVoice', '聊天与猜词动态')}
-                >
-                  <span className="material-symbols-outlined text-[18px]">chat</span>
-                  {messages.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-secondary border border-surface"></span>
-                  )}
+                  <span className="font-label-sm text-[11px] font-extrabold">全屏画板</span>
                 </button>
               </div>
             </div>
 
-            {/* Players Scores Ribbon */}
-            <div className="flex items-center gap-2 overflow-x-auto py-1.5 no-scrollbar scroll-smooth">
-              {players.map((p) => {
-                const isSpeaking = speakingUserIds.includes(p.id);
-                const scoreItem = scoresMap.get(p.id);
-                const scoreVal = scoreItem?.score ?? p.score;
-                const isMe = p.id === userId;
-                return (
-                  <div
-                    key={p.id}
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded-full shrink-0 border ${
-                      isMe
-                        ? 'bg-primary-fixed/40 border-primary/40'
-                        : 'bg-surface-container-low border-surface-variant/40'
-                    }`}
+            {/* Row 2: Streamlined Secret Word Card + Floating Horizontal Player Avatars Strip */}
+            <div className="mt-1 flex items-center justify-between gap-2">
+              {/* Secret Word Pill (Drawer's Target Word) */}
+              <div className="flex-1 bg-surface-container-low border border-surface-container rounded-xl px-2.5 py-1.5 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span
+                    className="material-symbols-outlined text-primary text-[17px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
                   >
-                    <div className="relative">
-                      <img
-                        className={`w-6 h-6 rounded-full object-cover ${
-                          isSpeaking ? 'ring-2 ring-emerald-500 scale-105' : ''
-                        }`}
-                        alt={p.nickname}
-                        src={p.avatar}
-                      />
-                      {p.id === gameState?.drawerId && (
-                        <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 text-[8px]">
-                          🎨
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col text-left pr-1">
-                      <span className="font-label-sm text-[10px] font-bold text-on-surface truncate max-w-[50px]">
-                        {p.nickname}
-                      </span>
-                      <span className="font-label-sm text-[9px] font-extrabold text-primary">
-                        {scoreVal}{t('inGame.scorePoints', '分')}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </header>
-
-          {/* Prompt Information Banner */}
-          <div className="px-3 py-1.5 bg-surface shrink-0 z-20">
-            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-[18px]">brush</span>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-primary">
-                      {t('inGame.drawingPrompt', '本轮题目')}
-                    </span>
-                    <span className="bg-surface px-1.5 py-0.2 rounded-md font-label-sm text-[10px] text-on-surface-variant font-medium">
-                      {wordCategory ? `${wordCategory} · ` : ''}{t('inGame.wordChars', { length: wordLength, defaultValue: `${wordLength}字` })}
-                    </span>
-                  </div>
-                  <span className="font-headline-sm text-[16px] font-black text-on-surface truncate tracking-tight">
-                    {wordToDraw || t('inGame.waitingWordSelect', '等待选词')}
+                    visibility
+                  </span>
+                  <span className="font-label-sm text-[11px] text-on-surface-variant font-bold shrink-0">
+                    词条:
+                  </span>
+                  <span className="font-headline-sm text-[14px] font-black text-primary tracking-wide truncate">
+                    【 {wordToDraw || t('inGame.waitingWordSelect', '等待选词')} 】
+                  </span>
+                  <span className="font-label-sm text-[10px] text-outline px-1.5 py-0.2 rounded-full bg-surface-container-highest shrink-0">
+                    {wordLength || (wordToDraw ? wordToDraw.length : 0)}字
                   </span>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {hintsLeft > 0 && (
-                  <button
-                    type="button"
-                    onClick={revealHint}
-                    className="tactile-btn flex items-center gap-1 bg-amber-500/10 text-amber-600 border border-amber-500/30 px-2 py-1 rounded-xl text-[11px] font-extrabold cursor-pointer"
-                  >
-                    <span>{t('inGame.hint', '提示')}({hintsLeft})</span>
-                  </button>
-                )}
+                {/* Reroll button */}
                 <button
                   type="button"
                   onClick={rerollWord}
                   disabled={rerollsLeft <= 0 || hasGuessedAnyone}
-                  className="tactile-btn flex items-center gap-1 bg-surface border border-outline-variant/60 text-on-surface px-2 py-1 rounded-xl text-[11px] font-extrabold hover:bg-surface-container transition-all cursor-pointer disabled:opacity-40"
+                  className="tactile-btn shrink-0 flex items-center gap-0.5 bg-surface-container-highest text-primary hover:bg-primary hover:text-on-primary px-2 py-0.5 rounded-full font-label-sm text-[10px] transition-colors cursor-pointer disabled:opacity-40"
+                  title={`换词 (剩${rerollsLeft}次)`}
                 >
-                  <span className="material-symbols-outlined text-[13px]">refresh</span>
-                  <span>{t('inGame.reroll', '换词')}({rerollsLeft})</span>
+                  <span className="material-symbols-outlined text-[12px]">autorenew</span>
+                  <span>换词</span>
                 </button>
               </div>
+
+              {/* Compact Floating Players Bubbles */}
+              <div className="flex items-center gap-1 bg-surface-container-low border border-surface-container rounded-xl px-2 py-1 shrink-0">
+                {players.map((p, idx) => {
+                  const isMe = p.id === userId;
+                  const scoreItem = scoresMap.get(p.id);
+                  const isSpeaking = speakingUserIds.includes(p.id);
+                  const isCurDrawer = p.id === gameState.drawerId;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="relative"
+                      title={`${p.nickname} (${scoreItem?.score ?? p.score}分)`}
+                    >
+                      <img
+                        className={`w-6 h-6 rounded-full object-cover ${
+                          isMe
+                            ? 'ring-2 ring-primary'
+                            : idx === 0
+                            ? 'ring-2 ring-amber-400'
+                            : 'ring-1 ring-surface-variant'
+                        } ${isSpeaking ? 'scale-110' : ''}`}
+                        alt={p.nickname}
+                        src={p.avatar}
+                      />
+                      {isCurDrawer && (
+                        <span className="absolute -bottom-0.5 -right-0.5 bg-primary text-white text-[7px] w-3 h-3 rounded-full flex items-center justify-center font-bold">
+                          画
+                        </span>
+                      )}
+                      {idx === 0 && !isCurDrawer && (
+                        <span className="absolute -top-1 -right-1 text-[9px] leading-none">👑</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          </header>
 
-          {/* Canvas Area with 800x600 4:3 Ratio */}
-          <main className="flex-1 w-full relative bg-slate-900 overflow-hidden flex items-center justify-center">
-            <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
+          {/* 2. MAXIMIZED CANVAS IN ERGONOMIC GOLDEN REACH ZONE + FLOATING DANMAKU */}
+          <main className="flex-1 px-3 flex flex-col justify-start min-h-[380px] relative z-10 pt-1 pb-1">
+            <div className="w-full flex-1 bg-surface-container-lowest rounded-2xl canvas-border-active relative border border-primary/30 flex flex-col overflow-hidden shadow-lg select-none">
+              {/* Top Action Floating Controls (Canvas Header Bar) */}
+              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-auto z-30">
+                {/* Drawer Status Pill */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                  <span className="font-label-sm text-[11px] text-on-surface font-extrabold">
+                    你的画板 · 黄金触控区
+                  </span>
+                </div>
+                {/* Quick Editing Tools: Undo, Redo, Clear Screen & Fullscreen Expand button */}
+                <div className="flex items-center gap-1 bg-surface-container-lowest/95 backdrop-blur-md p-1 rounded-full shadow-md border border-surface-container">
+                  <button
+                    type="button"
+                    onClick={undoStroke}
+                    disabled={!strokes.length || gameState.status !== 'drawing'}
+                    className="tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors disabled:opacity-40 cursor-pointer"
+                    title={t('inGame.undo', '撤销 (Undo)')}
+                    aria-label={t('inGame.undo', '撤销')}
+                  >
+                    <span className="material-symbols-outlined text-[19px]">undo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={redoStroke}
+                    disabled={gameState.status !== 'drawing'}
+                    className="tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors disabled:opacity-40 cursor-pointer"
+                    title={t('inGame.redo', '重做 (Redo)')}
+                    aria-label={t('inGame.redo', '重做')}
+                  >
+                    <span className="material-symbols-outlined text-[19px]">redo</span>
+                  </button>
+                  <div className="w-px h-4 bg-outline-variant my-auto"></div>
+                  <button
+                    type="button"
+                    onClick={clearStrokes}
+                    disabled={gameState.status !== 'drawing'}
+                    className="tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-secondary hover:bg-secondary-fixed transition-colors disabled:opacity-40 cursor-pointer"
+                    title={t('inGame.clear', '清屏 (Clear)')}
+                    aria-label={t('inGame.clear', '清屏')}
+                  >
+                    <span className="material-symbols-outlined text-[19px]">delete_sweep</span>
+                  </button>
+                  <div className="w-px h-4 bg-outline-variant my-auto"></div>
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="tactile-btn w-8 h-8 rounded-full flex items-center justify-center text-primary bg-primary-fixed hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                    title="收起/全屏缩放"
+                    aria-label="收起/全屏缩放"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+                  </button>
+                </div>
+              </div>
 
-            <div className="w-full h-full flex items-center justify-center p-1">
-              <DrawBoard
-                strokes={strokes}
-                onStrokeUpdate={(s) => addStroke(s)}
-                onStrokeComplete={(s) => addStroke(s)}
-                currentColor={currentColor}
-                currentSize={currentSize}
-                isEraser={isEraser}
-                isDrawer={true}
-                disabled={gameState.status !== 'drawing'}
-                width={800}
-                height={600}
-                className="w-full h-full rounded-2xl shadow-xl"
-              />
+              {/* Floating Danmaku Overlay lanes */}
+              <div className="absolute top-12 left-0 right-0 h-28 pointer-events-none z-20 overflow-hidden flex flex-col justify-start gap-2 pt-1 px-3">
+                {correctGuess && (
+                  <div className="danmaku-badge self-start flex items-center gap-1.5 bg-gradient-to-r from-emerald-600/90 via-teal-600/90 to-emerald-500/90 backdrop-blur-md text-white px-3 py-1 rounded-full shadow-lg border border-white/20 transform -translate-x-1">
+                    <span
+                      className="material-symbols-outlined text-[15px] animate-bounce"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      celebration
+                    </span>
+                    <span className="font-label-sm text-[12px] font-black">
+                      {correctGuess.payload.senderNickname} 猜中了！
+                    </span>
+                    <span className="bg-white/25 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+                      +100分 ⚡
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
+
+              {/* The Drawing Canvas Surface */}
+              <div className="w-full h-full relative flex items-center justify-center bg-white cursor-crosshair">
+                {/* Grid Dots Guideline Texture */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(#413FD6 1px, transparent 1px)',
+                    backgroundSize: '20px 20px',
+                  }}
+                />
+
+                <DrawBoard
+                  strokes={strokes}
+                  onStrokeUpdate={(s) => addStroke(s)}
+                  onStrokeComplete={(s) => addStroke(s)}
+                  currentColor={currentColor}
+                  currentSize={currentSize}
+                  isEraser={isEraser}
+                  isDrawer={true}
+                  disabled={gameState.status !== 'drawing'}
+                  width={800}
+                  height={600}
+                  className="w-full h-full rounded-2xl border-0 shadow-none"
+                />
+              </div>
+
+              {/* Canvas Bottom Info Bar */}
+              <div className="bg-surface-container-low/90 backdrop-blur-sm px-3 py-1 flex items-center justify-between border-t border-surface-container text-on-surface-variant z-10 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px] text-primary">touch_app</span>
+                  <span className="font-label-sm text-[11px] font-bold text-on-surface">
+                    大拇指黄金触控区已就绪
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-label-sm text-[11px] text-outline">笔画实时同步</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                </div>
+              </div>
             </div>
           </main>
 
-          {/* Bottom Dock Tools */}
-          <footer className="bg-surface border-t border-surface-variant/40 p-2 shrink-0 z-20 space-y-2">
-            {/* Color Swatches */}
-            <div className="flex items-center justify-between gap-1 px-1">
-              {mobileColorSwatches.map((item) => (
-                <button
-                  key={item.color}
-                  type="button"
-                  onClick={() => {
-                    setIsEraser(false);
-                    setCurrentColor(item.color);
-                  }}
-                  className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                    !isEraser && currentColor === item.color
-                      ? 'scale-125 ring-3 ring-primary shadow-md'
-                      : 'hover:scale-110'
-                  }`}
-                  style={{ backgroundColor: item.color }}
-                  title={item.title}
-                />
-              ))}
+          {/* 3. ERGONOMIC LOWER TOOLBAR & COLOR PALETTE */}
+          <div className="px-3 py-0.5 bg-surface shrink-0 z-20">
+            <div className="bg-surface-container-low/90 border border-surface-container rounded-full px-2.5 py-1 shadow-xs flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="material-symbols-outlined text-primary text-[14px] shrink-0">forum</span>
+                <div className="flex items-center gap-1 text-[11px] min-w-0 truncate">
+                  {latestGuessMessage ? (
+                    <>
+                      <span className="font-bold text-primary shrink-0">
+                        {latestGuessMessage.payload.senderNickname}:
+                      </span>
+                      <span className="text-on-surface truncate">
+                        {latestGuessMessage.payload.content}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-outline">暂无新消息，画出精彩一笔吧！</span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChatDrawerOpen(true)}
+                className="tactile-btn shrink-0 flex items-center gap-0.5 text-[10px] text-outline hover:text-primary px-1.5 py-0.5 rounded-full bg-surface-container font-semibold transition-colors cursor-pointer"
+                title="展开完整互动消息"
+              >
+                <span className="text-[10px]">{messages.length}条</span>
+                <span className="material-symbols-outlined text-[12px]">expand_less</span>
+              </button>
             </div>
+          </div>
 
-            {/* Brush Sizes, Eraser, Clear */}
-            <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center gap-1.5">
-                {[4, 8, 16, 24].map((size) => (
+          <section className="px-3 pb-2 pt-1 bg-surface shrink-0 z-30">
+            <div className="bg-surface-container-lowest rounded-2xl p-2.5 border border-surface-container canvas-shadow flex flex-col gap-2">
+              {/* Palette Swatches */}
+              <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {mobileColorSwatches.map((item) => (
                   <button
-                    key={size}
+                    key={item.color}
                     type="button"
-                    onClick={() => setCurrentSize(size)}
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors cursor-pointer ${
-                      currentSize === size && !isEraser
-                        ? 'bg-primary text-on-primary'
+                    onClick={() => {
+                      setIsEraser(false);
+                      setCurrentColor(item.color);
+                    }}
+                    className={`tactile-btn w-7 h-7 rounded-full shrink-0 shadow-xs relative flex items-center justify-center cursor-pointer ${
+                      item.border ? 'border-2 border-outline-variant' : ''
+                    } ${
+                      !isEraser && currentColor === item.color
+                        ? 'ring-2 ring-offset-2 ring-primary scale-110'
+                        : ''
+                    }`}
+                    style={{ backgroundColor: item.color }}
+                    title={item.title}
+                  >
+                    {!isEraser && currentColor === item.color && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          item.color === '#FFFFFF' ? 'bg-primary' : 'bg-white'
+                        }`}
+                      />
+                    )}
+                  </button>
+                ))}
+                {/* Color Wheel Picker */}
+                <button
+                  type="button"
+                  onClick={() => colorInputRef.current?.click()}
+                  className="tactile-btn w-7 h-7 rounded-full bg-gradient-to-tr from-pink-400 via-indigo-500 to-teal-300 flex items-center justify-center text-white shrink-0 shadow-sm cursor-pointer"
+                  title="更多色彩"
+                >
+                  <span className="material-symbols-outlined text-[14px]">palette</span>
+                </button>
+              </div>
+
+              {/* Core Tools Row: Pen, Eraser, Fill Bucket/Clear, Brush Size */}
+              <div className="flex items-center justify-between pt-1 border-t border-surface-container">
+                {/* Tools Cluster */}
+                <div className="flex items-center gap-1.5">
+                  {/* Pencil */}
+                  <button
+                    type="button"
+                    onClick={() => setIsEraser(false)}
+                    className={`tactile-btn flex items-center gap-1 px-3 py-1.5 rounded-full font-label-sm text-[12px] shadow-sm cursor-pointer ${
+                      !isEraser
+                        ? 'bg-primary text-on-primary font-black'
                         : 'bg-surface-container text-on-surface'
                     }`}
                   >
-                    {size === 4 ? t('inGame.brushFine', '细') : size === 8 ? t('inGame.brushMedium', '中') : size === 16 ? t('inGame.brushThick', '粗') : t('inGame.brushVeryThick', '特粗')}
+                    <span
+                      className="material-symbols-outlined text-[16px]"
+                      style={{ fontVariationSettings: !isEraser ? "'FILL' 1" : "'FILL' 0" }}
+                    >
+                      edit
+                    </span>
+                    <span>画笔</span>
                   </button>
-                ))}
-              </div>
 
-              <div className="flex items-center gap-1.5">
+                  {/* Eraser */}
+                  <button
+                    type="button"
+                    onClick={() => setIsEraser(true)}
+                    className={`tactile-btn flex items-center gap-1 px-2.5 py-1.5 rounded-full font-label-sm text-[12px] cursor-pointer transition-colors ${
+                      isEraser
+                        ? 'bg-secondary text-on-secondary font-black shadow-sm'
+                        : 'bg-surface-container text-on-surface hover:bg-surface-variant'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">ink_eraser</span>
+                    <span>橡皮</span>
+                  </button>
+                </div>
+
+                {/* Stroke Width Multi-toggle */}
+                <div className="flex items-center gap-1.5 bg-surface-container px-2.5 py-1 rounded-full">
+                  {[
+                    { size: 4, title: '细笔触', dotClass: 'w-1.5 h-1.5' },
+                    { size: 8, title: '中笔触', dotClass: 'w-2.5 h-2.5' },
+                    { size: 16, title: '粗笔触', dotClass: 'w-3.5 h-3.5' },
+                  ].map((s) => (
+                    <button
+                      key={s.size}
+                      type="button"
+                      onClick={() => setCurrentSize(s.size)}
+                      className={`tactile-btn w-5 h-5 rounded-full flex items-center justify-center cursor-pointer ${
+                        currentSize === s.size && !isEraser
+                          ? 'text-primary ring-2 ring-primary bg-surface-container-lowest'
+                          : 'text-outline hover:text-on-surface'
+                      }`}
+                      title={s.title}
+                    >
+                      <span className={`${s.dotClass} rounded-full bg-current`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. BOTTOM ACTION FOOTER: QUICK HINT, EMOJI & PUSH-TO-TALK */}
+          <footer className="bg-surface-container-lowest px-3 pt-1.5 pb-3 border-t border-surface-container shadow-md z-30 shrink-0">
+            <div className="flex flex-col gap-1.5">
+              {/* Danmaku Input */}
+              <form
+                onSubmit={handleSendDanmaku}
+                className="flex items-center gap-1.5 bg-surface-container-low border border-surface-container rounded-full px-2 py-1 shadow-xs"
+              >
                 <button
                   type="button"
-                  onClick={() => setIsEraser((prev) => !prev)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-colors cursor-pointer ${
-                    isEraser
-                      ? 'bg-secondary text-on-secondary shadow-md'
-                      : 'bg-surface-container text-on-surface'
+                  onClick={() => handleSendEmoji('🎨')}
+                  className="tactile-btn w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer"
+                  title="常用短语与表情"
+                >
+                  <span className="material-symbols-outlined text-[18px]">sentiment_satisfied</span>
+                </button>
+                <input
+                  type="text"
+                  value={danmakuInput}
+                  onChange={(e) => setDanmakuInput(e.target.value)}
+                  placeholder="发弹幕互动...（画手禁发答案）"
+                  className="flex-1 bg-transparent border-0 text-on-surface placeholder:text-outline font-body-sm text-[12px] p-0 focus:ring-0 focus:outline-none truncate"
+                />
+                <button
+                  type="submit"
+                  disabled={!danmakuInput.trim()}
+                  className="tactile-btn w-7 h-7 rounded-full bg-primary hover:bg-primary-container text-on-primary flex items-center justify-center shrink-0 shadow-xs transition-colors cursor-pointer disabled:opacity-40"
+                  title="发送弹幕"
+                >
+                  <span className="material-symbols-outlined text-[15px]">send</span>
+                </button>
+              </form>
+
+              {/* Bottom Buttons Row: Hint + Emojis + PTT */}
+              <div className="flex items-center justify-between gap-1.5">
+                {/* Hint Button */}
+                {hintsLeft > 0 && (
+                  <button
+                    type="button"
+                    onClick={revealHint}
+                    className="tactile-btn shrink-0 flex items-center gap-1 bg-surface-container-high text-primary hover:bg-primary hover:text-white px-2.5 py-1.5 rounded-full font-label-sm text-[11px] transition-colors cursor-pointer"
+                    title={`公布线索提示 (剩${hintsLeft}次)`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-[15px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      lightbulb
+                    </span>
+                    <span className="font-extrabold">提示</span>
+                  </button>
+                )}
+
+                {/* Quick Reaction Emojis */}
+                <div className="flex items-center gap-0.5 bg-surface-container-low p-0.5 rounded-full border border-surface-container">
+                  {['👏', '😂', '🔥', '💡'].map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => handleSendEmoji(em)}
+                      className="tactile-btn w-6 h-6 rounded-full hover:bg-surface-container flex items-center justify-center text-[13px] cursor-pointer"
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Push-to-Talk Mic Button */}
+                <button
+                  type="button"
+                  aria-label={
+                    voiceMode === 'hold'
+                      ? !isMuted
+                        ? t('voice.releaseToMuteAria', '松开静音')
+                        : t('voice.holdToTalkAria', '按住说话')
+                      : isMuted
+                      ? t('voice.unmuteAria', '开麦')
+                      : t('voice.muteAria', '静音')
+                  }
+                  {...(voiceMode === 'hold'
+                    ? {
+                        onPointerDown: (e) => {
+                          e.currentTarget.setPointerCapture(e.pointerId);
+                          holdToTalk(true);
+                        },
+                        onPointerUp: (e) => {
+                          try {
+                            e.currentTarget.releasePointerCapture(e.pointerId);
+                          } catch {}
+                          holdToTalk(false);
+                        },
+                        onPointerCancel: () => holdToTalk(false),
+                        onLostPointerCapture: () => holdToTalk(false),
+                        onKeyDown: (e) => {
+                          if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+                            e.preventDefault();
+                            holdToTalk(true);
+                          }
+                        },
+                        onKeyUp: (e) => {
+                          if (e.code === 'Space' || e.code === 'Enter') {
+                            e.preventDefault();
+                            holdToTalk(false);
+                          }
+                        },
+                        onBlur: () => holdToTalk(false),
+                      }
+                    : {
+                        onClick: toggleMute,
+                      })}
+                  className={`tactile-btn flex-1 flex items-center justify-center gap-1 py-1.5 px-3 rounded-full shadow-sm font-label-md text-[13px] font-black cursor-pointer select-none touch-none ${
+                    !isMuted
+                      ? 'bg-emerald-600 text-white shadow-md animate-pulse'
+                      : 'bg-primary hover:bg-primary-container text-on-primary'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">ink_eraser</span>
-                  <span>{t('inGame.eraser', '橡皮擦')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={clearStrokes}
-                  className="px-3 py-1.5 rounded-xl text-xs font-black bg-surface-container hover:bg-rose-500/10 hover:text-rose-600 transition-colors cursor-pointer"
-                >
-                  {t('inGame.clear', '清屏')}
+                  <span className="material-symbols-outlined text-[16px]">
+                    {!isMuted ? 'mic' : 'mic_none'}
+                  </span>
+                  <span>
+                    {voiceMode === 'hold'
+                      ? !isMuted
+                        ? t('voice.releaseToMute', '松开发言')
+                        : t('voice.holdToTalk', '按住说话')
+                      : isMuted
+                      ? t('voice.unmute', '开麦')
+                      : t('voice.mute', '静音')}
+                  </span>
                 </button>
               </div>
             </div>
@@ -475,12 +770,12 @@ export const InGameDrawerPage: React.FC = () => {
       </div>
 
       {/* =========================================================================
-          2. DESKTOP VIEW (>= lg: 1024px) - 3-Column Professional Widescreen Layout
+          2. DESKTOP VIEWPORT CONTAINER (>= lg: 1024px) - PlayHub Responsive Grid
          ========================================================================= */}
-      <div className="hidden lg:flex w-full h-full flex-col bg-surface overflow-hidden">
-        {/* Desktop Top Navbar */}
-        <header className="h-14 px-6 bg-surface-container-low border-b border-surface-variant/40 flex items-center justify-between shrink-0 z-30">
-          <div className="flex items-center gap-4">
+      <div className="hidden lg:flex flex-col w-full h-full bg-surface overflow-hidden">
+        {/* DESKTOP TOP BAR / GAME HUD */}
+        <header className="w-full bg-surface-container-lowest px-6 py-2.5 border-b border-surface-container shadow-xs flex items-center justify-between shrink-0 z-30">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-primary text-on-primary flex items-center justify-center font-black">
                 🎨
@@ -488,47 +783,38 @@ export const InGameDrawerPage: React.FC = () => {
               <span className="font-headline-sm text-lg font-black text-on-surface">PlayHub</span>
             </div>
             <div className="h-4 w-[1px] bg-outline-variant/60"></div>
-            <div className="flex items-center gap-2">
-              <span className="font-label-sm text-xs font-extrabold text-on-surface">
-                {room?.settings?.title || '你画我猜房间'}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className="px-2 py-0.5 rounded-full bg-surface border border-outline-variant/50 text-[11px] font-mono font-bold text-primary hover:bg-surface-variant cursor-pointer"
-                title="点击复制房号"
-              >
+
+            {/* Room Tag Chip */}
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="tactile-btn flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
+              title="点击复制房号"
+            >
+              <span className="material-symbols-outlined text-[15px] text-primary">tag</span>
+              <span className="font-label-sm text-xs font-bold tracking-tight">
                 #{roomCode} {copiedCode ? '✓' : ''}
-              </button>
-            </div>
-            <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-              {t('inGame.roundDrawingInfo', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮 · 绘画进行中` })}
+              </span>
+            </button>
+
+            <span className="text-xs font-label-sm px-3 py-1 rounded-full bg-surface-container-high text-primary font-bold">
+              第 {currentRound}/{totalRounds} 轮 · 绘画进行中
             </span>
+
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary-fixed text-primary font-bold text-xs">
+              <span className="material-symbols-outlined text-[15px]">edit</span>
+              <span>灵魂画手</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Countdown Badge */}
-            <div className="flex items-center gap-1.5 bg-secondary-fixed/50 border border-secondary/30 px-3 py-1 rounded-full shadow-xs">
-              <span className="material-symbols-outlined text-secondary text-[18px] animate-pulse">
-                timer
-              </span>
-              <span className="font-headline-sm text-base font-black text-secondary">
-                {t('inGame.countdownBadge', { time: timeLeft, defaultValue: `${timeLeft}s 倒计时` })}
-              </span>
+            {/* Timer Badge */}
+            <div className="flex items-center gap-2 bg-error-container text-secondary font-black px-3 py-1 rounded-full shadow-xs">
+              <span className="material-symbols-outlined text-[18px] animate-pulse">timer</span>
+              <span className="font-headline-sm text-sm">{timeLeft}s 倒计时</span>
             </div>
 
-            {/* Push to talk indicator / hold space */}
-            <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground font-semibold px-2">
-              <span>
-                {voiceMode === 'hold'
-                  ? !isMuted
-                    ? t('voice.speakingNow', '正在讲话...')
-                    : t('voice.holdSpaceToTalk', '按住空格讲话')
-                  : t('voice.openMicMode', '自由麦模式')}
-              </span>
-            </div>
-
-            {/* Audio & Mic Controls */}
+            {/* Push to talk voice button */}
             <button
               type="button"
               aria-label={
@@ -571,172 +857,175 @@ export const InGameDrawerPage: React.FC = () => {
                 : {
                     onClick: toggleMute,
                   })}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
+              className={`tactile-btn px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
                 !isMuted
-                  ? 'bg-emerald-600/10 text-emerald-600 border-emerald-500/30 animate-pulse'
-                  : 'bg-surface-container text-muted-foreground border-outline-variant/50'
+                  ? 'bg-emerald-600 text-white shadow-sm animate-pulse'
+                  : 'bg-surface-container text-on-surface hover:bg-surface-variant'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">
-                {isMuted ? 'mic_off' : 'mic'}
+                {!isMuted ? 'mic' : 'mic_off'}
               </span>
               <span>
                 {voiceMode === 'hold'
                   ? !isMuted
                     ? t('voice.speakingNow', '发言中...')
-                    : t('voice.holdToTalk', '按住说话')
+                    : t('voice.holdToTalk', '按住说话 (Space)')
                   : isMuted
                   ? t('voice.unmute', '开麦')
                   : t('voice.mute', '静音')}
               </span>
             </button>
 
+            {/* Deafen toggle */}
             <button
               type="button"
               onClick={toggleDeafen}
               aria-label={isDeafened ? '取消闭音' : '闭音'}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`tactile-btn p-2 rounded-full border text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
                 isDeafened
                   ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
                   : 'bg-surface-container text-muted-foreground border-outline-variant/50'
               }`}
+              title={isDeafened ? '取消闭音' : '闭音'}
             >
-              <span className="material-symbols-outlined text-[16px]">
+              <span className="material-symbols-outlined text-[18px]">
                 {isDeafened ? 'volume_off' : 'volume_up'}
               </span>
-              <span>{isDeafened ? t('inGame.cancelDeafen', '取消闭音') : t('inGame.deafenMute', '闭音')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsDanmakuOn((prev) => !prev)}
+              className={`tactile-btn px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer ${
+                isDanmakuOn ? 'bg-primary-fixed text-primary' : 'bg-surface-container text-outline'
+              }`}
+            >
+              {isDanmakuOn ? '弹幕: 开' : '弹幕: 关'}
             </button>
 
             <button
               type="button"
               onClick={handleLeave}
-              className="px-3 py-1.5 rounded-xl bg-surface-container hover:bg-rose-500/10 hover:text-rose-600 text-xs font-black transition-colors cursor-pointer"
+              className="tactile-btn px-3 py-1.5 rounded-full bg-error-container text-error text-xs font-bold hover:bg-rose-500/20 transition-colors cursor-pointer"
             >
-              {t('inGame.exitRoom', '退出房间')}
+              退出房间
             </button>
           </div>
         </header>
 
-        {/* Desktop 3-Column Layout */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Column (288px): Players & Scores */}
-          <aside className="w-72 bg-surface-container-lowest border-r border-surface-variant/40 flex flex-col justify-between p-4 shrink-0 overflow-y-auto">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-sm text-on-surface">{t('inGame.playersLeaderboard', '玩家榜单')}</h4>
-                <span className="text-xs font-bold text-muted-foreground">
-                  {t('inGame.playersCount', { current: players.length, total: room?.settings?.maxPlayers || 8, defaultValue: `${players.length}/${room?.settings?.maxPlayers || 8}人` })}
-                </span>
-              </div>
+        {/* Subheader: Target Word Pill + Reroll + Hint */}
+        <div className="w-full bg-surface-container-low px-6 py-2 border-b border-surface-container flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 rounded-full bg-primary text-on-primary text-xs font-extrabold">
+              当前作画题目
+            </span>
+            <span className="font-headline-sm text-lg font-black text-primary tracking-wide">
+              【 {wordToDraw || t('inGame.waitingWordSelect', '等待选词')} 】
+            </span>
+            <span className="text-xs font-bold text-outline">
+              {wordCategory ? `类别: ${wordCategory} · ` : ''}
+              {wordLength || (wordToDraw ? wordToDraw.length : 0)}个字
+            </span>
+          </div>
 
-              <div className="space-y-2">
-                {players.map((p, idx) => {
-                  const scoreItem = scoresMap.get(p.id);
-                  const scoreVal = scoreItem?.score ?? p.score;
-                  const isSpeaking = speakingUserIds.includes(p.id);
-                  const isMe = p.id === userId;
-                  const isCurDrawer = p.id === gameState?.drawerId;
-                  return (
-                    <div
-                      key={p.id}
-                      className={`p-3 rounded-2xl flex items-center justify-between border transition-all ${
-                        isCurDrawer
-                          ? 'bg-primary/10 border-primary/40'
-                          : 'bg-surface-container-low border-surface-variant/30'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="relative">
-                          <img
-                            src={p.avatar}
-                            alt={p.nickname}
-                            className={`w-9 h-9 rounded-full object-cover ${
-                              isSpeaking ? 'ring-2 ring-emerald-500' : ''
-                            }`}
-                          />
-                          {idx === 0 && (
-                            <span className="absolute -top-1 -left-1 text-xs">👑</span>
-                          )}
-                          {isCurDrawer && (
-                            <span className="absolute -bottom-1 -right-1 text-xs">🎨</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1">
-                            <span className="font-extrabold text-xs text-on-surface truncate max-w-[90px]">
-                              {p.nickname}
-                            </span>
-                            {isMe && <span className="text-[10px] text-primary font-bold">(我)</span>}
-                          </div>
-                          <span className="text-[11px] text-muted-foreground font-semibold">
-                            {scoreItem?.hasGuessedCorrectly ? t('inGame.guessedCorrectly', '✓ 已猜中') : isCurDrawer ? t('inGame.imArtist', '作画中') : t('inGame.imGuessing', '猜词中')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="font-black text-sm text-primary font-mono block">
-                          {scoreVal}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">{t('inGame.scorePoints', '积分')}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
+          <div className="flex items-center gap-2">
+            {hintsLeft > 0 && (
+              <button
+                type="button"
+                onClick={revealHint}
+                className="tactile-btn px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-bold hover:bg-amber-500/20 cursor-pointer"
+              >
+                公布首字提示 (剩{hintsLeft}次)
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleCopyCode}
-              className="w-full py-2.5 rounded-xl border-2 border-dashed border-outline-variant/60 hover:border-primary/60 text-xs font-bold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-4"
+              onClick={rerollWord}
+              disabled={rerollsLeft <= 0 || hasGuessedAnyone}
+              className="tactile-btn px-3 py-1.5 rounded-full bg-surface border border-outline-variant/60 hover:bg-surface-variant text-xs font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-40"
             >
-              <span>{t('inGame.inviteFriends', { code: roomCode, defaultValue: `+ 邀请好友 (#${roomCode})` })}</span>
+              换题 (剩{rerollsLeft}次)
             </button>
-          </aside>
+          </div>
+        </div>
 
-          {/* Center Column (Flex-1): Canvas Studio */}
-          <main className="flex-1 flex flex-col bg-slate-950 overflow-hidden relative">
-            {/* Center Top Subheader */}
-            <div className="h-12 px-6 bg-surface-container-low/90 backdrop-blur-md border-b border-surface-variant/40 flex items-center justify-between shrink-0 z-20">
-              <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 rounded-full bg-primary text-on-primary text-xs font-black">
-                  {t('inGame.drawingWord', '当前作画题目')}
-                </span>
-                <span className="font-headline-sm text-lg font-black text-on-surface tracking-tight">
-                  【 {wordToDraw || t('inGame.waitingWordSelect', '等待选词')} 】
-                </span>
-                <span className="text-xs text-muted-foreground font-bold">
-                  {wordCategory ? `类别: ${wordCategory} · ` : ''}{t('inGame.wordCharsDesktop', { length: wordLength, defaultValue: `${wordLength}个字` })}
-                </span>
-              </div>
+        {/* DESKTOP BODY 12-COLUMN FLUID CONTAINER (max 1440px) */}
+        <div className="flex-1 max-w-[1440px] w-full mx-auto flex gap-4 p-4 min-h-0 overflow-hidden">
+          {/* LEFT / CENTER COLUMN (Canvas + Palette) */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0 min-h-0 overflow-hidden">
+            {/* Maximized Canvas Card */}
+            <section className="flex-1 bg-surface-container-lowest rounded-2xl border border-primary/30 canvas-border-active canvas-shadow flex flex-col justify-between overflow-hidden relative min-h-[360px]">
+              {/* Canvas Header Floating Controls */}
+              <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-30 pointer-events-auto">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border border-surface-container text-on-surface">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                  <span className="font-label-sm text-xs font-black">你的画板 · 黄金绘作区</span>
+                </div>
 
-              <div className="flex items-center gap-2">
-                {hintsLeft > 0 && (
+                {/* Edit cluster: Undo, Redo, Clear, Fullscreen */}
+                <div className="flex items-center gap-1.5 bg-surface-container-lowest/95 backdrop-blur-md p-1 rounded-full shadow-md border border-surface-container">
                   <button
                     type="button"
-                    onClick={revealHint}
-                    className="px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-bold hover:bg-amber-500/20 cursor-pointer"
+                    onClick={undoStroke}
+                    disabled={!strokes.length || gameState.status !== 'drawing'}
+                    className="tactile-btn px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-surface-container disabled:opacity-40 cursor-pointer"
+                    title={t('inGame.undo', '撤销')}
+                    aria-label={t('inGame.undo', '撤销')}
                   >
-                    {t('inGame.publishFirstHint', { count: hintsLeft, defaultValue: `公布首字提示 (剩${hintsLeft}次)` })}
+                    <span className="material-symbols-outlined text-[16px]">undo</span>
+                    <span>撤销</span>
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={rerollWord}
-                  disabled={rerollsLeft <= 0 || hasGuessedAnyone}
-                  className="px-3 py-1 rounded-xl bg-surface border border-outline-variant/60 hover:bg-surface-variant text-xs font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-40"
-                >
-                  {t('inGame.changeWordDesktop', { count: rerollsLeft, defaultValue: `换题 (剩${rerollsLeft}次)` })}
-                </button>
+                  <button
+                    type="button"
+                    onClick={redoStroke}
+                    disabled={gameState.status !== 'drawing'}
+                    className="tactile-btn px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-surface-container disabled:opacity-40 cursor-pointer"
+                    title={t('inGame.redo', '重做')}
+                    aria-label={t('inGame.redo', '重做')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">redo</span>
+                    <span>重做</span>
+                  </button>
+                  <div className="w-px h-4 bg-outline-variant my-auto"></div>
+                  <button
+                    type="button"
+                    onClick={clearStrokes}
+                    disabled={gameState.status !== 'drawing'}
+                    className="tactile-btn px-2.5 py-1 rounded-full text-xs font-bold text-secondary hover:bg-secondary-fixed disabled:opacity-40 cursor-pointer"
+                    title={t('inGame.clear', '清屏')}
+                    aria-label={t('inGame.clear', '清屏')}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
+                    <span>清屏</span>
+                  </button>
+                  <div className="w-px h-4 bg-outline-variant my-auto"></div>
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="tactile-btn p-1.5 rounded-full text-primary bg-primary-fixed hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                    title="全屏模式"
+                    aria-label="全屏模式"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">open_in_full</span>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Canvas Stage */}
-            <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden">
+              {/* Danmaku Barrage */}
               <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
 
-              <div className="w-full h-full max-w-[800px] max-h-[600px] aspect-[4/3] relative flex items-center justify-center shadow-2xl rounded-2xl overflow-hidden">
+              {/* Real Drawing Canvas Area */}
+              <div className="w-full flex-1 relative flex items-center justify-center bg-white overflow-hidden min-h-[300px]">
+                {/* Subtle Grid Dots */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(#413FD6 1px, transparent 1px)',
+                    backgroundSize: '20px 20px',
+                  }}
+                />
+
                 <DrawBoard
                   strokes={strokes}
                   onStrokeUpdate={(s) => addStroke(s)}
@@ -748,15 +1037,27 @@ export const InGameDrawerPage: React.FC = () => {
                   disabled={gameState.status !== 'drawing'}
                   width={800}
                   height={600}
-                  className="w-full h-full rounded-2xl border-0"
+                  className="w-full h-full aspect-[4/3] max-w-[800px] max-h-[600px] rounded-xl border-0 shadow-none"
                 />
               </div>
-            </div>
 
-            {/* Bottom Toolbar Dock */}
-            <footer className="h-16 px-6 bg-surface-container-low border-t border-surface-variant/40 flex items-center justify-between shrink-0 z-20">
+              {/* Canvas Bottom Info Bar */}
+              <div className="bg-surface-container-low px-4 py-1.5 flex items-center justify-between border-t border-surface-container text-xs text-on-surface-variant shrink-0">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span className="material-symbols-outlined text-[16px] text-primary">touch_app</span>
+                  <span>触控画板已就绪 · 完美还原笔触</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-outline">笔画实时广播中</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+              </div>
+            </section>
+
+            {/* Bottom Toolbar & Color Palette */}
+            <footer className="bg-surface-container-lowest p-3 rounded-2xl border border-surface-container shadow-xs flex items-center justify-between gap-4 shrink-0">
               {/* Palette */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {desktopColorSwatches.map((hex) => (
                   <button
                     key={hex}
@@ -765,7 +1066,9 @@ export const InGameDrawerPage: React.FC = () => {
                       setIsEraser(false);
                       setCurrentColor(hex);
                     }}
-                    className={`w-6 h-6 rounded-full transition-transform cursor-pointer ${
+                    className={`tactile-btn w-6 h-6 rounded-full transition-transform cursor-pointer ${
+                      hex === '#FFFFFF' ? 'border border-outline-variant' : ''
+                    } ${
                       !isEraser && currentColor === hex
                         ? 'scale-125 ring-2 ring-primary shadow-sm'
                         : 'hover:scale-110'
@@ -773,17 +1076,54 @@ export const InGameDrawerPage: React.FC = () => {
                     style={{ backgroundColor: hex }}
                   />
                 ))}
+                {/* Color Wheel */}
+                <button
+                  type="button"
+                  onClick={() => colorInputRef.current?.click()}
+                  className="tactile-btn w-6 h-6 rounded-full bg-gradient-to-tr from-pink-400 via-indigo-500 to-teal-300 flex items-center justify-center text-white shrink-0 shadow-sm cursor-pointer ml-1"
+                  title="自定义取色器"
+                >
+                  <span className="material-symbols-outlined text-[13px]">palette</span>
+                </button>
               </div>
 
-              {/* Stroke Size and Eraser/Clear */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-surface-variant/40">
+              {/* Tools & Stroke Widths */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-1 bg-surface-container p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setIsEraser(false)}
+                    className={`tactile-btn px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                      !isEraser
+                        ? 'bg-primary text-on-primary shadow-xs'
+                        : 'text-on-surface hover:bg-surface-variant'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">edit</span>
+                    <span>画笔</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEraser(true)}
+                    className={`tactile-btn px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                      isEraser
+                        ? 'bg-secondary text-on-secondary shadow-xs'
+                        : 'text-on-surface hover:bg-surface-variant'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">ink_eraser</span>
+                    <span>橡皮</span>
+                  </button>
+                </div>
+
+                {/* Stroke Sizes */}
+                <div className="flex items-center gap-1 bg-surface-container p-1 rounded-xl">
                   {[4, 8, 16, 24].map((size) => (
                     <button
                       key={size}
                       type="button"
                       onClick={() => setCurrentSize(size)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      className={`tactile-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                         currentSize === size && !isEraser
                           ? 'bg-primary text-on-primary'
                           : 'text-on-surface hover:bg-surface-variant'
@@ -793,166 +1133,214 @@ export const InGameDrawerPage: React.FC = () => {
                     </button>
                   ))}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsEraser((p) => !p)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer transition-colors ${
-                    isEraser
-                      ? 'bg-secondary text-on-secondary shadow-sm'
-                      : 'bg-surface border border-outline-variant/60 text-on-surface'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[15px]">ink_eraser</span>
-                  <span>{t('inGame.eraser', '橡皮擦')}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={undoStroke}
-                  disabled={!strokes.length || gameState.status !== 'drawing'}
-                  title={t('inGame.undo', '撤销')}
-                  aria-label={t('inGame.undo', '撤销')}
-                  className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer disabled:opacity-40"
-                >
-                  {t('inGame.undo', '撤销')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={redoStroke}
-                  disabled={gameState.status !== 'drawing'}
-                  title={t('inGame.redo', '重做')}
-                  aria-label={t('inGame.redo', '重做')}
-                  className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors cursor-pointer disabled:opacity-40"
-                >
-                  {t('inGame.redo', '重做')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={clearStrokes}
-                  disabled={gameState.status !== 'drawing'}
-                  title={t('inGame.clear', '清屏')}
-                  aria-label={t('inGame.clear', '清屏')}
-                  className="px-3 py-1.5 rounded-xl bg-surface border border-outline-variant/60 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition-colors cursor-pointer disabled:opacity-40"
-                >
-                  {t('inGame.clear', '清屏')}
-                </button>
               </div>
             </footer>
-          </main>
+          </div>
 
-          {/* Right Column (352px): Danmaku & Chat Stream */}
-          <aside className="w-88 bg-surface-container-lowest border-l border-surface-variant/40 flex flex-col justify-between shrink-0 overflow-hidden">
-            {/* Tab header */}
-            <div className="h-12 px-4 border-b border-surface-variant/40 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDesktopChatTab('guess')}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
-                    desktopChatTab === 'guess'
-                      ? 'bg-primary text-on-primary'
-                      : 'text-muted-foreground hover:bg-surface-variant'
-                  }`}
-                >
-                  {t('inGame.liveGuessFeed', '实时猜词动态')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDesktopChatTab('chat')}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
-                    desktopChatTab === 'chat'
-                      ? 'bg-primary text-on-primary'
-                      : 'text-muted-foreground hover:bg-surface-variant'
-                  }`}
-                >
-                  {t('inGame.roomChatTab', '房间聊天')}
-                </button>
+          {/* RIGHT COLUMN (Player Seats & Live Guess/Chat Stream) */}
+          <div className="w-[360px] xl:w-[400px] shrink-0 flex flex-col gap-3 min-h-0 overflow-hidden">
+            {/* Player Leaderboard */}
+            <section className="bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col shrink-0">
+              <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[18px] text-secondary-container">
+                    leaderboard
+                  </span>
+                  <span className="font-label-sm text-sm font-bold text-on-surface">实时玩家榜</span>
+                </div>
+                <span className="text-xs text-outline font-bold">
+                  {players.length}/{room.settings?.maxPlayers || 8}人在线
+                </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsDanmakuOn((p) => !p)}
-                className={`text-[11px] font-bold px-2 py-0.5 rounded-md cursor-pointer ${
-                  isDanmakuOn ? 'text-primary bg-primary/10' : 'text-muted-foreground'
-                }`}
-              >
-                {isDanmakuOn ? t('inGame.danmakuOn', '弹幕: 开') : t('inGame.danmakuOff', '弹幕: 关')}
-              </button>
-            </div>
+              <div className="max-h-[180px] overflow-y-auto space-y-1.5 pt-2 custom-scroll">
+                {players.map((p, idx) => {
+                  const isSpeaking = speakingUserIds.includes(p.id);
+                  const scoreItem = scoresMap.get(p.id);
+                  const scoreVal = scoreItem?.score ?? p.score;
+                  const isMe = p.id === userId;
+                  const isCurDrawer = p.id === gameState.drawerId;
+                  const hasCorrect = scoreItem?.hasGuessedCorrectly;
 
-            {/* Message Feed */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-2.5">
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-medium">
-                  {t('inGame.noGuessRecords', '暂无猜词记录，作画后玩家抢答将显示于此')}
-                </div>
-              ) : (
-                messages.map((m) => {
-                  const isCorrect = m.payload.type === 'correct_guess';
                   return (
                     <div
-                      key={m.payload.id}
-                      className={`p-2.5 rounded-xl text-xs ${
-                        isCorrect
-                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold'
-                          : 'bg-surface-container-low text-on-surface'
+                      key={p.id}
+                      className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition-all ${
+                        isCurDrawer
+                          ? 'bg-primary-fixed/50 border-primary/30'
+                          : hasCorrect
+                          ? 'bg-emerald-500/10 border-emerald-500/30'
+                          : isMe
+                          ? 'bg-surface-container border-primary-container'
+                          : 'bg-surface-container-low border-surface-container'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="font-extrabold text-[11px] text-primary">
-                          {m.payload.senderNickname}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(m.timestamp).toLocaleTimeString([], {
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}
-                        </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="relative w-7 h-7 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-xs font-bold overflow-hidden shrink-0">
+                          {p.avatar ? (
+                            <img src={p.avatar} alt={p.nickname} className="w-full h-full object-cover" />
+                          ) : (
+                            p.nickname.slice(0, 1)
+                          )}
+                          {isCurDrawer && (
+                            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-secondary-container text-on-primary flex items-center justify-center text-[8px]">
+                              🎨
+                            </span>
+                          )}
+                          {hasCorrect && !isCurDrawer && (
+                            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center text-[8px]">
+                              ✓
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="font-label-sm text-xs font-bold text-on-surface truncate max-w-[100px]">
+                              {p.nickname}
+                            </span>
+                            {isMe && <span className="text-[10px] text-primary font-bold">(你)</span>}
+                            {idx === 0 && <span className="text-[10px]">👑</span>}
+                          </div>
+                          <span className="text-[10px] text-on-surface-variant font-medium">
+                            {isCurDrawer ? '作画中' : hasCorrect ? '✓ 已猜对' : '猜词中'}
+                          </span>
+                        </div>
                       </div>
-                      <p className="leading-relaxed">{m.payload.content}</p>
+
+                      <div className="text-right shrink-0">
+                        <span className="font-black text-sm text-primary font-mono block">{scoreVal}</span>
+                        <span className="text-[9px] text-outline font-medium">积分</span>
+                      </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            </section>
 
-            {/* Send Danmaku / Chat Bar */}
-            <form
-              onSubmit={handleSendDanmaku}
-              className="p-3 bg-surface-container-low border-t border-surface-variant/40 flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={danmakuInput}
-                onChange={(e) => setDanmakuInput(e.target.value)}
-                placeholder={t('inGame.sendDanmakuPlaceholder', '发送弹幕互动...')}
-                className="flex-1 bg-surface px-3 py-2 rounded-xl text-xs font-bold border border-outline-variant/60 focus:outline-none focus:border-primary"
-              />
-              <button
-                type="submit"
-                disabled={!danmakuInput.trim()}
-                className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-black disabled:opacity-40 cursor-pointer"
+            {/* Live Guess & Room Chat Stream Card */}
+            <section className="flex-1 bg-surface-container-lowest rounded-2xl p-3 border border-surface-container shadow-xs flex flex-col justify-between overflow-hidden min-h-0">
+              <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60 shrink-0">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDesktopChatTab('guess')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                      desktopChatTab === 'guess'
+                        ? 'bg-primary text-on-primary'
+                        : 'text-outline hover:bg-surface-container'
+                    }`}
+                  >
+                    实时猜词动态
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopChatTab('chat')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                      desktopChatTab === 'chat'
+                        ? 'bg-primary text-on-primary'
+                        : 'text-outline hover:bg-surface-container'
+                    }`}
+                  >
+                    房间聊天
+                  </button>
+                </div>
+                <span className="text-[10px] text-outline">画手禁剧透</span>
+              </div>
+
+              {/* Message Feed */}
+              <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1 custom-scroll text-xs">
+                {messages.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-xs text-outline font-medium">
+                    暂无猜词记录，作画后玩家抢答将显示于此
+                  </div>
+                ) : (
+                  messages.map((m) => {
+                    const isCorrect = m.payload.type === 'correct_guess';
+                    const isMe = m.senderId === userId;
+                    const timeStr = new Date(m.timestamp).toLocaleTimeString([], {
+                      minute: '2-digit',
+                      second: '2-digit',
+                    });
+
+                    if (isCorrect) {
+                      return (
+                        <div
+                          key={m.payload.id}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-tertiary-fixed/30 border border-tertiary-fixed-dim text-on-tertiary-fixed font-medium"
+                        >
+                          <span className="text-base">🎉</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            <span className="font-bold">{m.payload.senderNickname}</span>
+                            <span>猜中了正确答案！</span>
+                          </div>
+                          <span className="font-black text-tertiary">+100分</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={m.payload.id} className="flex items-start gap-1.5">
+                        <span
+                          className={`font-bold shrink-0 ${isMe ? 'text-primary' : 'text-on-surface-variant'}`}
+                        >
+                          {m.payload.senderNickname} {isMe ? '(你)' : ''}:
+                        </span>
+                        <div className="flex items-center gap-1 bg-surface-container px-2.5 py-0.5 rounded-full text-on-surface font-body-sm text-xs">
+                          <span>{m.payload.content}</span>
+                          {m.payload.isDanmaku ? (
+                            <span className="text-secondary font-bold text-[10px] flex items-center">
+                              <span className="material-symbols-outlined text-[12px]">chat</span>
+                            </span>
+                          ) : (
+                            <span className="text-error font-bold text-[10px] flex items-center">
+                              <span className="material-symbols-outlined text-[12px]">close</span> 不对
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-outline ml-auto self-center">{timeStr}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Danmaku Input Bar */}
+              <form
+                onSubmit={handleSendDanmaku}
+                className="pt-2 border-t border-surface-container-high/60 flex items-center gap-2 shrink-0"
               >
-                {t('inGame.send', '发送')}
-              </button>
-            </form>
-          </aside>
+                <input
+                  type="text"
+                  value={danmakuInput}
+                  onChange={(e) => setDanmakuInput(e.target.value)}
+                  placeholder="发送互动弹幕...（禁发答案）"
+                  className="flex-1 bg-surface-container-low px-3 py-2 rounded-xl text-xs font-bold border border-outline-variant/60 focus:outline-none focus:border-primary"
+                />
+                <button
+                  type="submit"
+                  disabled={!danmakuInput.trim()}
+                  className="tactile-btn px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-black disabled:opacity-40 cursor-pointer"
+                >
+                  发送
+                </button>
+              </form>
+            </section>
+          </div>
         </div>
       </div>
 
       {/* Word Selection Dialog (When status is selecting_word) */}
-      {gameState?.status === 'selecting_word' && gameState.wordChoices && (
+      {gameState.status === 'selecting_word' && gameState.wordChoices && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="w-full max-w-md bg-surface p-6 rounded-3xl border-2 border-primary/40 shadow-2xl space-y-5 text-center">
             <div className="space-y-1">
               <span className="text-xs font-black text-primary uppercase tracking-wider">
                 {t('inGame.pickWordSubtitle', '轮到你作画啦！')}
               </span>
-              <h3 className="text-2xl font-black text-on-surface">{t('inGame.pickWordTitle', '请选择本回合你要画的词语')}</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-2xl font-black text-on-surface">
+                {t('inGame.pickWordTitle', '请选择本回合你要画的词语')}
+              </h3>
+              <p className="text-xs text-outline">
                 {t('inGame.pickWordDesc', '选择后题目将对其他玩家隐藏，作画后即可开始抢答！')}
               </p>
             </div>
@@ -963,7 +1351,7 @@ export const InGameDrawerPage: React.FC = () => {
                   key={choice}
                   type="button"
                   onClick={() => selectWord(choice)}
-                  className="py-3 px-4 rounded-2xl bg-primary/10 hover:bg-primary hover:text-white border border-primary/30 text-primary font-black text-base transition-all hover:scale-102 cursor-pointer"
+                  className="tactile-btn py-3 px-4 rounded-2xl bg-primary/10 hover:bg-primary hover:text-white border border-primary/30 text-primary font-black text-base transition-all cursor-pointer"
                 >
                   {choice}
                 </button>
@@ -974,23 +1362,28 @@ export const InGameDrawerPage: React.FC = () => {
       )}
 
       {/* Turn End Summary Overlay */}
-      {gameState?.status === 'turn_ended' && gameState.turnSummary && (
+      {gameState.status === 'turn_ended' && gameState.turnSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-surface p-6 rounded-3xl border-2 border-border shadow-2xl space-y-4 text-center">
-            <span className="text-2xl">⏳</span>
+            <span className="text-3xl">🎉</span>
             <div className="space-y-1">
               <h4 className="text-lg font-black text-on-surface">{t('inGame.turnEndedTitle', '本轮作画已结束')}</h4>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-outline">
                 {t('inGame.correctAnswerIs', '正确答案是：')}
-                <span className="text-primary font-black text-sm ml-1">
+                <span className="text-primary font-black text-base ml-1">
                   【{gameState.turnSummary.secretWord}】
                 </span>
               </p>
             </div>
             <div className="p-3 rounded-2xl bg-primary/10 text-primary text-xs font-bold">
-              {t('inGame.drawerEarnedReward', { score: gameState.turnSummary.drawerEarned, defaultValue: `你获得作画奖励: +${gameState.turnSummary.drawerEarned} 分` })}
+              {t('inGame.drawerEarnedReward', {
+                score: gameState.turnSummary.drawerEarned,
+                defaultValue: `你获得作画奖励: +${gameState.turnSummary.drawerEarned} 分`,
+              })}
             </div>
-            <p className="text-[11px] text-muted-foreground animate-pulse">{t('inGame.preparingNextRound', '正在准备下一轮...')}</p>
+            <p className="text-[11px] text-outline animate-pulse">
+              {t('inGame.preparingNextRound', '正在准备下一轮...')}
+            </p>
           </div>
         </div>
       )}

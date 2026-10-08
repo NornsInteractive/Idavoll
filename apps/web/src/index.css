@@ -63,6 +63,14 @@ body {
   scrollbar-width: none;
 }
 
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #c7c4d7;
+  border-radius: 999px;
+}
+
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
 }
