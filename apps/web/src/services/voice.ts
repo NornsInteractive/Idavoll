@@ -79,26 +79,30 @@ async function peerFor(id: string): Promise<Peer> {
     audio.autoplay = true;
     audio.muted = useRoomStore.getState().isDeafened;
     const transceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
-    if (stream) await transceiver.sender.replaceTrack(stream.getAudioTracks()[0]);
-    if (currentGeneration !== generation) { pc.close(); throw new Error('语音连接已取消'); }
     const peer: Peer = { pc, audio, sender: transceiver.sender, makingOffer: false, ignoreOffer: false, candidates: [] };
-    peers.set(id, peer);
-    pc.onicecandidate = event => { if (event.candidate) sendRoomAction('voice:signal', { targetId: id, signal: event.candidate.toJSON() }); };
+    pc.onicecandidate = event => { if (currentGeneration === generation && event.candidate) sendRoomAction('voice:signal', { targetId: id, signal: event.candidate.toJSON() }); };
     pc.ontrack = event => {
+      if (currentGeneration !== generation) return;
       const media = event.streams[0] || new MediaStream([event.track]);
       audio.srcObject = media;
       void audio.play().catch(() => useRoomStore.setState({ voiceError: '浏览器阻止了语音播放，请点击开麦或闭音按钮启用播放' }));
       meter(id, media);
     };
     pc.onnegotiationneeded = async () => {
-      try { peer.makingOffer = true; await pc.setLocalDescription(); sendRoomAction('voice:signal', { targetId: id, signal: { type: pc.localDescription!.type, sdp: pc.localDescription!.sdp } }); }
+      if (currentGeneration !== generation) return;
+      try { peer.makingOffer = true; await pc.setLocalDescription(); if (currentGeneration === generation) sendRoomAction('voice:signal', { targetId: id, signal: { type: pc.localDescription!.type, sdp: pc.localDescription!.sdp } }); }
       catch (error) { if (pc.signalingState !== 'closed') fail(error, currentGeneration); }
       finally { peer.makingOffer = false; }
     };
     pc.onconnectionstatechange = () => {
+      if (currentGeneration !== generation) return;
       if (pc.connectionState === 'connected') useRoomStore.setState({ voiceStatus: 'connected', voiceError: null });
       if (pc.connectionState === 'failed') { pc.restartIce(); useRoomStore.setState({ voiceError: '部分玩家语音连接失败，正在重试' }); }
     };
+    // replaceTrack can trigger negotiation before its promise resolves.
+    if (stream) await transceiver.sender.replaceTrack(stream.getAudioTracks()[0]);
+    if (currentGeneration !== generation) { pc.close(); throw new Error('语音连接已取消'); }
+    peers.set(id, peer);
     return peer;
   })();
   pendingPeers.set(id, pending);
