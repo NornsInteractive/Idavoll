@@ -1079,6 +1079,17 @@ export const InGameDrawerPage: React.FC = () => {
                   }}
                 />
 
+                {/* Floating Correct Guess Celebration Badge */}
+                {latestCorrectPlayer && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white px-5 py-2 rounded-full text-sm font-black shadow-xl flex items-center gap-2 animate-bounce pointer-events-none border border-white/20">
+                    <span className="material-symbols-outlined text-[18px]">celebration</span>
+                    <span>{latestCorrectPlayer.nickname} {t('inGame.guessedCorrectlyShort', '猜中了！')}</span>
+                    <span className="bg-white/25 text-xs px-2 py-0.5 rounded-full font-mono">
+                      {latestCorrectPlayer.guessRank ? `#${latestCorrectPlayer.guessRank}` : '✓'}
+                    </span>
+                  </div>
+                )}
+
                 <DrawBoard
                   strokes={strokes}
                   onStrokeUpdate={(s) => addStroke(s)}
