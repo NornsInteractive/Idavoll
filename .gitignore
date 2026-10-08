@@ -6,6 +6,9 @@ coverage
 build
 .wrangler
 *.local
+.dev.vars
+.env
+.env.*.secret
 .DS_Store
 .agents/skills/taste-skill/.git
 mcp_config.json

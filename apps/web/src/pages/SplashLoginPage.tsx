@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Gamepad2, Dices, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Gamepad2, Dices, ArrowRight, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { Button, Input, Card, Avatar } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
+import { guestLogin } from '../services/api';
 
 const AVATAR_SEEDS = [
   'LuckyFox',
@@ -28,28 +30,64 @@ const RANDOM_NICKNAMES = [
 export const SplashLoginPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { nickname: currentNick, avatar: currentAvatar, setUser } = useUserStore();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const { token, id, nickname: currentNick, avatar: currentAvatar, setUser } = useUserStore();
 
   const [nickname, setNickname] = useState(currentNick || '快乐小画家');
   const [selectedSeed, setSelectedSeed] = useState(AVATAR_SEEDS[0]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // If already authenticated, redirect to target or lobby
+  useEffect(() => {
+    if (token && id) {
+      const from = (location.state as any)?.from?.pathname || '/lobby';
+      navigate(from, { replace: true });
+    }
+  }, [token, id, location, navigate]);
 
   const handleRandomize = () => {
     const randomNick = RANDOM_NICKNAMES[Math.floor(Math.random() * RANDOM_NICKNAMES.length)];
     const randomSeed = AVATAR_SEEDS[Math.floor(Math.random() * AVATAR_SEEDS.length)];
     setNickname(randomNick);
     setSelectedSeed(randomSeed);
+    setError(null);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!nickname.trim()) {
+      setError(t('login.nicknamePlaceholder', '请输入玩家昵称'));
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
     const finalAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${selectedSeed}`;
-    setUser({
-      id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      nickname: nickname.trim() || '冒险者',
-      avatar: finalAvatar,
-      token: 'jwt_mock_token_playhub',
-    });
-    navigate('/lobby');
+
+    try {
+      const res = await guestLogin(nickname.trim(), finalAvatar);
+      setUser({
+        id: res.user.id,
+        nickname: res.user.nickname,
+        avatar: res.user.avatar,
+        token: res.token,
+      });
+      // Invalidate existing caches so new user stats are fresh
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['matches'] });
+      queryClient.invalidateQueries({ queryKey: ['drawings'] });
+
+      const from = (location.state as any)?.from?.pathname || '/lobby';
+      navigate(from, { replace: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '登录失败，请稍后重试';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,6 +115,18 @@ export const SplashLoginPage: React.FC = () => {
             <h1 className="text-3xl font-black tracking-tight text-foreground">PlayHub</h1>
             <p className="text-sm font-semibold text-muted-foreground">{t('login.subtitle')}</p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </motion.div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Avatar Selection Carousel */}
@@ -110,35 +160,54 @@ export const SplashLoginPage: React.FC = () => {
             {/* Nickname Input & Randomize Dice */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-foreground">玩家昵称</span>
+                <span className="text-xs font-extrabold text-foreground">{t('login.nickname', '玩家昵称')}</span>
                 <button
                   type="button"
                   onClick={handleRandomize}
-                  className="flex items-center gap-1 text-xs font-bold text-[var(--theme-primary,#5B5BF0)] hover:underline cursor-pointer"
+                  disabled={loading}
+                  className="flex items-center gap-1 text-xs font-bold text-[var(--theme-primary,#5B5BF0)] hover:underline cursor-pointer disabled:opacity-50"
                 >
                   <Dices className="w-3.5 h-3.5" />
-                  随机换一个
+                  {t('login.randomize', '随机换一个')}
                 </button>
               </div>
 
               <Input
                 value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={(e) => {
+                  setNickname(e.target.value);
+                  setError(null);
+                }}
                 placeholder={t('login.nicknamePlaceholder')}
                 required
-                maxLength={20}
+                maxLength={24}
+                disabled={loading}
               />
             </div>
 
             {/* Submit Button */}
-            <Button type="submit" size="lg" className="w-full text-base gap-2 font-black shadow-lg">
-              <span>{t('login.enterLobby')}</span>
-              <ArrowRight className="w-5 h-5" />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loading}
+              className="w-full text-base gap-2 font-black shadow-lg"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>{t('login.loggingIn', '正在登录...')}</span>
+                </>
+              ) : (
+                <>
+                  <span>{t('login.enterLobby')}</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
             </Button>
 
             <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-medium pt-2">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>免密即玩 · 跨平台多端同步 · 即开即连</span>
+              <span>{t('login.features', '免密即玩 · 跨平台多端同步 · 即开即连')}</span>
             </div>
           </form>
         </Card>

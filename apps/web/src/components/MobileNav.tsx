@@ -2,14 +2,16 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { LayoutGrid, Gamepad2, Users, User } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useRoomStore } from '../store/useRoomStore';
 
 export const MobileNav: React.FC = () => {
   const location = useLocation();
+  const room = useRoomStore((s) => s.room);
 
   const navItems = [
     { path: '/lobby', label: '大厅', icon: LayoutGrid },
     { path: '/games', label: '游戏库', icon: Gamepad2 },
-    { path: '/room/room_idavoll_demo', label: '房间', icon: Users },
+    { path: room ? `/room/${room.roomId}` : '/create-room', label: room ? '房间' : '建房', icon: Users },
     { path: '/profile', label: '我的', icon: User },
   ];
 

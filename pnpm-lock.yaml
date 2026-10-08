@@ -23,6 +23,9 @@ importers:
       '@idavoll/game-draw-and-guess':
         specifier: workspace:*
         version: link:../../packages/games/draw-and-guess
+      '@idavoll/game-sdk':
+        specifier: workspace:*
+        version: link:../../packages/game-sdk
       '@idavoll/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

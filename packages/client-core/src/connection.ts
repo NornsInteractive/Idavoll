@@ -62,11 +62,17 @@ export class GameConnection {
     }
 
     const unOpen = this.transport.onOpen(() => {
+      this.seqManager.reset();
       this.retryCount = 0;
       this.setState('connected');
     });
 
-    const unClose = this.transport.onClose(() => {
+    const unClose = this.transport.onClose((code) => {
+      if ([1000, 4001, 4401].includes(code)) {
+        this.cleanup();
+        this.setState('disconnected');
+        return;
+      }
       this.handleDisconnect();
     });
 
@@ -94,11 +100,15 @@ export class GameConnection {
       payload,
       timestamp: Date.now(),
     });
-    this.transport.send(message);
-    return true;
+    try { this.transport.send(message); return true; }
+    catch { this.handleDisconnect(); return false; }
   }
 
   private handleDisconnect() {
+    this.cleanup();
+    this.transport?.close(1000, 'Reconnecting');
+    this.transport = null;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.setState('reconnecting');
     const maxRetries = this.options.maxRetries ?? 5;
     if (this.retryCount >= maxRetries) {
@@ -112,6 +122,7 @@ export class GameConnection {
     this.retryCount++;
 
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
       this.connect();
     }, delay);
   }

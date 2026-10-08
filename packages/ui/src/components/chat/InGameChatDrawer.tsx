@@ -9,12 +9,7 @@ import {
   VolumeX,
   Radio,
   Sparkles,
-  CheckCircle2,
-  Trophy,
-  History,
   Zap,
-  MessageSquare,
-  ChevronDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage, UserProfile } from '@idavoll/protocol';
@@ -31,6 +26,10 @@ export interface InGameChatDrawerProps {
   players: UserProfile[];
   isMuted: boolean;
   onToggleMute: () => void;
+  isDeafened?: boolean;
+  onToggleDeafen?: () => void;
+  voiceMode?: 'hold' | 'open';
+  onSetVoiceMode?: (mode: 'hold' | 'open') => void;
   speakingUserIds?: string[];
   roomCode?: string;
   roundInfo?: string;
@@ -56,16 +55,18 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   players,
   isMuted,
   onToggleMute,
+  isDeafened = false,
+  onToggleDeafen,
+  voiceMode = 'open',
+  onSetVoiceMode,
   speakingUserIds = [],
-  roomCode = '84920',
-  roundInfo = '第 2/5 轮',
-  currentDrawerNickname = '小明',
+  roomCode = '',
+  roundInfo = '',
+  currentDrawerNickname = '',
   isDrawer = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'voice' | 'history' | 'phrases'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'voice' | 'phrases'>('chat');
   const [inputText, setInputText] = useState('');
-  const [voiceMode, setVoiceMode] = useState<'hold' | 'open'>('open');
-  const [isDeafened, setIsDeafened] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
-    onSendMessage(inputText.trim(), true);
+    onSendMessage(inputText.trim(), false);
     setInputText('');
   };
 
@@ -98,105 +99,51 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
           />
 
-          {/* Drawer Container (Slide up from bottom) */}
+          {/* Drawer Sheet */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-[32px] shadow-2xl flex flex-col max-h-[82vh] h-[680px] overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl border-t border-border shadow-2xl flex flex-col max-h-[85vh] h-[580px] overflow-hidden"
           >
-            {/* Top Handle */}
-            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 mx-auto my-2 shrink-0 cursor-grab" />
-
-            {/* Header: Exact Stitch Layout */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 shrink-0">
+            {/* Header Handle & Title */}
+            <div className="p-3 bg-muted/20 border-b border-border/60 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="w-8 h-8 rounded-full bg-[var(--theme-primary,#5B5BF0)] text-white flex items-center justify-center font-bold text-xs">
+                  💬
+                </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-base font-black text-foreground">房间畅聊与语音</h3>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                    <span className="px-2 py-0.5 rounded-full bg-[var(--theme-primary,#5B5BF0)]/15 text-[var(--theme-primary,#5B5BF0)] font-mono">
-                      房间 #{roomCode}
-                    </span>
-                    <span>{players.length}/8人在线</span>
-                    <span className="text-emerald-500 font-mono">📶 22ms</span>
-                  </div>
+                  <h4 className="font-extrabold text-sm text-foreground">
+                    房间交流 {roomCode ? `(#${roomCode})` : ''}
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground">
+                    {roundInfo} {currentDrawerNickname ? `· 画手: ${currentDrawerNickname}` : ''}
+                  </p>
                 </div>
               </div>
 
-              {/* Top Voice Controls */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsDeafened(!isDeafened)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-                    isDeafened ? 'bg-rose-500/15 text-rose-500' : 'bg-muted/70 text-foreground'
-                  }`}
-                  title={isDeafened ? '静音输出' : '声音开启'}
-                >
-                  {isDeafened ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onToggleMute}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-                    isMuted ? 'bg-rose-500/15 text-rose-500' : 'bg-emerald-500/15 text-emerald-600'
-                  }`}
-                  title={isMuted ? '已静音麦克风' : '麦克风工作中'}
-                >
-                  {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex items-center gap-1 px-4 py-2 border-b border-border/60 bg-muted/20 shrink-0 overflow-x-auto no-scrollbar">
+            {/* Quick Segmented Nav Tabs */}
+            <div className="flex items-center gap-1 px-4 py-2 bg-muted/40 border-b border-border/40 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab('chat')}
-                className={`relative px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                   activeTab === 'chat'
                     ? 'bg-card text-[var(--theme-primary,#5B5BF0)] shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <span>房间聊天</span>
-                <span className="ml-1 w-1.5 h-1.5 rounded-full bg-rose-500 inline-block align-middle" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('voice')}
-                className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                  activeTab === 'voice'
-                    ? 'bg-card text-[var(--theme-primary,#5B5BF0)] shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                实时语音 ({players.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('history')}
-                className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                  activeTab === 'history'
-                    ? 'bg-card text-[var(--theme-primary,#5B5BF0)] shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                局内记录
+                聊天动态 ({messages.length})
               </button>
 
               <button
@@ -213,18 +160,30 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
             </div>
 
             {/* Microphone Status Strip */}
-            <div className="flex items-center justify-between px-4 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-b border-emerald-500/20 text-xs font-bold shrink-0">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>{isMuted ? '麦克风已关闭' : '麦克风已开启 · AI降噪已启用'}</span>
+            <div className="flex items-center justify-between px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-b border-emerald-500/20 text-xs font-bold shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{isMuted ? '麦克风已静音' : '麦克风已开'}</span>
+                {isDeafened && <span className="text-rose-500 font-extrabold">(已闭音)</span>}
               </div>
-              <button
-                type="button"
-                onClick={onToggleMute}
-                className="text-xs font-extrabold underline hover:text-emerald-700 cursor-pointer"
-              >
-                {isMuted ? '一键开麦' : '一键静音'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onToggleMute}
+                  className="text-xs font-extrabold underline hover:text-emerald-700 cursor-pointer"
+                >
+                  {isMuted ? '开麦' : '静音'}
+                </button>
+                {onToggleDeafen && (
+                  <button
+                    type="button"
+                    onClick={onToggleDeafen}
+                    className="text-xs font-extrabold underline text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    {isDeafened ? '取消闭音' : '闭音'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Voice Player Avatars Strip */}
@@ -253,11 +212,11 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                       </div>
                       <div className="text-[10px] text-muted-foreground font-medium">
                         {isSpeaking ? (
-                          <span className="text-emerald-600 font-bold">正在发言</span>
-                        ) : isMe ? (
-                          '自由麦开'
+                          <span className="text-emerald-600 font-bold">发言中</span>
+                        ) : p.micMuted ? (
+                          '静音'
                         ) : (
-                          '倾听中'
+                          '就绪'
                         )}
                       </div>
                     </div>
@@ -266,64 +225,64 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               })}
             </div>
 
-            {/* Chat Body & Messages */}
+            {/* Chat Body & Real Messages */}
             <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 bg-background/50">
-              {/* Event Announcement Pill 1 */}
-              <div className="flex justify-center">
-                <div className="px-3.5 py-1 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{roundInfo}开始，本轮画手为 {currentDrawerNickname}</span>
+              {roundInfo && currentDrawerNickname && (
+                <div className="flex justify-center">
+                  <div className="px-3.5 py-1 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{roundInfo} · 画手为 {currentDrawerNickname}</span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Event Announcement Pill 2 (Guess Notification) */}
-              <div className="flex justify-center">
-                <div className="px-4 py-1.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-extrabold flex items-center gap-2 shadow-sm">
-                  <span>🎉 阿雅 (Aya) 在 18s 时猜中了谜底，获得 +100 分！</span>
-                </div>
-              </div>
+              )}
 
               {/* Message List */}
-              {messages.map((msg) => {
-                const isMe = msg.senderId === currentUserId;
-                const isCorrect = msg.payload.type === 'correct_guess';
+              {messages.length === 0 ? (
+                <div className="h-32 flex items-center justify-center text-xs text-muted-foreground">
+                  暂无消息记录，开始发言吧！
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isMe = msg.senderId === currentUserId;
+                  const isCorrect = msg.payload.type === 'correct_guess';
 
-                if (isCorrect) {
+                  if (isCorrect) {
+                    return (
+                      <div key={msg.payload.id} className="flex justify-center">
+                        <div className="px-3 py-1 rounded-full bg-emerald-500 text-white font-extrabold text-xs shadow-md">
+                          🎉 {msg.payload.senderNickname} 猜中了正确答案！
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div key={msg.payload.id} className="flex justify-center">
-                      <div className="px-3 py-1 rounded-full bg-emerald-500 text-white font-extrabold text-xs shadow-md">
-                        {msg.payload.content}
+                    <div
+                      key={msg.payload.id}
+                      className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      <Avatar src={msg.payload.senderAvatar} alt={msg.payload.senderNickname} size="sm" />
+                      <div className={`max-w-[78%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                        <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-bold text-muted-foreground">
+                          <span>{msg.payload.senderNickname}</span>
+                          <span className="text-[10px] opacity-75">
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div
+                          className={`p-3 rounded-2xl text-xs sm:text-sm font-semibold shadow-sm leading-relaxed ${
+                            isMe
+                              ? 'bg-[var(--theme-primary,#5B5BF0)] text-white rounded-br-none'
+                              : 'bg-card text-foreground border border-border/80 rounded-bl-none'
+                          }`}
+                        >
+                          {msg.payload.content}
+                        </div>
                       </div>
                     </div>
                   );
-                }
-
-                return (
-                  <div
-                    key={msg.payload.id}
-                    className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
-                  >
-                    <Avatar src={msg.payload.senderAvatar} alt={msg.payload.senderNickname} size="sm" />
-                    <div className={`max-w-[78%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                      <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-bold text-muted-foreground">
-                        <span>{msg.payload.senderNickname}</span>
-                        <span className="text-[10px] opacity-75">
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div
-                        className={`p-3 rounded-2xl text-xs sm:text-sm font-semibold shadow-sm leading-relaxed ${
-                          isMe
-                            ? 'bg-[var(--theme-primary,#5B5BF0)] text-white rounded-br-none'
-                            : 'bg-card text-foreground border border-border/80 rounded-bl-none'
-                        }`}
-                      >
-                        {msg.payload.content}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                })
+              )}
             </div>
 
             {/* Quick Phrase Chips Bar */}
@@ -377,7 +336,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               <Button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="h-10 px-4 rounded-full font-black text-xs gap-1 shrink-0 shadow-md"
+                className="h-10 px-4 rounded-full font-black text-xs gap-1 shrink-0 shadow-md cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>发送</span>
@@ -391,7 +350,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                 <div className="inline-flex rounded-full bg-muted p-0.5 border border-border/60">
                   <button
                     type="button"
-                    onClick={() => setVoiceMode('hold')}
+                    onClick={() => onSetVoiceMode?.('hold')}
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition-colors cursor-pointer ${
                       voiceMode === 'hold' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground'
                     }`}
@@ -400,7 +359,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setVoiceMode('open')}
+                    onClick={() => onSetVoiceMode?.('open')}
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition-colors cursor-pointer ${
                       voiceMode === 'open'
                         ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-xs'
@@ -413,8 +372,8 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               </div>
 
               <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>麦克风收音良好</span>
+                <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-500" />
+                <span>实时语音连麦</span>
               </div>
             </div>
           </motion.div>

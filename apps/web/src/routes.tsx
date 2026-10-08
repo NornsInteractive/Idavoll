@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { SplashLoginPage } from './pages/SplashLoginPage';
 import { LobbyHomePage } from './pages/LobbyHomePage';
 import { GameLibraryPage } from './pages/GameLibraryPage';
@@ -15,25 +16,33 @@ import { ProfilePage } from './pages/ProfilePage';
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <SplashLoginPage />,
+  },
+  {
     path: '/',
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/lobby" replace /> },
-      { path: 'login', element: <SplashLoginPage /> },
-      { path: 'lobby', element: <LobbyHomePage /> },
-      { path: 'games', element: <GameLibraryPage /> },
-      { path: 'games/draw-and-guess', element: <GameDetailPage /> },
-      { path: 'create-room', element: <CreateRoomPage /> },
-      { path: 'room/:roomId', element: <RoomWaitingPage /> },
-      { path: 'game/drawer', element: <InGameDrawerPage /> },
-      { path: 'game/guesser', element: <InGameGuesserPage /> },
-      { path: 'game/result', element: <GameResultPage /> },
-      { path: 'profile', element: <ProfilePage /> },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { index: true, element: <Navigate to="/lobby" replace /> },
+          { path: 'lobby', element: <LobbyHomePage /> },
+          { path: 'games', element: <GameLibraryPage /> },
+          { path: 'games/draw-and-guess', element: <GameDetailPage /> },
+          { path: 'create-room', element: <CreateRoomPage /> },
+          { path: 'room/:roomId', element: <RoomWaitingPage /> },
+          { path: 'game/drawer', element: <InGameDrawerPage /> },
+          { path: 'game/guesser', element: <InGameGuesserPage /> },
+          { path: 'game/result', element: <GameResultPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'game/fullscreen', element: <InGameFullscreenPage /> },
+        ],
+      },
     ],
   },
-  // Fullscreen view outside standard layout
   {
-    path: 'game/fullscreen',
-    element: <InGameFullscreenPage />,
+    path: '*',
+    element: <Navigate to="/lobby" replace />,
   },
 ]);

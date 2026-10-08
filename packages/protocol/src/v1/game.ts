@@ -34,6 +34,12 @@ export const DrawAndGuessStateSchema = z.object({
   wordHint: z.string().optional(),
   strokes: z.array(DrawStrokeSchema),
   timeLeft: z.number(),
+  deadline: z.number().optional(),
+  currentWord: z.string().optional(), // Sent only to the drawer.
+  turnIndex: z.number().optional(),
+  rerollsLeft: z.number().optional(),
+  hintsLeft: z.number().optional(),
+  aborted: z.boolean().optional(),
   scores: z.array(PlayerScoreSchema),
   turnSummary: z
     .object({

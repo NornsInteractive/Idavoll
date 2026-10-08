@@ -1,42 +1,31 @@
 name: Deploy Backend to Cloudflare Workers
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/server/**'
-      - 'packages/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-server.yml'
   workflow_dispatch:
 
 jobs:
   deploy-workers:
     runs-on: ubuntu-latest
-    # Only run if the Cloudflare API Token secret is configured
-    if: "${{ secrets.CLOUDFLARE_API_TOKEN != '' }}"
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 11.20.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - name: Verify Deployment Credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: test -n "$CLOUDFLARE_API_TOKEN"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          accountId: d34e7a1f00e18858047410e2af90f073
           workingDirectory: apps/server
           command: deploy

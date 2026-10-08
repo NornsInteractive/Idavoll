@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Gamepad2, Sparkles, Trophy } from 'lucide-react';
 import { ThemeToggle, Avatar } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
+import { useRoomStore } from '../store/useRoomStore';
 
 export const Header: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { isDark, toggleTheme, accentColor, setAccentColor, language, setLanguage, nickname, avatar } =
     useUserStore();
+  const room = useRoomStore((s) => s.room);
 
   const handleToggleLang = () => {
     const next = language === 'zh-CN' ? 'en' : 'zh-CN';
@@ -55,10 +57,10 @@ export const Header: React.FC = () => {
             游戏库
           </Link>
           <Link
-            to="/room/room_idavoll_demo"
+            to={room ? `/room/${room.roomId}` : '/create-room'}
             className="px-4 py-1.5 rounded-full text-sm font-bold text-foreground hover:bg-background/80 transition-all"
           >
-            当前房间
+            {room ? '当前房间' : '创建房间'}
           </Link>
           <Link
             to="/profile"

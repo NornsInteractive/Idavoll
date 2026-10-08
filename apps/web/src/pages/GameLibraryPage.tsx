@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Search, Palette, Sparkles, Users, Play, Clock, Star } from 'lucide-react';
+import { Search, Users, Play, Clock, Sparkles } from 'lucide-react';
 import { Card, Button, Badge, Input } from '@idavoll/ui';
 
 interface GameItem {
@@ -10,12 +10,10 @@ interface GameItem {
   title: string;
   category: 'drawing' | 'party' | 'board';
   desc: string;
-  rating: string;
   players: string;
   playTime: string;
   badge?: string;
   active: boolean;
-  color: string;
 }
 
 const GAMES_LIST: GameItem[] = [
@@ -23,49 +21,41 @@ const GAMES_LIST: GameItem[] = [
     id: 'draw-and-guess',
     title: '你画我猜 (Draw & Guess)',
     category: 'drawing',
-    desc: '一人作画众人狂猜，拼画工更拼脑回路！支持自选词汇与全屏弹幕互动。',
-    rating: '4.9',
+    desc: '一人作画众人狂猜，拼画工更拼脑回路！支持自选词库、全屏弹幕互动与实时语音。',
     players: '2-12 人',
-    playTime: '3-8 分钟',
-    badge: '热门首选',
+    playTime: '30-120 秒/轮',
+    badge: '火热开放',
     active: true,
-    color: '#5B5BF0',
   },
   {
     id: 'who-is-spy',
     title: '谁是卧底 (Who is Spy)',
     category: 'party',
     desc: '聚会必备语言心理战！找出潜藏身边的卧底，用隐晦描述隐瞒身份。',
-    rating: '4.8',
     players: '4-10 人',
     playTime: '5-10 分钟',
-    badge: '即将上线',
+    badge: '未开放',
     active: false,
-    color: '#FF6B5E',
   },
   {
     id: 'ludo-party',
     title: '飞行棋聚会 (Ludo Party)',
     category: 'board',
-    desc: '童年经典四色棋局，全新多人狂掷骰子道具乱斗，绝地翻盘超刺激！',
-    rating: '4.7',
+    desc: '童年经典四色棋局，多人狂掷骰子道具乱斗，绝地翻盘超刺激！',
     players: '2-4 人',
     playTime: '10-15 分钟',
-    badge: '即将上线',
+    badge: '未开放',
     active: false,
-    color: '#2EC4A6',
   },
   {
     id: 'werewolf',
     title: '预言家之夜 (Werewolf Lite)',
     category: 'party',
     desc: '极简版聚会狼人杀，去除繁琐冗长发言，快速盘逻辑揪出黑手。',
-    rating: '4.6',
     players: '6-12 人',
     playTime: '8-15 分钟',
-    badge: '即将上线',
+    badge: '未开放',
     active: false,
-    color: '#8B5CF6',
   },
 ];
 
@@ -138,23 +128,24 @@ export const GameLibraryPage: React.FC = () => {
             <Card
               hoverEffect={game.active}
               onClick={() => {
-                if (game.id === 'draw-and-guess') {
-                  navigate('/games/draw-and-guess');
+                if (game.active) {
+                  navigate(`/games/${game.id}`);
                 }
               }}
-              className="p-6 h-full flex flex-col justify-between space-y-6 border-2 border-border/80"
+              className={`p-6 h-full flex flex-col justify-between space-y-6 border-2 ${
+                game.active
+                  ? 'border-indigo-500/30 cursor-pointer shadow-md'
+                  : 'border-border/60 opacity-60 cursor-not-allowed bg-muted/20'
+              }`}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  {game.badge && (
-                    <Badge variant={game.active ? 'default' : 'muted'} className="text-xs font-bold">
-                      {game.badge}
-                    </Badge>
-                  )}
-                  <div className="flex items-center gap-1 text-xs font-black text-amber-500">
-                    <Star className="w-3.5 h-3.5 fill-current" />
-                    <span>{game.rating}</span>
-                  </div>
+                  <Badge variant={game.active ? 'default' : 'muted'} className="text-xs font-bold">
+                    {game.badge}
+                  </Badge>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {game.active ? '正式版本' : '研发阶段'}
+                  </span>
                 </div>
 
                 <div>
@@ -176,7 +167,7 @@ export const GameLibraryPage: React.FC = () => {
 
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <span className="text-xs font-semibold text-muted-foreground">
-                  {game.active ? '多端即开即玩' : '研发打磨中'}
+                  {game.active ? '多端即开即玩' : '敬请期待 · 暂未开放'}
                 </span>
 
                 {game.active ? (
@@ -185,8 +176,8 @@ export const GameLibraryPage: React.FC = () => {
                     <span>{t('games.playNow')}</span>
                   </Button>
                 ) : (
-                  <Button size="sm" variant="surface" disabled className="text-xs">
-                    敬请期待
+                  <Button size="sm" variant="surface" disabled className="text-xs cursor-not-allowed opacity-50">
+                    未开放
                   </Button>
                 )}
               </div>

@@ -13,29 +13,21 @@ export interface UserState {
   toggleTheme: () => void;
   setAccentColor: (color: string) => void;
   setLanguage: (lang: string) => void;
+  logout: () => void;
 }
-
-const DEFAULT_AVATARS = [
-  'https://api.dicebear.com/7.x/bottts/svg?seed=LuckyFox',
-  'https://api.dicebear.com/7.x/bottts/svg?seed=StarCat',
-  'https://api.dicebear.com/7.x/bottts/svg?seed=CosmicBear',
-  'https://api.dicebear.com/7.x/bottts/svg?seed=SunnyRabbit',
-  'https://api.dicebear.com/7.x/bottts/svg?seed=CyberPanda',
-  'https://api.dicebear.com/7.x/bottts/svg?seed=MintDragon',
-];
 
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      id: `usr_${Math.random().toString(36).slice(2, 8)}`,
-      nickname: '涂鸦大师',
-      avatar: DEFAULT_AVATARS[0],
+      id: '',
+      nickname: '',
+      avatar: '',
       token: null,
       isDark: false,
       accentColor: '#5B5BF0',
       language: 'zh-CN',
       setUser: (user) =>
-        set((state) => ({
+        set((state) => !user.token && (state.id !== user.id || !state.token) ? state : ({
           ...state,
           id: user.id,
           nickname: user.nickname,
@@ -57,9 +49,15 @@ export const useUserStore = create<UserState>()(
         set({ accentColor: color });
       },
       setLanguage: (language) => set({ language }),
+      logout: () => set({ id: '', nickname: '', avatar: '', token: null }),
     }),
     {
       name: 'idavoll-user-storage',
+      version: 1,
+      migrate: (stored: unknown) => {
+        const old = stored as Partial<UserState>;
+        return { isDark: old.isDark || false, accentColor: old.accentColor || '#5B5BF0', language: old.language || 'zh-CN', id: '', nickname: '', avatar: '', token: null };
+      },
     }
   )
 );

@@ -1,32 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { ChevronLeft, PlusCircle, Lock, Users, Clock, ShieldAlert, Sparkles } from 'lucide-react';
+import { ChevronLeft, Lock, Users, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, Button, Input, Badge } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
-import { useRoomStore } from '../store/useRoomStore';
+import { createRoom } from '../services/api';
+import { connectRoom } from '../services/room-session';
+import { RoomSettings } from '@idavoll/protocol';
 
-const createRoomSchema = z.object({
-  title: z.string().min(2, '房间名称至少2个字符').max(20, '房间名称最多20个字符'),
-  maxPlayers: z.number().min(2).max(12),
-  drawDuration: z.number().min(30).max(120),
-  totalRounds: z.number().min(1).max(5),
-  wordDifficulty: z.enum(['easy', 'medium', 'hard']),
-  isPrivate: z.boolean(),
-  password: z.string().optional(),
-});
+const createRoomSchema = z
+  .object({
+    title: z.string().trim().min(1, '房间名称至少1个字符').max(30, '房间名称最多30个字符'),
+    maxPlayers: z.number().int().min(2).max(12),
+    drawDuration: z.number().int().min(30).max(120),
+    totalRounds: z.number().int().min(1).max(10),
+    wordDifficulty: z.enum(['easy', 'medium', 'hard']),
+    isPrivate: z.boolean(),
+    password: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.isPrivate) {
+        return !!data.password && data.password.trim().length >= 4 && data.password.trim().length <= 64;
+      }
+      return true;
+    },
+    {
+      message: '私密房间密码须为 4-64 位字符',
+      path: ['password'],
+    }
+  );
 
 type CreateRoomFormValues = z.infer<typeof createRoomSchema>;
 
 export const CreateRoomPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { id: userId, nickname, avatar } = useUserStore();
-  const { setRoom, initDemoRoom } = useRoomStore();
+  const { nickname } = useUserStore();
+
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -37,7 +54,7 @@ export const CreateRoomPage: React.FC = () => {
   } = useForm<CreateRoomFormValues>({
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
-      title: `${nickname} 的开心涂鸦局`,
+      title: `${nickname || '玩家'} 的开心涂鸦局`,
       maxPlayers: 8,
       drawDuration: 60,
       totalRounds: 3,
@@ -50,11 +67,34 @@ export const CreateRoomPage: React.FC = () => {
   const isPrivate = watch('isPrivate');
   const selectedPlayers = watch('maxPlayers');
   const selectedDuration = watch('drawDuration');
+  const selectedRounds = watch('totalRounds');
   const selectedDifficulty = watch('wordDifficulty');
 
-  const onSubmit = (data: CreateRoomFormValues) => {
-    initDemoRoom(userId, nickname, avatar);
-    navigate('/room/room_idavoll_demo');
+  const onSubmit = async (data: CreateRoomFormValues) => {
+    setLoading(true);
+    setSubmitError(null);
+
+    const payload: RoomSettings = {
+      title: data.title.trim(),
+      gameId: 'draw-and-guess',
+      maxPlayers: data.maxPlayers,
+      drawDuration: data.drawDuration,
+      totalRounds: data.totalRounds,
+      wordDifficulty: data.wordDifficulty,
+      isPrivate: data.isPrivate,
+      password: data.isPrivate && data.password ? data.password.trim() : undefined,
+    };
+
+    try {
+      const res = await createRoom(payload);
+      const canonicalRoomId = await connectRoom(res.roomId, payload.password);
+      navigate(`/room/${canonicalRoomId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '创建房间失败，请重试';
+      setSubmitError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,6 +109,13 @@ export const CreateRoomPage: React.FC = () => {
         <span>返回大厅</span>
       </button>
 
+      {submitError && (
+        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{submitError}</span>
+        </div>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -80,7 +127,7 @@ export const CreateRoomPage: React.FC = () => {
               {t('createRoom.title')}
             </h2>
             <p className="text-xs text-muted-foreground font-medium">
-              自定义你的派对规则，随后即可邀请好友直接通过房间号加入！
+              自定义派对规则，创建后将生成专属 6 位房号与邀请链接！
             </p>
           </div>
 
@@ -94,6 +141,8 @@ export const CreateRoomPage: React.FC = () => {
                 {...register('title')}
                 placeholder={t('createRoom.roomNamePlaceholder')}
                 className="font-bold"
+                maxLength={30}
+                disabled={loading}
               />
               {errors.title && (
                 <p className="text-xs font-bold text-rose-500">{errors.title.message}</p>
@@ -102,16 +151,15 @@ export const CreateRoomPage: React.FC = () => {
 
             {/* Max Players */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                  最大容纳玩家数: {selectedPlayers} 人
-                </label>
-              </div>
+              <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                最大容纳玩家数: {selectedPlayers} 人 (2-12人)
+              </label>
               <div className="grid grid-cols-4 gap-2">
                 {[4, 6, 8, 12].map((num) => (
                   <button
                     key={num}
                     type="button"
+                    disabled={loading}
                     onClick={() => setValue('maxPlayers', num)}
                     className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
                       selectedPlayers === num
@@ -132,13 +180,14 @@ export const CreateRoomPage: React.FC = () => {
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { sec: 45, label: '45秒 (紧张)' },
-                  { sec: 60, label: '60秒 (推荐)' },
-                  { sec: 90, label: '90秒 (充裕)' },
+                  { sec: 45, label: '45秒 (快速抢答)' },
+                  { sec: 60, label: '60秒 (标准推荐)' },
+                  { sec: 90, label: '90秒 (从容作画)' },
                 ].map((item) => (
                   <button
                     key={item.sec}
                     type="button"
+                    disabled={loading}
                     onClick={() => setValue('drawDuration', item.sec)}
                     className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
                       selectedDuration === item.sec
@@ -147,6 +196,30 @@ export const CreateRoomPage: React.FC = () => {
                     }`}
                   >
                     {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Rounds */}
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                比赛总轮数: {selectedRounds} 轮 (1-10轮)
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[2, 3, 5, 8].map((round) => (
+                  <button
+                    key={round}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setValue('totalRounds', round)}
+                    className={`py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                      selectedRounds === round
+                        ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                        : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {round} 轮
                   </button>
                 ))}
               </div>
@@ -166,6 +239,7 @@ export const CreateRoomPage: React.FC = () => {
                   <button
                     key={diff.key}
                     type="button"
+                    disabled={loading}
                     onClick={() => setValue('wordDifficulty', diff.key as any)}
                     className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
                       selectedDifficulty === diff.key
@@ -179,7 +253,7 @@ export const CreateRoomPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Private Room Toggle */}
+            {/* Private Room Toggle & Password */}
             <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -191,26 +265,43 @@ export const CreateRoomPage: React.FC = () => {
                 <input
                   type="checkbox"
                   {...register('isPrivate')}
+                  disabled={loading}
                   className="w-5 h-5 accent-[var(--theme-primary,#5B5BF0)] cursor-pointer"
                 />
               </div>
 
               {isPrivate && (
-                <div className="pt-2">
+                <div className="pt-2 space-y-1">
                   <Input
                     {...register('password')}
                     type="password"
-                    maxLength={4}
-                    placeholder={t('createRoom.passwordPlaceholder')}
-                    className="font-mono tracking-widest text-center"
+                    maxLength={64}
+                    placeholder="请输入 4-64 位密码"
+                    disabled={loading}
+                    className="font-mono tracking-wider text-center"
                   />
+                  {errors.password && (
+                    <p className="text-xs font-bold text-rose-500">{errors.password.message}</p>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Submit Button */}
-            <Button type="submit" size="lg" className="w-full text-base font-black shadow-xl">
-              <span>{t('createRoom.submit')}</span>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loading}
+              className="w-full text-base font-black shadow-xl"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>正在创建并连接房间...</span>
+                </>
+              ) : (
+                <span>{t('createRoom.submit')}</span>
+              )}
             </Button>
           </form>
         </Card>

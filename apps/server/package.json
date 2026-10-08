@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@idavoll/protocol": "workspace:*",
+    "@idavoll/game-sdk": "workspace:*",
     "@idavoll/game-draw-and-guess": "workspace:*",
     "drizzle-orm": "^0.39.3",
     "hono": "^4.7.1"
