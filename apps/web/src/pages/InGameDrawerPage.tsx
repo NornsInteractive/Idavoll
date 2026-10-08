@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
@@ -6,7 +6,7 @@ import { DrawBoard, InGameChatDrawer, DanmakuOverlay } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
-import { toggleMute, toggleDeafen, setVoiceMode } from '../services/voice';
+import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { leaveRoom } from '../services/room-session';
 
 export const InGameDrawerPage: React.FC = () => {
@@ -22,6 +22,8 @@ export const InGameDrawerPage: React.FC = () => {
     isMuted,
     isDeafened,
     voiceMode,
+    voiceStatus,
+    voiceError,
     speakingUserIds,
   } = useRoomStore();
 
@@ -46,6 +48,59 @@ export const InGameDrawerPage: React.FC = () => {
   const [desktopChatTab, setDesktopChatTab] = useState<'guess' | 'chat'>('guess');
   const [isDanmakuOn, setIsDanmakuOn] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Spacebar push-to-talk handler on desktop
+  const isHoldingSpaceRef = useRef(false);
+
+  useEffect(() => {
+    const isEditableOrInteractive = (target: EventTarget | null): boolean => {
+      if (!target || !(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toUpperCase();
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(tag)) return true;
+      if (target.isContentEditable || target.getAttribute('contenteditable') === 'true') return true;
+      return false;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (voiceMode !== 'hold') return;
+      if (e.code === 'Space' && !e.repeat) {
+        if (!isEditableOrInteractive(e.target)) {
+          e.preventDefault();
+          isHoldingSpaceRef.current = true;
+          holdToTalk(true);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        if (isHoldingSpaceRef.current) {
+          isHoldingSpaceRef.current = false;
+          holdToTalk(false);
+        }
+      }
+    };
+
+    const handleBlur = () => {
+      if (isHoldingSpaceRef.current) {
+        isHoldingSpaceRef.current = false;
+        holdToTalk(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+      if (isHoldingSpaceRef.current) {
+        isHoldingSpaceRef.current = false;
+      }
+      holdToTalk(false);
+    };
+  }, [voiceMode]);
 
   // If room or game state is missing, show real syncing state
   if (!room || !gameState) {
@@ -197,6 +252,7 @@ export const InGameDrawerPage: React.FC = () => {
                   disabled={!strokes.length}
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface disabled:opacity-40 transition-colors cursor-pointer"
                   title={t('inGame.undo', '撤销')}
+                  aria-label={t('inGame.undo', '撤销')}
                 >
                   <span className="material-symbols-outlined text-[18px]">undo</span>
                 </button>
@@ -205,6 +261,7 @@ export const InGameDrawerPage: React.FC = () => {
                   onClick={redoStroke}
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface transition-colors cursor-pointer"
                   title={t('inGame.redo', '重做')}
+                  aria-label={t('inGame.redo', '重做')}
                 >
                   <span className="material-symbols-outlined text-[18px]">redo</span>
                 </button>
@@ -215,6 +272,7 @@ export const InGameDrawerPage: React.FC = () => {
                     isFullscreen ? 'bg-primary text-on-primary' : 'bg-surface-container'
                   }`}
                   title={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏画板')}
+                  aria-label={isFullscreen ? t('inGame.exitFullscreen', '退出全屏') : t('inGame.fullscreenDanmaku', '全屏画板')}
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
@@ -225,6 +283,7 @@ export const InGameDrawerPage: React.FC = () => {
                   onClick={() => setIsChatDrawerOpen(true)}
                   className="tactile-btn relative w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed transition-colors cursor-pointer"
                   title={t('inGame.chatAndVoice', '聊天与猜词动态')}
+                  aria-label={t('inGame.chatAndVoice', '聊天与猜词动态')}
                 >
                   <span className="material-symbols-outlined text-[18px]">chat</span>
                   {messages.length > 0 && (
@@ -455,25 +514,70 @@ export const InGameDrawerPage: React.FC = () => {
               </span>
             </div>
 
+            {/* Push to talk indicator / hold space */}
+            <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground font-semibold px-2">
+              <span>{voiceMode === 'hold' ? (!isMuted ? '正在讲话...' : '按住空格讲话') : '自由麦模式'}</span>
+            </div>
+
             {/* Audio & Mic Controls */}
             <button
               type="button"
-              onClick={toggleMute}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                isMuted
-                  ? 'bg-surface-container text-muted-foreground border-outline-variant/50'
-                  : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+              aria-label={voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
+              {...(voiceMode === 'hold'
+                ? {
+                    onPointerDown: (e) => {
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      holdToTalk(true);
+                    },
+                    onPointerUp: (e) => {
+                      try {
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                      } catch {}
+                      holdToTalk(false);
+                    },
+                    onPointerCancel: () => holdToTalk(false),
+                    onLostPointerCapture: () => holdToTalk(false),
+                    onKeyDown: (e) => {
+                      if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+                        e.preventDefault();
+                        holdToTalk(true);
+                      }
+                    },
+                    onKeyUp: (e) => {
+                      if (e.code === 'Space' || e.code === 'Enter') {
+                        e.preventDefault();
+                        holdToTalk(false);
+                      }
+                    },
+                    onBlur: () => holdToTalk(false),
+                  }
+                : {
+                    onClick: toggleMute,
+                  })}
+              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
+                !isMuted
+                  ? 'bg-emerald-600/10 text-emerald-600 border-emerald-500/30 animate-pulse'
+                  : 'bg-surface-container text-muted-foreground border-outline-variant/50'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">
                 {isMuted ? 'mic_off' : 'mic'}
               </span>
-              <span>{isMuted ? t('inGame.micMuted', '麦克风静音') : t('inGame.micOpen', '已开麦')}</span>
+              <span>
+                {voiceMode === 'hold'
+                  ? !isMuted
+                    ? '发言中...'
+                    : '按住说话'
+                  : isMuted
+                  ? t('inGame.micMuted', '麦克风静音')
+                  : t('inGame.micOpen', '已开麦')}
+              </span>
             </button>
 
             <button
               type="button"
               onClick={toggleDeafen}
+              aria-label={isDeafened ? '取消闭音' : '闭音'}
               className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isDeafened
                   ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
@@ -872,6 +976,9 @@ export const InGameDrawerPage: React.FC = () => {
         onToggleDeafen={toggleDeafen}
         voiceMode={voiceMode}
         onSetVoiceMode={setVoiceMode}
+        onHoldToTalk={holdToTalk}
+        voiceStatus={voiceStatus}
+        voiceError={voiceError}
         speakingUserIds={speakingUserIds}
         roomCode={roomCode}
         currentDrawerNickname={nickname}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import confetti from 'canvas-confetti';
@@ -23,6 +23,8 @@ export const InGameGuesserPage: React.FC = () => {
     isMuted,
     isDeafened,
     voiceMode,
+    voiceStatus,
+    voiceError,
     speakingUserIds,
   } = useRoomStore();
 
@@ -80,27 +82,42 @@ export const InGameGuesserPage: React.FC = () => {
   }, [guessResult?.correct, guessResult?.timestamp]);
 
   // Spacebar push-to-talk handler on desktop
+  const isHoldingSpaceRef = useRef(false);
+
   useEffect(() => {
+    const isEditableOrInteractive = (target: EventTarget | null): boolean => {
+      if (!target || !(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toUpperCase();
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(tag)) return true;
+      if (target.isContentEditable || target.getAttribute('contenteditable') === 'true') return true;
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (voiceMode !== 'hold') return;
       if (e.code === 'Space' && !e.repeat) {
-        const target = e.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+        if (!isEditableOrInteractive(e.target)) {
           e.preventDefault();
+          isHoldingSpaceRef.current = true;
           holdToTalk(true);
         }
       }
     };
+
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
-        const target = e.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
-          e.preventDefault();
+        if (isHoldingSpaceRef.current) {
+          isHoldingSpaceRef.current = false;
           holdToTalk(false);
         }
       }
     };
+
     const handleBlur = () => {
-      holdToTalk(false);
+      if (isHoldingSpaceRef.current) {
+        isHoldingSpaceRef.current = false;
+        holdToTalk(false);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -110,8 +127,12 @@ export const InGameGuesserPage: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
+      if (isHoldingSpaceRef.current) {
+        isHoldingSpaceRef.current = false;
+      }
+      holdToTalk(false);
     };
-  }, []);
+  }, [voiceMode]);
 
   const handleGuessSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -203,6 +224,7 @@ export const InGameGuesserPage: React.FC = () => {
                     isDanmakuOn ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-surface-container'
                   }`}
                   title={isDanmakuOn ? '关闭弹幕' : '开启弹幕'}
+                  aria-label={isDanmakuOn ? '关闭弹幕' : '开启弹幕'}
                 >
                   <span className="material-symbols-outlined text-[18px]">subtitles</span>
                 </button>
@@ -211,6 +233,7 @@ export const InGameGuesserPage: React.FC = () => {
                   onClick={() => setIsFullscreen((p) => !p)}
                   className="tactile-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface transition-colors cursor-pointer"
                   title="全屏"
+                  aria-label={isFullscreen ? '退出全屏' : '进入全屏'}
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
@@ -221,6 +244,7 @@ export const InGameGuesserPage: React.FC = () => {
                   onClick={() => setIsChatDrawerOpen(true)}
                   className="tactile-btn relative w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed transition-colors cursor-pointer"
                   title="聊天抽屉"
+                  aria-label="打开聊天抽屉"
                 >
                   <span className="material-symbols-outlined text-[18px]">chat</span>
                   {messages.length > 0 && (
@@ -363,14 +387,45 @@ export const InGameGuesserPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={toggleMute}
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
-                  isMuted
-                    ? 'bg-surface-container text-muted-foreground border-outline-variant/50'
-                    : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+                aria-label={voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
+                {...(voiceMode === 'hold'
+                  ? {
+                      onPointerDown: (e) => {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        holdToTalk(true);
+                      },
+                      onPointerUp: (e) => {
+                        try {
+                          e.currentTarget.releasePointerCapture(e.pointerId);
+                        } catch {}
+                        holdToTalk(false);
+                      },
+                      onPointerCancel: () => holdToTalk(false),
+                      onLostPointerCapture: () => holdToTalk(false),
+                      onKeyDown: (e) => {
+                        if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+                          e.preventDefault();
+                          holdToTalk(true);
+                        }
+                      },
+                      onKeyUp: (e) => {
+                        if (e.code === 'Space' || e.code === 'Enter') {
+                          e.preventDefault();
+                          holdToTalk(false);
+                        }
+                      },
+                      onBlur: () => holdToTalk(false),
+                    }
+                  : {
+                      onClick: toggleMute,
+                    })}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors select-none touch-none cursor-pointer ${
+                  !isMuted
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm animate-pulse'
+                    : 'bg-surface-container text-muted-foreground border-outline-variant/50'
                 }`}
               >
-                {isMuted ? '开麦' : '静音'}
+                {voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
               </button>
             </div>
 
@@ -441,28 +496,68 @@ export const InGameGuesserPage: React.FC = () => {
 
             {/* Push to talk indicator / hold space */}
             <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground font-semibold px-2">
-              <span>按住空格讲话</span>
+              <span>{voiceMode === 'hold' ? (!isMuted ? '正在讲话...' : '按住空格讲话') : '自由麦模式'}</span>
             </div>
 
             {/* Mic & Deafen */}
             <button
               type="button"
-              onClick={toggleMute}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                isMuted
-                  ? 'bg-surface-container text-muted-foreground border-outline-variant/50'
-                  : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+              aria-label={voiceMode === 'hold' ? (!isMuted ? '松开静音' : '按住说话') : (isMuted ? '开麦' : '静音')}
+              {...(voiceMode === 'hold'
+                ? {
+                    onPointerDown: (e) => {
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      holdToTalk(true);
+                    },
+                    onPointerUp: (e) => {
+                      try {
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                      } catch {}
+                      holdToTalk(false);
+                    },
+                    onPointerCancel: () => holdToTalk(false),
+                    onLostPointerCapture: () => holdToTalk(false),
+                    onKeyDown: (e) => {
+                      if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+                        e.preventDefault();
+                        holdToTalk(true);
+                      }
+                    },
+                    onKeyUp: (e) => {
+                      if (e.code === 'Space' || e.code === 'Enter') {
+                        e.preventDefault();
+                        holdToTalk(false);
+                      }
+                    },
+                    onBlur: () => holdToTalk(false),
+                  }
+                : {
+                    onClick: toggleMute,
+                  })}
+              className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
+                !isMuted
+                  ? 'bg-emerald-600/10 text-emerald-600 border-emerald-500/30 animate-pulse'
+                  : 'bg-surface-container text-muted-foreground border-outline-variant/50'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">
                 {isMuted ? 'mic_off' : 'mic'}
               </span>
-              <span>{isMuted ? '麦克风静音' : '已开麦'}</span>
+              <span>
+                {voiceMode === 'hold'
+                  ? !isMuted
+                    ? '发言中...'
+                    : '按住说话'
+                  : isMuted
+                  ? '麦克风静音'
+                  : '已开麦'}
+              </span>
             </button>
 
             <button
               type="button"
               onClick={toggleDeafen}
+              aria-label={isDeafened ? '取消闭音' : '闭音'}
               className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isDeafened
                   ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
@@ -806,6 +901,9 @@ export const InGameGuesserPage: React.FC = () => {
         onToggleDeafen={toggleDeafen}
         voiceMode={voiceMode}
         onSetVoiceMode={setVoiceMode}
+        onHoldToTalk={holdToTalk}
+        voiceStatus={voiceStatus}
+        voiceError={voiceError}
         speakingUserIds={speakingUserIds}
         roomCode={roomCode}
         currentDrawerNickname={drawerNickname}

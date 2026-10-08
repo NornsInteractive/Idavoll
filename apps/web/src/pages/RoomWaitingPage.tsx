@@ -22,7 +22,7 @@ import { Card, Button, Badge, Avatar, ChatWindow, VoiceDock, Input } from '@idav
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { connectRoom, leaveRoom, disconnectRoom } from '../services/room-session';
-import { toggleMute, toggleDeafen } from '../services/voice';
+import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { RoomSettings } from '@idavoll/protocol';
 
 export const RoomWaitingPage: React.FC = () => {
@@ -37,6 +37,9 @@ export const RoomWaitingPage: React.FC = () => {
     sendMessage,
     isMuted,
     isDeafened,
+    voiceMode,
+    voiceStatus,
+    voiceError,
     speakingUserIds,
     togglePlayerReady,
     startGame,
@@ -66,6 +69,59 @@ export const RoomWaitingPage: React.FC = () => {
   const [editMaxPlayers, setEditMaxPlayers] = useState(8);
 
   const pendingSettingsRef = useRef<RoomSettings | null>(null);
+
+  // Spacebar push-to-talk handler on desktop
+  const isHoldingSpaceRef = useRef(false);
+
+  useEffect(() => {
+    const isEditableOrInteractive = (target: EventTarget | null): boolean => {
+      if (!target || !(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toUpperCase();
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(tag)) return true;
+      if (target.isContentEditable || target.getAttribute('contenteditable') === 'true') return true;
+      return false;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (voiceMode !== 'hold') return;
+      if (e.code === 'Space' && !e.repeat) {
+        if (!isEditableOrInteractive(e.target)) {
+          e.preventDefault();
+          isHoldingSpaceRef.current = true;
+          holdToTalk(true);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        if (isHoldingSpaceRef.current) {
+          isHoldingSpaceRef.current = false;
+          holdToTalk(false);
+        }
+      }
+    };
+
+    const handleBlur = () => {
+      if (isHoldingSpaceRef.current) {
+        isHoldingSpaceRef.current = false;
+        holdToTalk(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+      if (isHoldingSpaceRef.current) {
+        isHoldingSpaceRef.current = false;
+      }
+      holdToTalk(false);
+    };
+  }, [voiceMode]);
 
   // Connect or switch to target room when route roomId changes or on direct visit
   useEffect(() => {
@@ -545,6 +601,11 @@ export const RoomWaitingPage: React.FC = () => {
               isDeafened={isDeafened}
               onToggleDeafen={toggleDeafen}
               speakingUserIds={speakingUserIds}
+              voiceStatus={voiceStatus}
+              voiceError={voiceError}
+              voiceMode={voiceMode}
+              onSetVoiceMode={setVoiceMode}
+              onHoldToTalk={holdToTalk}
             />
 
             {/* Bottom Actions */}
