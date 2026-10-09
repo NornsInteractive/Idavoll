@@ -433,9 +433,78 @@ export const RoomWaitingPage: React.FC = () => {
   const emptySlots = Array.from({ length: emptySlotsCount });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-      {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="w-full max-w-7xl mx-auto h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col p-2 sm:p-3 lg:p-6 lg:h-auto lg:max-h-none lg:overflow-visible gap-2 lg:gap-6">
+      {/* Mobile Header (< lg) */}
+      <div className="flex lg:hidden items-center justify-between shrink-0 px-1 py-0.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={handleLeaveRoom}
+            className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+            title={t('roomWaiting.leaveRoom')}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="min-w-0 truncate">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-sm sm:text-base font-black text-foreground truncate">
+                {room.settings?.title}
+              </h2>
+              {isHost && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0"
+                  title={t('roomWaiting.editSettings')}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground font-medium truncate">
+              作画 {room.settings?.drawDuration}s · 共 {room.settings?.totalRounds} 轮 ·{' '}
+              {room.settings?.wordDifficulty === 'easy'
+                ? '简单'
+                : room.settings?.wordDifficulty === 'hard'
+                ? '挑战'
+                : '标准'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-[var(--theme-primary,#5B5BF0)] text-[var(--theme-primary,#5B5BF0)] shadow-xs font-black text-xs hover:scale-105 transition-all cursor-pointer"
+            title="点击复制房号"
+          >
+            {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+            <span>#{room.roomCode}</span>
+          </button>
+          <Button
+            size="sm"
+            variant="surface"
+            onClick={handleCopyInvite}
+            className="h-7 w-7 p-0 rounded-full font-bold cursor-pointer"
+            title={t('roomWaiting.inviteFriends')}
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleLeaveRoom}
+            className="h-7 w-7 p-0 rounded-full font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 cursor-pointer"
+            title={t('roomWaiting.leaveRoom')}
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Desktop Header bar (>= lg) */}
+      <div className="hidden lg:flex flex-row items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -506,8 +575,139 @@ export const RoomWaitingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: Seats & Chat */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Mobile Content Stack (< lg): Compact Seats + Full Height Visible Chat */}
+      <div className="flex lg:hidden flex-1 min-h-0 flex-col gap-2 overflow-hidden">
+        {/* Compact Player Seats & Voice Panel */}
+        <div className="shrink-0 flex flex-col gap-1.5 bg-card/95 backdrop-blur-md rounded-2xl border border-border p-2.5 shadow-xs">
+          {/* Status Bar */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 font-black text-foreground">
+              <span>{t('roomWaiting.playerSeats')}</span>
+              <Badge variant="subtle" className="text-[10px] px-1.5 py-0 font-bold">
+                {room.players.length} / {maxSlots} 人
+              </Badge>
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground truncate">
+              {isHost
+                ? !isConnected
+                  ? t('roomWaiting.notConnected')
+                  : !allOnline
+                  ? t('roomWaiting.hasOfflinePlayers')
+                  : canStart
+                  ? t('roomWaiting.allReadyToStart')
+                  : t('roomWaiting.atLeastTwoPlayers')
+                : isMeReady
+                ? '已准备，等待房主开始'
+                : '点击准备按钮开始'}
+            </span>
+          </div>
+
+          {/* Compact Player Avatars Strip */}
+          <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+            {room.players.map((player) => (
+              <div
+                key={player.id}
+                className="relative flex flex-col items-center justify-center p-1.5 rounded-xl bg-muted/60 border border-border/80 shrink-0 w-[72px] text-center gap-0.5 shadow-2xs"
+              >
+                {player.isHost && (
+                  <Crown className="w-3 h-3 absolute top-1 left-1 text-amber-500 fill-amber-500" />
+                )}
+                <Avatar
+                  src={player.avatar}
+                  alt={player.nickname}
+                  size="sm"
+                  status={player.isOnline ? 'online' : 'offline'}
+                />
+                <span className="font-extrabold text-[10px] text-foreground truncate w-full px-0.5">
+                  {player.nickname}
+                  {player.id === userId ? ' (我)' : ''}
+                </span>
+                <Badge
+                  variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
+                  className="text-[8px] px-1.5 py-0 font-extrabold"
+                >
+                  {player.isHost
+                    ? t('roomWaiting.hostBadge')
+                    : player.isReady
+                    ? t('roomWaiting.readyBadge')
+                    : t('roomWaiting.waitingBadge')}
+                </Badge>
+              </div>
+            ))}
+
+            {emptySlotsCount > 0 && (
+              <button
+                type="button"
+                onClick={handleCopyInvite}
+                className="flex flex-col items-center justify-center p-1.5 rounded-xl border border-dashed border-border/90 hover:border-primary shrink-0 w-[72px] h-[68px] text-center gap-0.5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span className="text-[9px] font-bold">{t('roomWaiting.inviteSlot')}</span>
+                <span className="text-[8px] opacity-60">+{emptySlotsCount}空位</span>
+              </button>
+            )}
+          </div>
+
+          {/* Voice Dock & Start / Ready Actions */}
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60">
+            <div className="flex-1 min-w-0">
+              <VoiceDock
+                players={room.players}
+                currentUserId={userId}
+                isMuted={isMuted}
+                onToggleMute={toggleMute}
+                isDeafened={isDeafened}
+                onToggleDeafen={toggleDeafen}
+                speakingUserIds={speakingUserIds}
+                voiceStatus={voiceStatus}
+                voiceError={voiceError}
+                voiceMode={voiceMode}
+                onSetVoiceMode={setVoiceMode}
+                onHoldToTalk={holdToTalk}
+                labels={voiceDockLabels}
+                className="p-1 px-2.5 rounded-xl border-none shadow-none bg-muted/40"
+              />
+            </div>
+
+            <div className="shrink-0">
+              {isHost ? (
+                <Button
+                  size="sm"
+                  disabled={!canStart}
+                  onClick={startGame}
+                  className="h-8 px-4 font-black text-xs gap-1 shadow-md cursor-pointer disabled:opacity-40"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>{t('roomWaiting.startGameBtn')}</span>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant={isMeReady ? 'secondary' : 'default'}
+                  onClick={togglePlayerReady}
+                  className="h-8 px-4 font-black text-xs shadow-md cursor-pointer"
+                >
+                  <span>{isMeReady ? t('roomWaiting.cancelReadyBtn') : t('roomWaiting.readyBtn')}</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Fully Visible In-Room Chat Window */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <ChatWindow
+            messages={messages}
+            currentUserId={userId}
+            onSendMessage={(content, isDanmaku) => sendMessage(content, isDanmaku)}
+            title="房间交流与猜词"
+            className="h-full flex-1 min-h-0 rounded-2xl"
+          />
+        </div>
+      </div>
+
+      {/* Desktop Main Grid (>= lg): Spacious Seats & Chat */}
+      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6 flex-1 min-h-0">
         {/* Left: Player Seats */}
         <div className="lg:col-span-2 space-y-4">
           <Card className="p-6 space-y-6">
@@ -644,7 +844,7 @@ export const RoomWaitingPage: React.FC = () => {
         </div>
 
         {/* Right: Reusable In-Room Chat Window */}
-        <div className="h-[480px] lg:h-auto flex flex-col">
+        <div className="h-[560px] lg:h-full flex flex-col">
           <ChatWindow
             messages={messages}
             currentUserId={userId}

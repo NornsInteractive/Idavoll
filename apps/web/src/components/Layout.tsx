@@ -94,16 +94,30 @@ export const Layout: React.FC = () => {
     );
   }
 
+  const isRoomWaiting = location.pathname.startsWith('/room/');
+
   // Result page (/game/result) and normal lobby/profile pages are scrollable
   return (
     <GameRouteCoordinator>
-      <div className="min-h-[100dvh] flex flex-col bg-background text-foreground transition-colors duration-200 relative overflow-y-auto">
+      <div
+        className={`min-h-[100dvh] flex flex-col bg-background text-foreground transition-colors duration-200 relative ${
+          isRoomWaiting
+            ? 'h-[100dvh] max-h-[100dvh] overflow-hidden md:min-h-[100dvh] md:h-auto md:overflow-y-auto'
+            : 'overflow-y-auto'
+        }`}
+      >
         {alerts}
-        <Header />
-        <main className="flex-1 pb-20 md:pb-8 flex flex-col">
+        <div className={isRoomWaiting ? 'hidden md:block' : ''}>
+          <Header />
+        </div>
+        <main
+          className={`flex-1 flex flex-col min-h-0 ${
+            isRoomWaiting ? 'pb-0 h-full overflow-hidden md:h-auto md:overflow-visible md:pb-8' : 'pb-20 md:pb-8'
+          }`}
+        >
           <Outlet />
         </main>
-        <MobileNav />
+        {!isRoomWaiting && <MobileNav />}
       </div>
     </GameRouteCoordinator>
   );

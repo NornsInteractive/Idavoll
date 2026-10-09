@@ -13,11 +13,14 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ items, enabled =
   useEffect(() => {
     if (!enabled || items.length === 0) return;
     const latest = items[items.length - 1];
-    setActiveDanmakus((prev) => [...prev.slice(-15), latest]);
+    setActiveDanmakus((prev) => {
+      if (prev.some((d) => d.id === latest.id)) return prev;
+      return [...prev.slice(-20), latest];
+    });
 
     const timer = setTimeout(() => {
       setActiveDanmakus((prev) => prev.filter((d) => d.id !== latest.id));
-    }, 6000);
+    }, 11000);
 
     return () => clearTimeout(timer);
   }, [items, enabled]);
@@ -33,6 +36,13 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ items, enabled =
             initial={{ x: '100vw', opacity: 0.95 }}
             animate={{ x: '-100%' }}
             exit={{ opacity: 0 }}
+            transition={{
+              duration: 10,
+              ease: 'linear',
+            }}
+            onAnimationComplete={() => {
+              setActiveDanmakus((prev) => prev.filter((item) => item.id !== d.id));
+            }}
             className="absolute whitespace-nowrap px-4 py-1.5 rounded-full font-black text-sm tracking-wide text-white shadow-lg flex items-center gap-2 border border-white/20 backdrop-blur-md"
             style={{
               top: `${Math.max(8, Math.min(82, d.topPercent))}%`,

@@ -38,6 +38,7 @@ export const InGameGuesserPage: React.FC = () => {
   } = useGameStore();
 
   const [guessInput, setGuessInput] = useState('');
+  const [inputMode, setInputMode] = useState<'guess' | 'chat'>('guess');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
@@ -150,11 +151,18 @@ export const InGameGuesserPage: React.FC = () => {
 
   const scoresMap = new Map(gameState.scores?.map((s) => [s.playerId, s]) || []);
 
-  const handleGuessSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!guessInput.trim() || hasGuessedCorrect) return;
+  const effectiveMode = hasGuessedCorrect ? 'chat' : inputMode;
 
-    submitGuess(guessInput.trim());
+  const handleInputSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const text = guessInput.trim();
+    if (!text) return;
+
+    if (effectiveMode === 'guess' && !hasGuessedCorrect) {
+      submitGuess(text);
+    } else {
+      sendMessage(text, false);
+    }
     setGuessInput('');
   };
 
@@ -616,43 +624,80 @@ export const InGameGuesserPage: React.FC = () => {
 
           {/* GUESS INPUT & INTERACTION CORE BAR (底部黄金触控交互区) */}
           <footer className="w-full bg-surface-container-lowest px-3 pt-2 pb-3 shadow-lg border-t border-surface-container flex flex-col gap-1.5 shrink-0 z-30">
-            {/* Primary Input Field + Send Button */}
-            <form onSubmit={handleGuessSubmit} className="flex items-center gap-2">
+            {/* Primary Input Field + Mode Switch + Send Button */}
+            <form onSubmit={handleInputSubmit} className="flex items-center gap-1.5">
+              {/* Mode Toggle Button */}
+              {hasGuessedCorrect ? (
+                <div
+                  className="flex items-center gap-1 px-2.5 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0 select-none shadow-xs"
+                  title="你已猜中，进入聊天互动模式"
+                >
+                  <span>🎉</span>
+                  <span className="hidden sm:inline">已猜中</span>
+                  <span>{t('inGame.modeChat', '聊天')}</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setInputMode((m) => (m === 'guess' ? 'chat' : 'guess'))}
+                  className={`tactile-btn flex items-center gap-1 px-2.5 py-2 rounded-full font-bold text-xs shrink-0 transition-all cursor-pointer border shadow-xs ${
+                    effectiveMode === 'guess'
+                      ? 'bg-primary-container text-on-primary-container border-primary/30'
+                      : 'bg-surface-container text-on-surface border-outline-variant/60 hover:bg-surface-container-high'
+                  }`}
+                  title={effectiveMode === 'guess' ? '当前：猜词模式（点击切换聊天）' : '当前：聊天模式（点击切换猜词）'}
+                  aria-label={effectiveMode === 'guess' ? '切换为聊天模式' : '切换为猜词模式'}
+                >
+                  <span>{effectiveMode === 'guess' ? '🎯' : '💬'}</span>
+                  <span>{effectiveMode === 'guess' ? t('inGame.modeGuess', '猜词') : t('inGame.modeChat', '聊天')}</span>
+                  <span className="text-[10px] opacity-60">⇄</span>
+                </button>
+              )}
+
               <div className="flex-1 relative flex items-center">
-                <AppIcon name="search" className="absolute left-3 text-outline w-4 h-4" />
                 <input
                   type="text"
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
-                  disabled={hasGuessedCorrect}
                   placeholder={
                     hasGuessedCorrect
                       ? guessResult?.earned
-                        ? t('inGame.guessedWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！静候其他玩家抢答...` })
-                        : t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
-                      : t('inGame.guessInputPlaceholder', '输入你猜测的词语（按 Enter 立即抢答）...')
+                        ? t('inGame.guessedChatPlaceholderWithScore', { score: guessResult.earned, defaultValue: `已猜中 (+${guessResult.earned}分)！发条消息互动...` })
+                        : t('inGame.guessedChatPlaceholder', '已猜中！发条消息互动...')
+                      : effectiveMode === 'guess'
+                      ? t('inGame.guessInputPlaceholder', '输入你猜测的词语（按 Enter 立即抢答）...')
+                      : t('inGame.chatInputPlaceholder', '输入聊天消息（按 Enter 发送）...')
                   }
-                  className="w-full pl-9 pr-8 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[14px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
+                  className="w-full pl-3.5 pr-8 py-2 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[13px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold"
                 />
                 {guessInput && (
                   <button
                     type="button"
                     onClick={() => setGuessInput('')}
-                    className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer"
+                    className="absolute right-2 text-outline hover:text-on-surface cursor-pointer"
                     title={t('inGame.clear', '清空')}
                   >
                     <AppIcon name="cancel" className="w-4 h-4" />
                   </button>
                 )}
               </div>
+
               {/* Big Send / Guess Button */}
               <button
                 type="submit"
-                disabled={hasGuessedCorrect || !guessInput.trim()}
-                className="tactile-btn px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-md font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
+                disabled={!guessInput.trim()}
+                className={`tactile-btn px-4 py-2 rounded-full font-label-lg text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
+                  effectiveMode === 'guess' && !hasGuessedCorrect
+                    ? 'bg-primary-container text-on-primary-container hover:bg-primary'
+                    : 'bg-primary text-on-primary hover:bg-primary/90'
+                }`}
               >
-                <span>{t('inGame.submitGuess', '猜一猜')}</span>
-                <AppIcon name="send" className="w-4 h-4" />
+                <span>
+                  {effectiveMode === 'guess' && !hasGuessedCorrect
+                    ? t('inGame.submitGuess', '猜一猜')
+                    : t('inGame.sendChat', '发消息')}
+                </span>
+                <AppIcon name="send" className="w-3.5 h-3.5" />
               </button>
             </form>
 
@@ -1091,24 +1136,60 @@ export const InGameGuesserPage: React.FC = () => {
               </div>
             </section>
 
-            {/* Bottom Guess Input & Interaction Bar */}
+            {/* Bottom Guess / Chat Input & Interaction Bar */}
             <footer className="bg-surface-container-lowest p-3 rounded-2xl border border-surface-container shadow-xs flex items-center gap-3 shrink-0">
-              <form onSubmit={handleGuessSubmit} className="flex-1 flex items-center gap-2">
+              <form onSubmit={handleInputSubmit} className="flex-1 flex items-center gap-2.5">
+                {/* Segmented Mode Selector */}
+                {hasGuessedCorrect ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold shrink-0 shadow-xs select-none">
+                    <span>🎉</span>
+                    <span>已猜中 · 畅聊模式</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center p-0.5 rounded-full bg-surface-container border border-outline-variant/50 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('guess')}
+                      className={`tactile-btn px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        effectiveMode === 'guess'
+                          ? 'bg-primary text-on-primary shadow-xs'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      <span>🎯</span>
+                      <span>{t('inGame.modeGuess', '猜词')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('chat')}
+                      className={`tactile-btn px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        effectiveMode === 'chat'
+                          ? 'bg-primary text-on-primary shadow-xs'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      <span>💬</span>
+                      <span>{t('inGame.modeChat', '聊天')}</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex-1 relative flex items-center">
-                  <AppIcon name="search" className="absolute left-3.5 text-outline w-5 h-5 pointer-events-none" />
+                  <AppIcon name={effectiveMode === 'guess' ? 'search' : 'chat'} className="absolute left-3.5 text-outline w-5 h-5 pointer-events-none" />
                   <input
                     type="text"
                     value={guessInput}
                     onChange={(e) => setGuessInput(e.target.value)}
-                    disabled={hasGuessedCorrect}
                     placeholder={
                       hasGuessedCorrect
                         ? guessResult?.earned
-                          ? t('inGame.guessedWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！静候其他玩家抢答...` })
-                          : t('inGame.alreadyGuessedPlaceholder', '你已猜中！静候其他玩家抢答...')
-                        : t('inGame.guessInputPlaceholderDesktop', '输入你的猜测词，按回车提交...')
+                          ? t('inGame.guessedChatPlaceholderWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！发条消息互动...` })
+                          : t('inGame.guessedChatPlaceholder', '你已猜中！发条消息互动...')
+                        : effectiveMode === 'guess'
+                        ? t('inGame.guessInputPlaceholderDesktop', '输入你的猜测词，按回车提交...')
+                        : t('inGame.chatInputPlaceholder', '输入聊天消息（按 Enter 发送）...')
                     }
-                    className="w-full pl-10 pr-9 py-2.5 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold disabled:opacity-60"
+                    className="w-full pl-10 pr-9 py-2 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold"
                   />
                   {guessInput && (
                     <button
@@ -1123,10 +1204,18 @@ export const InGameGuesserPage: React.FC = () => {
                 </div>
                 <button
                   type="submit"
-                  disabled={hasGuessedCorrect || !guessInput.trim()}
-                  className="tactile-btn px-6 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-sm font-bold shadow-md hover:bg-primary active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40"
+                  disabled={!guessInput.trim()}
+                  className={`tactile-btn px-6 py-2 rounded-full font-label-lg text-sm font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40 ${
+                    effectiveMode === 'guess' && !hasGuessedCorrect
+                      ? 'bg-primary-container text-on-primary-container hover:bg-primary'
+                      : 'bg-primary text-on-primary hover:bg-primary/90'
+                  }`}
                 >
-                  <span>{t('inGame.submitGuess', '抢先猜词')}</span>
+                  <span>
+                    {effectiveMode === 'guess' && !hasGuessedCorrect
+                      ? t('inGame.submitGuess', '抢先猜词')
+                      : t('inGame.sendChat', '发消息')}
+                  </span>
                   <AppIcon name="send" className="w-4 h-4" />
                 </button>
               </form>
