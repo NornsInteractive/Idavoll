@@ -17,6 +17,9 @@ import {
   X,
   Lock,
   RefreshCw,
+  Volume2,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 import { Card, Button, Badge, Avatar, ChatWindow, VoiceDock, Input } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
@@ -417,6 +420,7 @@ export const RoomWaitingPage: React.FC = () => {
   const isHost = room.hostId === userId;
   const me = room.players.find((p) => p.id === userId);
   const isMeReady = me?.isReady ?? false;
+  const speakingPlayers = room.players.filter((p) => speakingUserIds.includes(p.id));
 
   // Strict Gating:
   // 1. At least 2 players
@@ -588,19 +592,26 @@ export const RoomWaitingPage: React.FC = () => {
                   {room.players.length} / {maxSlots} 人
                 </Badge>
               </div>
-              <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
-                {isHost
-                  ? !isConnected
-                    ? t('roomWaiting.notConnected')
-                    : !allOnline
-                    ? t('roomWaiting.hasOfflinePlayers')
-                    : canStart
-                    ? t('roomWaiting.allReadyToStart')
-                    : t('roomWaiting.atLeastTwoPlayers')
-                  : isMeReady
-                  ? '已准备，等待房主开始'
-                  : '点击右侧按钮准备'}
-              </span>
+              {speakingPlayers.length > 0 ? (
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-pulse truncate max-w-[170px]">
+                  <Volume2 className="w-3 h-3 shrink-0" />
+                  <span className="truncate">{speakingPlayers.map((p) => p.nickname).join('、')} 正在说话...</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
+                  {isHost
+                    ? !isConnected
+                      ? t('roomWaiting.notConnected')
+                      : !allOnline
+                      ? t('roomWaiting.hasOfflinePlayers')
+                      : canStart
+                      ? t('roomWaiting.allReadyToStart')
+                      : t('roomWaiting.atLeastTwoPlayers')
+                    : isMeReady
+                    ? '已准备，等待房主开始'
+                    : '点击右侧按钮准备'}
+                </span>
+              )}
             </div>
 
             {/* Top-Right "准备 / 开始游戏" Action Button */}
@@ -630,36 +641,71 @@ export const RoomWaitingPage: React.FC = () => {
 
           {/* Slightly Larger Player Avatars Strip */}
           <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
-            {room.players.map((player) => (
-              <div
-                key={player.id}
-                className="relative flex flex-col items-center justify-center p-2 rounded-2xl bg-muted/50 border border-border/80 shrink-0 w-[74px] text-center gap-1 shadow-2xs"
-              >
-                {player.isHost && (
-                  <Crown className="w-3.5 h-3.5 absolute top-1.5 left-1.5 text-amber-500 fill-amber-500" />
-                )}
-                <Avatar
-                  src={player.avatar}
-                  alt={player.nickname}
-                  size="sm"
-                  status={player.isOnline ? 'online' : 'offline'}
-                />
-                <span className="font-extrabold text-[11px] text-foreground truncate w-full px-0.5 leading-tight">
-                  {player.nickname}
-                  {player.id === userId ? ' (我)' : ''}
-                </span>
-                <Badge
-                  variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
-                  className="text-[8px] px-1.5 py-0 font-extrabold leading-tight"
+            {room.players.map((player) => {
+              const isSpeaking = speakingUserIds.includes(player.id);
+              const isMe = player.id === userId;
+              const playerMuted = isMe ? isMuted : false;
+
+              return (
+                <div
+                  key={player.id}
+                  className={`relative flex flex-col items-center justify-center p-2 rounded-2xl border shrink-0 w-[74px] text-center gap-1 transition-all ${
+                    isSpeaking
+                      ? 'bg-emerald-500/10 border-emerald-500/80 ring-2 ring-emerald-500/40 shadow-xs scale-[1.02]'
+                      : 'bg-muted/50 border-border/80 shadow-2xs'
+                  }`}
                 >
-                  {player.isHost
-                    ? t('roomWaiting.hostBadge')
-                    : player.isReady
-                    ? t('roomWaiting.readyBadge')
-                    : t('roomWaiting.waitingBadge')}
-                </Badge>
-              </div>
-            ))}
+                  {player.isHost && (
+                    <Crown className="w-3.5 h-3.5 absolute top-1.5 left-1.5 text-amber-500 fill-amber-500" />
+                  )}
+                  <div className="relative">
+                    <div className={`rounded-full transition-all ${isSpeaking ? 'ring-2 ring-emerald-500 scale-105' : ''}`}>
+                      <Avatar
+                        src={player.avatar}
+                        alt={player.nickname}
+                        size="sm"
+                        status={player.isOnline ? 'online' : 'offline'}
+                      />
+                    </div>
+                    {isSpeaking && (
+                      <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-xs animate-bounce" title="正在说话">
+                        <Volume2 className="w-2.5 h-2.5" />
+                      </span>
+                    )}
+                    {!isSpeaking && playerMuted && (
+                      <span className="absolute -bottom-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-xs" title="已静音">
+                        <MicOff className="w-2.5 h-2.5" />
+                      </span>
+                    )}
+                  </div>
+                  <span className={`font-extrabold text-[11px] truncate w-full px-0.5 leading-tight ${
+                    isSpeaking ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-foreground'
+                  }`}>
+                    {player.nickname}
+                    {isMe ? ' (我)' : ''}
+                  </span>
+                  {isSpeaking ? (
+                    <Badge
+                      className="text-[8px] px-1.5 py-0 font-extrabold leading-tight bg-emerald-500 hover:bg-emerald-500 text-white animate-pulse flex items-center justify-center gap-0.5 w-full"
+                    >
+                      <Volume2 className="w-2 h-2 shrink-0" />
+                      <span>说话中</span>
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
+                      className="text-[8px] px-1.5 py-0 font-extrabold leading-tight"
+                    >
+                      {player.isHost
+                        ? t('roomWaiting.hostBadge')
+                        : player.isReady
+                        ? t('roomWaiting.readyBadge')
+                        : t('roomWaiting.waitingBadge')}
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
 
             {emptySlotsCount > 0 && (
               <button
@@ -686,7 +732,12 @@ export const RoomWaitingPage: React.FC = () => {
                 </Badge>
               </div>
 
-              {isHost ? (
+              {speakingPlayers.length > 0 ? (
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 animate-pulse">
+                  <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{speakingPlayers.map((p) => p.nickname).join('、')} 正在说话...</span>
+                </span>
+              ) : isHost ? (
                 <span className="text-xs font-semibold text-muted-foreground">
                   {!isConnected
                     ? t('roomWaiting.notConnected')
@@ -705,45 +756,84 @@ export const RoomWaitingPage: React.FC = () => {
 
             {/* Grid Seats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {room.players.map((player) => (
-                <motion.div
-                  key={player.id}
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="relative p-4 rounded-3xl bg-muted/40 border border-border flex flex-col items-center justify-center text-center space-y-2 group shadow-sm"
-                >
-                  {player.isHost && (
-                    <div
-                      className="absolute top-2 left-2 p-1 rounded-full bg-amber-500 text-white shadow"
-                      title={t('roomWaiting.hostBadge')}
-                    >
-                      <Crown className="w-3 h-3" />
-                    </div>
-                  )}
+              {room.players.map((player) => {
+                const isSpeaking = speakingUserIds.includes(player.id);
+                const isMe = player.id === userId;
+                const playerMuted = isMe ? isMuted : false;
 
-                  <Avatar
-                    src={player.avatar}
-                    alt={player.nickname}
-                    size="lg"
-                    status={player.isOnline ? 'online' : 'offline'}
-                  />
-
-                  <div className="w-full">
-                    <h5 className="font-extrabold text-sm text-foreground truncate px-1">
-                      {player.nickname}
-                      {player.id === userId ? ' (我)' : ''}
-                    </h5>
-                    <p className="text-[11px] text-muted-foreground font-medium">积分: {player.score}</p>
-                  </div>
-
-                  <Badge
-                    variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
-                    className="text-[10px] font-black px-2.5 py-0.5"
+                return (
+                  <motion.div
+                    key={player.id}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className={`relative p-4 rounded-3xl border flex flex-col items-center justify-center text-center space-y-2 group shadow-sm transition-all ${
+                      isSpeaking
+                        ? 'bg-emerald-500/10 border-emerald-500/80 ring-2 ring-emerald-500/40 shadow-emerald-500/10'
+                        : 'bg-muted/40 border-border'
+                    }`}
                   >
-                    {player.isHost ? t('roomWaiting.hostBadge') : player.isReady ? t('roomWaiting.readyBadge') : t('roomWaiting.waitingBadge')}
-                  </Badge>
-                </motion.div>
-              ))}
+                    {player.isHost && (
+                      <div
+                        className="absolute top-2 left-2 p-1 rounded-full bg-amber-500 text-white shadow"
+                        title={t('roomWaiting.hostBadge')}
+                      >
+                        <Crown className="w-3 h-3" />
+                      </div>
+                    )}
+
+                    <div className="relative">
+                      <div className={`rounded-full transition-all ${isSpeaking ? 'ring-4 ring-emerald-500 ring-offset-2 ring-offset-background scale-105' : ''}`}>
+                        <Avatar
+                          src={player.avatar}
+                          alt={player.nickname}
+                          size="lg"
+                          status={player.isOnline ? 'online' : 'offline'}
+                        />
+                      </div>
+                      {isSpeaking && (
+                        <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-emerald-500 text-white shadow-md animate-bounce" title="正在说话">
+                          <Volume2 className="w-3 h-3" />
+                        </div>
+                      )}
+                      {!isSpeaking && playerMuted && (
+                        <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-rose-500 text-white shadow-md" title="已静音">
+                          <MicOff className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full">
+                      <h5 className={`font-extrabold text-sm truncate px-1 ${
+                        isSpeaking ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-foreground'
+                      }`}>
+                        {player.nickname}
+                        {isMe ? ' (我)' : ''}
+                      </h5>
+                      <p className="text-[11px] text-muted-foreground font-medium">积分: {player.score}</p>
+                    </div>
+
+                    {isSpeaking ? (
+                      <Badge
+                        className="text-[10px] font-black px-2.5 py-0.5 bg-emerald-500 hover:bg-emerald-500 text-white animate-pulse flex items-center justify-center gap-1"
+                      >
+                        <Volume2 className="w-2.5 h-2.5" />
+                        <span>正在说话</span>
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
+                        className="text-[10px] font-black px-2.5 py-0.5"
+                      >
+                        {player.isHost
+                          ? t('roomWaiting.hostBadge')
+                          : player.isReady
+                          ? t('roomWaiting.readyBadge')
+                          : t('roomWaiting.waitingBadge')}
+                      </Badge>
+                    )}
+                  </motion.div>
+                );
+              })}
 
               {emptySlots.map((_, idx) => (
                 <div
@@ -763,7 +853,7 @@ export const RoomWaitingPage: React.FC = () => {
 
             {/* Voice Dock */}
             <VoiceDock
-              players={room.players}
+              players={[]}
               currentUserId={userId}
               isMuted={isMuted}
               onToggleMute={toggleMute}
@@ -821,7 +911,7 @@ export const RoomWaitingPage: React.FC = () => {
             aboveInputSlot={
               <div className="lg:hidden px-2.5 py-1.5 border-t border-border/70 bg-muted/20">
                 <VoiceDock
-                  players={room.players}
+                  players={[]}
                   currentUserId={userId}
                   isMuted={isMuted}
                   onToggleMute={toggleMute}

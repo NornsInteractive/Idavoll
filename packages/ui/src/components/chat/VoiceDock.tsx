@@ -84,14 +84,14 @@ export const VoiceDock: React.FC<VoiceDockProps> = ({
           {voiceStatus === 'connected' ? (
             <>
               <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-              <span className="hidden sm:inline text-emerald-600 dark:text-emerald-400">
+              <span className={cn(players.length === 0 ? 'inline text-xs' : 'hidden sm:inline', 'text-emerald-600 dark:text-emerald-400')}>
                 {labels?.statusConnected ?? '已连麦'}
               </span>
             </>
           ) : voiceStatus === 'connecting' ? (
             <>
               <Radio className="w-3.5 h-3.5 text-amber-500 animate-ping" />
-              <span className="hidden sm:inline text-amber-600 dark:text-amber-400">
+              <span className={cn(players.length === 0 ? 'inline text-xs' : 'hidden sm:inline', 'text-amber-600 dark:text-amber-400')}>
                 {labels?.statusConnecting ?? '连接中...'}
               </span>
             </>
@@ -104,12 +104,12 @@ export const VoiceDock: React.FC<VoiceDockProps> = ({
               className="flex items-center gap-1 text-rose-500 hover:underline cursor-pointer"
             >
               <AlertCircle className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{labels?.statusError ?? '语音异常 (重试)'}</span>
+              <span className={cn(players.length === 0 ? 'inline text-xs' : 'hidden sm:inline')}>{labels?.statusError ?? '语音异常 (重试)'}</span>
             </button>
           ) : (
             <>
               <Radio className="w-3.5 h-3.5 text-muted-foreground/60" />
-              <span className="hidden sm:inline text-muted-foreground">
+              <span className={cn(players.length === 0 ? 'inline text-xs' : 'hidden sm:inline', 'text-muted-foreground')}>
                 {labels?.statusOff ?? '语音未开启'}
               </span>
             </>
