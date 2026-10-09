@@ -161,7 +161,7 @@ export const InGameGuesserPage: React.FC = () => {
     if (effectiveMode === 'guess' && !hasGuessedCorrect) {
       submitGuess(text);
     } else {
-      sendMessage(text, false);
+      sendMessage(text, true);
     }
     setGuessInput('');
   };
