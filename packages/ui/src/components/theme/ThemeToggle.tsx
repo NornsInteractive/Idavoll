@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Sun, Moon, Globe, ChevronDown } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AccentPresets } from '../../tokens';
 
 export interface ThemeToggleProps {
@@ -20,6 +20,31 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   currentLang,
   onToggleLang,
 }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [dropdownOpen]);
+
   return (
     <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-card/80 backdrop-blur-md rounded-full border border-border shadow-xs shrink-0 max-w-full">
       {/* Dark / Light Toggle */}
@@ -43,31 +68,66 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         <span>{currentLang === 'zh-CN' ? '中文' : 'EN'}</span>
       </button>
 
-      {/* Mobile: Accent Color Dropdown Select (md:hidden) */}
-      <div className="md:hidden relative flex items-center pl-1 border-l border-border/80">
-        <span
-          className="w-3 h-3 rounded-full border border-white/90 shadow-xs pointer-events-none absolute left-2 shrink-0 z-10"
-          style={{ backgroundColor: currentAccent }}
-          aria-hidden="true"
-        />
-        <select
-          value={currentAccent.toUpperCase()}
-          onChange={(e) => onSelectAccent(e.target.value)}
-          className="appearance-none pl-6 pr-5 py-0.5 h-7 text-[11px] font-extrabold bg-muted/70 hover:bg-muted text-foreground rounded-full border border-border/70 cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[var(--theme-primary,#5B5BF0)] max-w-[76px] truncate"
-          title={currentLang === 'zh-CN' ? '选择主题色' : 'Select Accent Color'}
-          aria-label={currentLang === 'zh-CN' ? '选择主题色' : 'Select Accent Color'}
+      {/* Mobile: Accent Color Dropdown Popover (md:hidden) */}
+      <div ref={dropdownRef} className="md:hidden relative flex items-center pl-1 border-l border-border/80">
+        <button
+          type="button"
+          onClick={() => setDropdownOpen((v) => !v)}
+          className={`flex items-center gap-1.5 px-2 py-1 h-7 rounded-full bg-muted/60 hover:bg-muted border border-border/80 transition-all cursor-pointer ${
+            dropdownOpen ? 'ring-2 ring-[var(--theme-primary,#5B5BF0)]/40 bg-muted' : ''
+          }`}
+          aria-expanded={dropdownOpen}
+          aria-label={currentLang === 'zh-CN' ? '切换主题色' : 'Select Theme Accent'}
         >
-          {AccentPresets.map((preset) => (
-            <option
-              key={preset.id}
-              value={preset.hex.toUpperCase()}
-              className="bg-card text-foreground font-bold text-xs"
+          <span
+            className="w-3.5 h-3.5 rounded-full border border-white/90 shadow-xs shrink-0"
+            style={{ backgroundColor: currentAccent }}
+          />
+          <motion.span
+            animate={{ rotate: dropdownOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center justify-center"
+          >
+            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+          </motion.span>
+        </button>
+
+        <AnimatePresence>
+          {dropdownOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+              className="absolute top-full right-0 mt-2 p-2 bg-card/95 backdrop-blur-xl rounded-2xl border border-border/90 shadow-xl shadow-black/10 z-50 flex items-center gap-2"
+              role="menu"
             >
-              {currentLang === 'zh-CN' ? preset.name.split(' ')[0] : preset.id.charAt(0).toUpperCase() + preset.id.slice(1)}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="w-2.5 h-2.5 text-muted-foreground absolute right-1.5 pointer-events-none shrink-0" />
+              {AccentPresets.map((preset) => {
+                const isSelected = currentAccent.toLowerCase() === preset.hex.toLowerCase();
+                return (
+                  <motion.button
+                    key={preset.id}
+                    type="button"
+                    whileTap={{ scale: 0.82 }}
+                    whileHover={{ scale: 1.15 }}
+                    onClick={() => {
+                      onSelectAccent(preset.hex);
+                      setDropdownOpen(false);
+                    }}
+                    className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer relative shrink-0 ${
+                      isSelected
+                        ? 'border-white scale-110 ring-2 ring-[var(--theme-primary,#5B5BF0)] shadow-md'
+                        : 'border-transparent hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: preset.hex }}
+                    title={preset.name}
+                    aria-label={preset.name}
+                  />
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Desktop: Accent Color Circles (hidden md:flex) */}
