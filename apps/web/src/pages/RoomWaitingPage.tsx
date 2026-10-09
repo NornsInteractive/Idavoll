@@ -577,98 +577,33 @@ export const RoomWaitingPage: React.FC = () => {
 
       {/* Main Responsive Grid: Mobile flex-col, Desktop 3-column grid */}
       <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-3 lg:gap-6 overflow-hidden">
-        {/* Mobile Compact Player Seats & Voice Panel (< lg) */}
-        <div className="shrink-0 flex flex-col gap-1.5 bg-card/95 backdrop-blur-md rounded-2xl border border-border p-2 shadow-xs lg:hidden">
-          {/* Status Bar */}
-          <div className="flex items-center justify-between text-xs px-0.5">
-            <div className="flex items-center gap-1.5 font-black text-foreground">
-              <span>{t('roomWaiting.playerSeats')}</span>
-              <Badge variant="subtle" className="text-[10px] px-1.5 py-0 font-bold">
-                {room.players.length} / {maxSlots} 人
-              </Badge>
-            </div>
-            <span className="text-[11px] font-semibold text-muted-foreground truncate max-w-[180px]">
-              {isHost
-                ? !isConnected
-                  ? t('roomWaiting.notConnected')
-                  : !allOnline
-                  ? t('roomWaiting.hasOfflinePlayers')
-                  : canStart
-                  ? t('roomWaiting.allReadyToStart')
-                  : t('roomWaiting.atLeastTwoPlayers')
-                : isMeReady
-                ? '已准备，等待房主开始'
-                : '点击准备按钮开始'}
-            </span>
-          </div>
-
-          {/* Compact Player Avatars Strip */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
-            {room.players.map((player) => (
-              <div
-                key={player.id}
-                className="relative flex items-center gap-1.5 px-2 py-1 rounded-xl bg-muted/60 border border-border/80 shrink-0 shadow-2xs"
-              >
-                <div className="relative shrink-0">
-                  <Avatar
-                    src={player.avatar}
-                    alt={player.nickname}
-                    size="xs"
-                    status={player.isOnline ? 'online' : 'offline'}
-                  />
-                  {player.isHost && (
-                    <Crown className="w-2.5 h-2.5 absolute -top-1 -left-1 text-amber-500 fill-amber-500" />
-                  )}
-                </div>
-                <div className="flex flex-col min-w-0 max-w-[68px]">
-                  <span className="font-extrabold text-[10px] text-foreground truncate leading-tight">
-                    {player.nickname}
-                    {player.id === userId ? ' (我)' : ''}
-                  </span>
-                  <span className="text-[9px] font-semibold text-muted-foreground truncate leading-tight">
-                    {player.isHost
-                      ? t('roomWaiting.hostBadge')
-                      : player.isReady
-                      ? '✓ ' + t('roomWaiting.readyBadge')
-                      : t('roomWaiting.waitingBadge')}
-                  </span>
-                </div>
+        {/* Mobile Player Seats (< lg) - Slightly roomier, with Ready/Start button in top right */}
+        <div className="shrink-0 flex flex-col gap-2 bg-card/95 backdrop-blur-md rounded-2xl border border-border p-2.5 shadow-xs lg:hidden">
+          {/* Header Row: Title & Player Count on Left, "准备/开始游戏" Button in Top-Right Corner */}
+          <div className="flex items-center justify-between gap-2 px-0.5">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5 font-black text-foreground">
+                <span className="text-sm">{t('roomWaiting.playerSeats')}</span>
+                <Badge variant="subtle" className="text-[10px] px-1.5 py-0 font-bold">
+                  {room.players.length} / {maxSlots} 人
+                </Badge>
               </div>
-            ))}
-
-            {emptySlotsCount > 0 && (
-              <button
-                type="button"
-                onClick={handleCopyInvite}
-                className="flex items-center gap-1 px-2 py-1 rounded-xl border border-dashed border-border/90 hover:border-primary shrink-0 text-muted-foreground hover:text-foreground cursor-pointer transition-colors h-[34px]"
-              >
-                <UserPlus className="w-3 h-3" />
-                <span className="text-[9px] font-bold">+{emptySlotsCount}空位</span>
-              </button>
-            )}
-          </div>
-
-          {/* Voice Dock & Start / Ready Actions */}
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60">
-            <div className="flex-1 min-w-0">
-              <VoiceDock
-                players={[]}
-                currentUserId={userId}
-                isMuted={isMuted}
-                onToggleMute={toggleMute}
-                isDeafened={isDeafened}
-                onToggleDeafen={toggleDeafen}
-                speakingUserIds={speakingUserIds}
-                voiceStatus={voiceStatus}
-                voiceError={voiceError}
-                voiceMode={voiceMode}
-                onSetVoiceMode={setVoiceMode}
-                onHoldToTalk={holdToTalk}
-                labels={voiceDockLabels}
-                className="p-1 px-2 py-0.5 rounded-xl border-none shadow-none bg-muted/40"
-              />
+              <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
+                {isHost
+                  ? !isConnected
+                    ? t('roomWaiting.notConnected')
+                    : !allOnline
+                    ? t('roomWaiting.hasOfflinePlayers')
+                    : canStart
+                    ? t('roomWaiting.allReadyToStart')
+                    : t('roomWaiting.atLeastTwoPlayers')
+                  : isMeReady
+                  ? '已准备，等待房主开始'
+                  : '点击右侧按钮准备'}
+              </span>
             </div>
 
+            {/* Top-Right "准备 / 开始游戏" Action Button */}
             <div className="shrink-0">
               {isHost ? (
                 <Button
@@ -691,6 +626,52 @@ export const RoomWaitingPage: React.FC = () => {
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Slightly Larger Player Avatars Strip */}
+          <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+            {room.players.map((player) => (
+              <div
+                key={player.id}
+                className="relative flex flex-col items-center justify-center p-2 rounded-2xl bg-muted/50 border border-border/80 shrink-0 w-[74px] text-center gap-1 shadow-2xs"
+              >
+                {player.isHost && (
+                  <Crown className="w-3.5 h-3.5 absolute top-1.5 left-1.5 text-amber-500 fill-amber-500" />
+                )}
+                <Avatar
+                  src={player.avatar}
+                  alt={player.nickname}
+                  size="sm"
+                  status={player.isOnline ? 'online' : 'offline'}
+                />
+                <span className="font-extrabold text-[11px] text-foreground truncate w-full px-0.5 leading-tight">
+                  {player.nickname}
+                  {player.id === userId ? ' (我)' : ''}
+                </span>
+                <Badge
+                  variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
+                  className="text-[8px] px-1.5 py-0 font-extrabold leading-tight"
+                >
+                  {player.isHost
+                    ? t('roomWaiting.hostBadge')
+                    : player.isReady
+                    ? t('roomWaiting.readyBadge')
+                    : t('roomWaiting.waitingBadge')}
+                </Badge>
+              </div>
+            ))}
+
+            {emptySlotsCount > 0 && (
+              <button
+                type="button"
+                onClick={handleCopyInvite}
+                className="flex flex-col items-center justify-center p-2 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary shrink-0 w-[74px] h-[82px] text-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span className="text-[10px] font-bold">{t('roomWaiting.inviteSlot')}</span>
+                <span className="text-[9px] opacity-60">+{emptySlotsCount}空位</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -837,6 +818,26 @@ export const RoomWaitingPage: React.FC = () => {
             onSendMessage={(content, isDanmaku) => sendMessage(content, isDanmaku)}
             title="房间交流与猜词"
             className="h-full flex-1 min-h-0 rounded-2xl lg:rounded-3xl"
+            aboveInputSlot={
+              <div className="lg:hidden px-2.5 py-1.5 border-t border-border/70 bg-muted/20">
+                <VoiceDock
+                  players={room.players}
+                  currentUserId={userId}
+                  isMuted={isMuted}
+                  onToggleMute={toggleMute}
+                  isDeafened={isDeafened}
+                  onToggleDeafen={toggleDeafen}
+                  speakingUserIds={speakingUserIds}
+                  voiceStatus={voiceStatus}
+                  voiceError={voiceError}
+                  voiceMode={voiceMode}
+                  onSetVoiceMode={setVoiceMode}
+                  onHoldToTalk={holdToTalk}
+                  labels={voiceDockLabels}
+                  className="p-0 border-none shadow-none bg-transparent w-full"
+                />
+              </div>
+            }
           />
         </div>
       </div>

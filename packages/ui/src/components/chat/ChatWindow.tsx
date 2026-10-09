@@ -14,6 +14,7 @@ export interface ChatWindowProps {
   enableDanmakuToggle?: boolean;
   isDanmakuDefault?: boolean;
   className?: string;
+  aboveInputSlot?: React.ReactNode;
 }
 
 const QUICK_EMOJIS = ['🎉', '👏', '🎨', '🔥', '🤔', '🤣', '❤️', '💡'];
@@ -27,6 +28,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   enableDanmakuToggle = true,
   isDanmakuDefault = false,
   className = '',
+  aboveInputSlot,
 }) => {
   const [inputText, setInputText] = useState('');
   const [isDanmaku, setIsDanmaku] = useState(isDanmakuDefault);
@@ -169,6 +171,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Slot above input (e.g. Mic / Voice controls) */}
+      {aboveInputSlot && (
+        <div className="shrink-0">
+          {aboveInputSlot}
+        </div>
+      )}
 
       {/* Input bar */}
       <form onSubmit={handleSend} className="p-3 border-t border-border/80 bg-background/80 flex items-center gap-2">

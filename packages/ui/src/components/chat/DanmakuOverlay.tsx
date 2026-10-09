@@ -33,8 +33,8 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ items, enabled =
         {activeDanmakus.map((d) => (
           <motion.div
             key={d.id}
-            initial={{ x: '100vw', opacity: 0.95 }}
-            animate={{ x: '-100%' }}
+            initial={{ x: '100vw', opacity: 0.7 }}
+            animate={{ x: '-100%', opacity: 0.7 }}
             exit={{ opacity: 0 }}
             transition={{
               duration: 10,
@@ -43,10 +43,10 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ items, enabled =
             onAnimationComplete={() => {
               setActiveDanmakus((prev) => prev.filter((item) => item.id !== d.id));
             }}
-            className="absolute whitespace-nowrap px-4 py-1.5 rounded-full font-black text-sm tracking-wide text-white shadow-lg flex items-center gap-2 border border-white/20 backdrop-blur-md"
+            className="absolute whitespace-nowrap px-3.5 py-1 rounded-full font-bold text-xs sm:text-sm tracking-wide text-white/95 shadow-xs flex items-center gap-1.5 border border-white/20 backdrop-blur-xs pointer-events-none"
             style={{
               top: `${Math.max(8, Math.min(82, d.topPercent))}%`,
-              backgroundColor: d.color ? `${d.color}E6` : '#5B5BF0E6',
+              backgroundColor: d.color ? `${d.color.slice(0, 7)}66` : 'rgba(91, 91, 240, 0.40)',
               position: 'absolute',
             }}
           >
