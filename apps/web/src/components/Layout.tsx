@@ -12,7 +12,7 @@ import { heartbeat } from '../services/api';
 export const Layout: React.FC = () => {
   const { isDark, accentColor, language, token } = useUserStore();
   const { error, clearError, connectionState, voiceError } = useRoomStore();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
 
   // Synchronize DOM dark mode, theme variable, and language preference
@@ -52,7 +52,7 @@ export const Layout: React.FC = () => {
       {connectionState === 'reconnecting' && (
         <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-amber-950 px-4 py-1.5 rounded-full text-xs font-black shadow-lg flex items-center gap-2 animate-pulse">
           <WifiOff className="w-3.5 h-3.5" />
-          <span>网络连接中断，正在自动重连中...</span>
+          <span>{t('common.reconnecting', '网络连接中断，正在自动重连中...')}</span>
         </div>
       )}
 

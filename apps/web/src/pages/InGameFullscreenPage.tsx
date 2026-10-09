@@ -44,7 +44,7 @@ export const InGameFullscreenPage: React.FC = () => {
     (isDrawer
       ? currentWord || t('inGame.waitingWordSelection', '等待选词')
       : gameState.currentWordLength
-      ? `${gameState.currentWordLength}个字`
+      ? t('inGame.wordLength', { count: gameState.currentWordLength })
       : '');
 
   const handleSendDanmaku = (e: React.FormEvent) => {
@@ -77,7 +77,9 @@ export const InGameFullscreenPage: React.FC = () => {
             {isDrawer ? t('inGame.drawerRole') : t('inGame.guesserRole')}
           </Badge>
           <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold">
-            {isDrawer ? `题目: 【${currentWord || t('inGame.waitingWordSelection')}】` : `提示: ${wordHint}`}
+            {isDrawer
+              ? t('inGame.wordTopic', { word: currentWord || t('inGame.waitingWordSelection') })
+              : t('inGame.wordClue', { hint: wordHint })}
           </div>
         </div>
 
@@ -127,7 +129,7 @@ export const InGameFullscreenPage: React.FC = () => {
           className="p-2 bg-card/90 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl flex items-center gap-2"
         >
           <div className="pl-3 text-xs font-black text-[var(--theme-primary,#5B5BF0)]">
-            🚀 全屏弹幕
+            {t('inGame.fullscreenDanmakuLabel')}
           </div>
 
           <input
@@ -136,17 +138,17 @@ export const InGameFullscreenPage: React.FC = () => {
             onChange={(e) => setInputGuess(e.target.value)}
             placeholder={
               isDrawer
-                ? '发射弹幕互动...'
+                ? t('inGame.drawerDanmakuPlaceholder')
                 : hasGuessedCorrectly
-                ? '已猜中，发射弹幕交流...'
-                : '发射弹幕 / 抢答...'
+                ? t('inGame.guessedDanmakuPlaceholder')
+                : t('inGame.guesserDanmakuPlaceholder')
             }
             className="flex-1 bg-transparent px-3 py-1.5 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
 
           <Button type="submit" size="sm" className="h-9 px-5 font-black gap-1 cursor-pointer">
             <Send className="w-3.5 h-3.5" />
-            <span>发射</span>
+            <span>{t('inGame.sendDanmaku')}</span>
           </Button>
         </form>
       </div>

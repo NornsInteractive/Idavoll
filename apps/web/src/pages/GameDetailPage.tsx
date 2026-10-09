@@ -53,7 +53,7 @@ export const GameDetailPage: React.FC = () => {
         className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         <ChevronLeft className="w-4 h-4" />
-        <span>返回游戏库</span>
+        <span>{t('gameDetail.backToGames')}</span>
       </button>
 
       {error && (
@@ -69,14 +69,14 @@ export const GameDetailPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       >
-        <Card className="p-6 sm:p-10 bg-gradient-to-br from-[var(--theme-primary,#5B5BF0)] to-indigo-800 text-white relative overflow-hidden shadow-2xl">
+        <Card className="p-6 sm:p-10 bg-gradient-to-br from-[var(--theme-primary,#5B5BF0)] to-slate-900 dark:to-card text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10 space-y-4 max-w-2xl">
             <div className="flex items-center gap-2">
               <Badge className="bg-white/20 text-white border border-white/30 font-black">
-                🎨 招牌力作
+                {t('gameDetail.flagship')}
               </Badge>
               <span className="text-xs font-bold text-white/80">
-                支持 2-12 位玩家同屏竞技
+                {t('gameDetail.playersBadge')}
               </span>
             </div>
 
@@ -85,7 +85,13 @@ export const GameDetailPage: React.FC = () => {
             </h1>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {['休闲派对', '实时画板', '弹幕抢答', '词库丰富', '多端互通'].map((tag) => (
+              {[
+                t('gameDetail.tagCasual'),
+                t('gameDetail.tagBoard'),
+                t('gameDetail.tagDanmaku'),
+                t('gameDetail.tagVocab'),
+                t('gameDetail.tagCrossPlatform'),
+              ].map((tag) => (
                 <span
                   key={tag}
                   className="px-3 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95"
@@ -105,7 +111,7 @@ export const GameDetailPage: React.FC = () => {
                 {isMatching ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>匹配房间中...</span>
+                    <span>{t('lobby.quickMatchSearching')}</span>
                   </>
                 ) : (
                   <>
@@ -132,12 +138,12 @@ export const GameDetailPage: React.FC = () => {
       {/* Rules & Gameplay Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 space-y-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 text-indigo-600 flex items-center justify-center font-black">
+          <div className="w-10 h-10 rounded-2xl bg-[var(--theme-primary,#5B5BF0)]/15 text-[var(--theme-primary,#5B5BF0)] flex items-center justify-center font-black">
             1
           </div>
-          <h4 className="text-lg font-black text-foreground">抽取画手 · 选词作画</h4>
+          <h4 className="text-lg font-black text-foreground">{t('gameDetail.step1Title')}</h4>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            每回合随机轮换画手，画手从精选题库选项中选定词语并在画布上作画。
+            {t('gameDetail.step1Desc')}
           </p>
         </Card>
 
@@ -145,9 +151,9 @@ export const GameDetailPage: React.FC = () => {
           <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center font-black">
             2
           </div>
-          <h4 className="text-lg font-black text-foreground">实时观察 · 弹幕抢答</h4>
+          <h4 className="text-lg font-black text-foreground">{t('gameDetail.step2Title')}</h4>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            猜题者实时同步笔迹与字数提示，随时在输入框或弹幕输入答案争分夺秒抢答。
+            {t('gameDetail.step2Desc')}
           </p>
         </Card>
 
@@ -155,9 +161,9 @@ export const GameDetailPage: React.FC = () => {
           <div className="w-10 h-10 rounded-2xl bg-teal-500/15 text-teal-600 flex items-center justify-center font-black">
             3
           </div>
-          <h4 className="text-lg font-black text-foreground">积分结算 · 荣登榜首</h4>
+          <h4 className="text-lg font-black text-foreground">{t('gameDetail.step3Title')}</h4>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            抢答越快得分越高，画手根据被猜中人数也获奖励，多轮累计角逐全场 MVP。
+            {t('gameDetail.step3Desc')}
           </p>
         </Card>
       </div>
@@ -166,36 +172,36 @@ export const GameDetailPage: React.FC = () => {
       <Card className="p-6 space-y-4">
         <h4 className="text-lg font-extrabold text-foreground flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-[var(--theme-primary,#5B5BF0)]" />
-          <span>真实题库涵盖主题</span>
+          <span>{t('gameDetail.wordbankTitle')}</span>
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 bg-muted/40 rounded-2xl space-y-1.5 border border-border/60">
             <Badge variant="mint" className="text-[10px]">
-              简单入门
+              {t('gameDetail.easyBadge')}
             </Badge>
-            <h5 className="text-sm font-extrabold text-foreground">水果食物 (Fruits & Food)</h5>
+            <h5 className="text-sm font-extrabold text-foreground">{t('gameDetail.easyTitle')}</h5>
             <p className="text-xs text-muted-foreground">
-              包含西瓜、苹果、香蕉、草莓、冰淇淋、汉堡包、珍珠奶茶等贴近生活的常见美味。
+              {t('gameDetail.easyDesc')}
             </p>
           </div>
 
           <div className="p-4 bg-muted/40 rounded-2xl space-y-1.5 border border-border/60">
             <Badge variant="default" className="text-[10px]">
-              标准进阶
+              {t('gameDetail.mediumBadge')}
             </Badge>
-            <h5 className="text-sm font-extrabold text-foreground">可爱动物 (Animals)</h5>
+            <h5 className="text-sm font-extrabold text-foreground">{t('gameDetail.mediumTitle')}</h5>
             <p className="text-xs text-muted-foreground">
-              包含小猫、大熊猫、企鹅、长颈鹿、袋鼠、海豚、霸王龙等形态各异的自然生灵。
+              {t('gameDetail.mediumDesc')}
             </p>
           </div>
 
           <div className="p-4 bg-muted/40 rounded-2xl space-y-1.5 border border-border/60">
             <Badge variant="subtle" className="text-[10px]">
-              趣味挑战
+              {t('gameDetail.hardBadge')}
             </Badge>
-            <h5 className="text-sm font-extrabold text-foreground">生活日常与科技 (Daily Items)</h5>
+            <h5 className="text-sm font-extrabold text-foreground">{t('gameDetail.hardTitle')}</h5>
             <p className="text-xs text-muted-foreground">
-              包含雨伞、眼镜、吉他、自行车、智能手表、无人机、火箭等现代日用品与科技事物。
+              {t('gameDetail.hardDesc')}
             </p>
           </div>
         </div>

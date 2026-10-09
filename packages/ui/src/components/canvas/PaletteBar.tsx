@@ -61,7 +61,7 @@ export const PaletteBar: React.FC<PaletteBarProps> = ({
               }}
               className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 transition-transform cursor-pointer shrink-0 shadow-xs ${
                 isSelected
-                  ? 'border-indigo-600 dark:border-white scale-110 ring-2 ring-indigo-400'
+                  ? 'border-[var(--theme-primary,#5B5BF0)] dark:border-white scale-110 ring-2 ring-[var(--theme-primary,#5B5BF0)]/60'
                   : 'border-white/80 dark:border-white/20 hover:scale-105'
               }`}
               style={{ backgroundColor: color }}

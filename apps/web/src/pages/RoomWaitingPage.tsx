@@ -1099,14 +1099,14 @@ export const RoomWaitingPage: React.FC = () => {
               <Card className="p-6 space-y-5 border-2 border-border shadow-2xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+                    <div className="p-2 rounded-xl bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)]">
                       <Settings className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="font-extrabold text-base text-foreground">
                         {t('roomWaiting.editSettings')}
                       </h4>
-                      <p className="text-[11px] text-muted-foreground">仅房主有权更改当前房间配置</p>
+                      <p className="text-[11px] text-muted-foreground">{t('roomWaiting.onlyHostCanEdit')}</p>
                     </div>
                   </div>
                   <button

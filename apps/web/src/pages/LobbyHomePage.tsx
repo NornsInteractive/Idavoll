@@ -68,7 +68,7 @@ export const LobbyHomePage: React.FC = () => {
       const canonicalRoomId = await connectRoom(match.roomId, undefined, match.ticket);
       navigate(`/room/${canonicalRoomId}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '快速匹配失败，请重试';
+      const msg = err instanceof Error ? err.message : t('lobby.quickMatchFailed');
       setActionError(msg);
     } finally {
       setIsMatching(false);
@@ -90,7 +90,7 @@ export const LobbyHomePage: React.FC = () => {
       const canonicalRoomId = await connectRoom(code);
       navigate(`/room/${canonicalRoomId}`);
     } catch (err: any) {
-      const msg = err instanceof Error ? err.message : '加入房间失败';
+      const msg = err instanceof Error ? err.message : t('lobby.joinRoomFailed');
       if (msg.includes('密码') || err?.status === 403) {
         setTargetRoomIdentifier(code);
         setRoomPassword('');
@@ -119,7 +119,7 @@ export const LobbyHomePage: React.FC = () => {
       const canonicalRoomId = await connectRoom(roomId);
       navigate(`/room/${canonicalRoomId}`);
     } catch (err: any) {
-      const msg = err instanceof Error ? err.message : '加入房间失败';
+      const msg = err instanceof Error ? err.message : t('lobby.joinRoomFailed');
       if (msg.includes('密码') || err?.status === 403) {
         setTargetRoomIdentifier(roomId);
         setRoomPassword('');
@@ -136,7 +136,7 @@ export const LobbyHomePage: React.FC = () => {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomPassword.trim()) {
-      setPasswordError('请输入房间密码');
+      setPasswordError(t('lobby.passwordInputPlaceholder'));
       return;
     }
 
@@ -147,7 +147,7 @@ export const LobbyHomePage: React.FC = () => {
       setPasswordModalOpen(false);
       navigate(`/room/${canonicalRoomId}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '密码错误或加入失败';
+      const msg = err instanceof Error ? err.message : t('lobby.passwordError');
       setPasswordError(msg);
     } finally {
       setIsJoining(false);
@@ -203,7 +203,7 @@ export const LobbyHomePage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 240, damping: 20 }}
       >
-        <Card className="p-6 sm:p-10 bg-gradient-to-r from-[var(--theme-primary,#5B5BF0)] via-indigo-600 to-[#FF6B5E] text-white border-0 shadow-2xl relative overflow-hidden">
+        <Card className="p-6 sm:p-10 bg-gradient-to-r from-[var(--theme-primary,#5B5BF0)] to-[#FF6B5E] text-white border-0 shadow-2xl relative overflow-hidden">
           {/* Subtle Ambient Shapes */}
           <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 pointer-events-none flex items-center justify-center">
             <Palette className="w-96 h-96 -rotate-12 translate-x-20" />
@@ -211,7 +211,7 @@ export const LobbyHomePage: React.FC = () => {
 
           <div className="relative z-10 max-w-2xl space-y-4">
             <Badge className="bg-white/20 text-white backdrop-blur-md border border-white/30 text-xs px-3 py-1">
-              ✨ 经典重磅升级
+              ✨ {t('lobby.lobbyStatus')}
             </Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
               {t('lobby.bannerTitle')}
@@ -230,7 +230,7 @@ export const LobbyHomePage: React.FC = () => {
                 {isMatching ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>{t('lobby.quickMatchSearching', '匹配寻找房间中...')}</span>
+                    <span>{t('lobby.quickMatchSearching')}</span>
                   </>
                 ) : (
                   <>
@@ -264,7 +264,7 @@ export const LobbyHomePage: React.FC = () => {
             <h4 className="font-extrabold text-sm sm:text-base text-foreground">
               {t('lobby.joinByCode')}
             </h4>
-            <p className="text-xs text-muted-foreground">{t('lobby.joinByCodeDesc', '朋友已经建好房间？直接输入 6 位房间号即可直达')}</p>
+            <p className="text-xs text-muted-foreground">{t('lobby.joinByCodeDesc')}</p>
           </div>
         </div>
 
@@ -306,30 +306,30 @@ export const LobbyHomePage: React.FC = () => {
           <Card
             hoverEffect
             onClick={() => navigate('/games/draw-and-guess')}
-            className="md:col-span-2 p-6 bg-gradient-to-br from-card via-card to-indigo-50/50 dark:to-indigo-950/20 border-2 border-indigo-500/20 cursor-pointer"
+            className="md:col-span-2 p-6 bg-gradient-to-br from-card via-card to-primary/5 border-2 border-[var(--theme-primary,#5B5BF0)]/20 cursor-pointer"
           >
             <div className="flex flex-col sm:flex-row justify-between gap-6">
               <div className="space-y-3 flex-1">
                 <div className="flex items-center gap-2">
                   <Badge variant="default" className="text-xs font-black">
-                    🔥 最受欢迎
+                    {t('lobby.mostPopular')}
                   </Badge>
-                  <span className="text-xs font-bold text-muted-foreground">2-12 人多人同屏</span>
+                  <span className="text-xs font-bold text-muted-foreground">{t('lobby.multiplayerCount')}</span>
                 </div>
 
                 <h4 className="text-2xl sm:text-3xl font-black text-foreground">
-                  你画我猜 (Draw & Guess)
+                  {t('gameDetail.title')}
                 </h4>
                 <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                  脑洞大开的派对灵魂画画游戏！实时 Canvas 笔触同步，全屏飘字弹幕抢答，支持自选词库与多轮计分！
+                  {t('lobby.featuredGameDesc')}
                 </p>
 
                 <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground pt-2">
                   <span className="flex items-center gap-1">
-                    <Timer className="w-4 h-4 text-indigo-500" /> 60s 快速轮转
+                    <Timer className="w-4 h-4 text-[var(--theme-primary,#5B5BF0)]" /> {t('lobby.fastRounds')}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4 text-teal-500" /> 实时语音 + 弹幕
+                    <Users className="w-4 h-4 text-teal-500" /> {t('lobby.voiceAndDanmaku')}
                   </span>
                 </div>
               </div>
@@ -337,7 +337,7 @@ export const LobbyHomePage: React.FC = () => {
               <div className="flex sm:flex-col justify-end items-end gap-2">
                 <Button size="lg" className="w-full sm:w-auto font-black gap-2">
                   <Play className="w-4 h-4 fill-current" />
-                  <span>立即畅玩</span>
+                  <span>{t('games.playNow')}</span>
                 </Button>
               </div>
             </div>
@@ -434,7 +434,7 @@ export const LobbyHomePage: React.FC = () => {
                     </h5>
 
                     <p className="text-xs text-muted-foreground font-medium">
-                      房号: {room.roomCode}
+                      {t('roomWaiting.roomCode')}: {room.roomCode}
                     </p>
                   </div>
 
@@ -472,8 +472,12 @@ export const LobbyHomePage: React.FC = () => {
                       <Lock className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-base text-foreground">私密房间密码</h4>
-                      <p className="text-[11px] text-muted-foreground">该房间设有访问密码</p>
+                      <h4 className="font-extrabold text-base text-foreground">
+                        {t('lobby.passwordModalTitle')}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t('lobby.passwordModalDesc')}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -500,7 +504,7 @@ export const LobbyHomePage: React.FC = () => {
                       setRoomPassword(e.target.value);
                       setPasswordError(null);
                     }}
-                    placeholder="请输入房间密码 (4-64 位)"
+                    placeholder={t('lobby.passwordInputPlaceholder')}
                     autoFocus
                     maxLength={64}
                     disabled={isJoining}
@@ -514,14 +518,14 @@ export const LobbyHomePage: React.FC = () => {
                       className="flex-1 font-bold text-xs"
                       disabled={isJoining}
                     >
-                      取消
+                      {t('lobby.cancel')}
                     </Button>
                     <Button
                       type="submit"
                       disabled={isJoining || !roomPassword.trim()}
                       className="flex-1 font-black text-xs gap-1"
                     >
-                      {isJoining ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>确认进入</span>}
+                      {isJoining ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>{t('lobby.confirm')}</span>}
                     </Button>
                   </div>
                 </form>

@@ -19,7 +19,7 @@ const sizeClasses = {
 const statusColors = {
   online: 'bg-[#2EC4A6]',
   busy: 'bg-[#FF6B5E]',
-  drawing: 'bg-[#5B5BF0]',
+  drawing: 'bg-[var(--theme-primary,#5B5BF0)]',
   offline: 'bg-muted-foreground',
 };
 
@@ -35,7 +35,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <div className={cn('relative inline-flex flex-shrink-0 select-none', className)} {...props}>
       <div
         className={cn(
-          'rounded-full overflow-hidden flex items-center justify-center font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 ring-2 ring-background shadow-sm',
+          'rounded-full overflow-hidden flex items-center justify-center font-bold bg-[var(--theme-primary,#5B5BF0)]/15 text-[var(--theme-primary,#5B5BF0)] ring-2 ring-background shadow-sm',
           sizeClasses[size]
         )}
       >

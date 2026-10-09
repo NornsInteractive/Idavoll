@@ -1,18 +1,20 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LayoutGrid, Gamepad2, Users, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRoomStore } from '../store/useRoomStore';
 
 export const MobileNav: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const room = useRoomStore((s) => s.room);
 
   const navItems = [
-    { path: '/lobby', label: '大厅', icon: LayoutGrid },
-    { path: '/games', label: '游戏库', icon: Gamepad2 },
-    { path: room ? `/room/${room.roomId}` : '/create-room', label: room ? '房间' : '建房', icon: Users },
-    { path: '/profile', label: '我的', icon: User },
+    { path: '/lobby', label: t('nav.lobby', '大厅'), icon: LayoutGrid },
+    { path: '/games', label: t('nav.games', '游戏库'), icon: Gamepad2 },
+    { path: room ? `/room/${room.roomId}` : '/create-room', label: room ? t('nav.room', '房间') : t('nav.create', '建房'), icon: Users },
+    { path: '/profile', label: t('nav.profileShort', '我的'), icon: User },
   ];
 
   return (

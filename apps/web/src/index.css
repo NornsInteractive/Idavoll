@@ -142,7 +142,7 @@ body {
 
 /* Pulse Glow */
 .canvas-border-active {
-  box-shadow: 0 0 0 2px #5B5BF0, 0 10px 28px -4px rgba(91, 91, 240, 0.22);
+  box-shadow: 0 0 0 2px var(--theme-primary, #5B5BF0), 0 10px 28px -4px rgba(91, 91, 240, 0.22);
 }
 
 @keyframes floatUp {

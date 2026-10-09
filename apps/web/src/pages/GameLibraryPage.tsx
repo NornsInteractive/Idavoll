@@ -65,11 +65,56 @@ export const GameLibraryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'party' | 'drawing' | 'board'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filtered = GAMES_LIST.filter((g) => {
+  const gamesList: GameItem[] = [
+    {
+      id: 'draw-and-guess',
+      title: t('gameDetail.title', '你画我猜 (Draw & Guess)'),
+      category: 'drawing',
+      desc: t('games.drawAndGuessDesc', '一人作画众人狂猜，拼画工更拼脑回路！支持自选词库、全屏弹幕互动与实时语音。'),
+      players: t('games.playersRange', '2-12 人'),
+      playTime: t('games.roundTime', '30-120 秒/轮'),
+      badge: t('games.drawAndGuessBadge', '火热开放'),
+      active: true,
+    },
+    {
+      id: 'who-is-spy',
+      title: t('games.whoIsSpy', '谁是卧底 (Who is Spy)'),
+      category: 'party',
+      desc: t('games.whoIsSpyDesc', '聚会必备语言心理战！找出潜藏身边的卧底，用隐晦描述隐瞒身份。'),
+      players: t('games.filterAll') === 'All Games' ? '4-10 Players' : '4-10 人',
+      playTime: t('games.minutesRange', { min: 5, max: 10, defaultValue: '5-10 分钟' }),
+      badge: t('games.whoIsSpyBadge', '未开放'),
+      active: false,
+    },
+    {
+      id: 'ludo-party',
+      title: t('games.ludoParty', '飞行棋聚会 (Ludo Party)'),
+      category: 'board',
+      desc: t('games.ludoPartyDesc', '童年经典四色棋局，多人狂掷骰子道具乱斗，绝地翻盘超刺激！'),
+      players: t('games.filterAll') === 'All Games' ? '2-4 Players' : '2-4 人',
+      playTime: t('games.minutesRange', { min: 10, max: 15, defaultValue: '10-15 分钟' }),
+      badge: t('games.ludoPartyBadge', '未开放'),
+      active: false,
+    },
+    {
+      id: 'werewolf',
+      title: t('games.werewolf', '预言家之夜 (Werewolf Lite)'),
+      category: 'party',
+      desc: t('games.werewolfDesc', '极简版聚会狼人杀，去除繁琐冗长发言，快速盘逻辑揪出黑手。'),
+      players: t('games.filterAll') === 'All Games' ? '6-12 Players' : '6-12 人',
+      playTime: t('games.minutesRange', { min: 8, max: 15, defaultValue: '8-15 分钟' }),
+      badge: t('games.werewolfBadge', '未开放'),
+      active: false,
+    },
+  ];
+
+  const filtered = gamesList.filter((g) => {
     if (activeTab !== 'all' && g.category !== activeTab) return false;
     if (searchQuery && !g.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
+
+  const isEnglish = t('games.filterAll') === 'All Games';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-8">
@@ -78,7 +123,7 @@ export const GameLibraryPage: React.FC = () => {
         <div>
           <h2 className="text-3xl font-black tracking-tight text-foreground">{t('games.title')}</h2>
           <p className="text-sm font-medium text-muted-foreground mt-1">
-            精心打造的派对互动游戏库，无缝支持桌面与移动端
+            {t('games.subtitle', '精心打造的派对互动游戏库，无缝支持桌面与移动端')}
           </p>
         </div>
 
@@ -87,7 +132,7 @@ export const GameLibraryPage: React.FC = () => {
             icon={<Search className="w-4 h-4" />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索游戏..."
+            placeholder={t('games.searchPlaceholder', '搜索游戏...')}
             className="h-11"
           />
         </div>
@@ -107,7 +152,7 @@ export const GameLibraryPage: React.FC = () => {
             onClick={() => setActiveTab(tab.key as any)}
             className={`px-5 py-2.5 rounded-full text-sm font-extrabold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === tab.key
-                ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md shadow-indigo-500/20'
+                ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md shadow-[var(--theme-primary,#5B5BF0)]/20'
                 : 'bg-muted/70 text-muted-foreground hover:bg-muted'
             }`}
           >
@@ -134,7 +179,7 @@ export const GameLibraryPage: React.FC = () => {
               }}
               className={`p-6 h-full flex flex-col justify-between space-y-6 border-2 ${
                 game.active
-                  ? 'border-indigo-500/30 cursor-pointer shadow-md'
+                  ? 'border-[var(--theme-primary,#5B5BF0)]/30 cursor-pointer shadow-md'
                   : 'border-border/60 opacity-60 cursor-not-allowed bg-muted/20'
               }`}
             >
@@ -144,7 +189,7 @@ export const GameLibraryPage: React.FC = () => {
                     {game.badge}
                   </Badge>
                   <span className="text-xs font-semibold text-muted-foreground">
-                    {game.active ? '正式版本' : '研发阶段'}
+                    {game.active ? (isEnglish ? 'Official Release' : '正式版本') : (isEnglish ? 'In Development' : '研发阶段')}
                   </span>
                 </div>
 
@@ -157,7 +202,7 @@ export const GameLibraryPage: React.FC = () => {
 
                 <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground pt-2">
                   <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4 text-indigo-500" /> {game.players}
+                    <Users className="w-4 h-4 text-[var(--theme-primary,#5B5BF0)]" /> {game.players}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-4 h-4 text-rose-500" /> {game.playTime}
@@ -167,7 +212,7 @@ export const GameLibraryPage: React.FC = () => {
 
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <span className="text-xs font-semibold text-muted-foreground">
-                  {game.active ? '多端即开即玩' : '敬请期待 · 暂未开放'}
+                  {game.active ? (isEnglish ? 'Cross-Platform Ready' : '多端即开即玩') : (isEnglish ? 'Coming Soon · Not Open' : '敬请期待 · 暂未开放')}
                 </span>
 
                 {game.active ? (
@@ -177,7 +222,7 @@ export const GameLibraryPage: React.FC = () => {
                   </Button>
                 ) : (
                   <Button size="sm" variant="surface" disabled className="text-xs cursor-not-allowed opacity-50">
-                    未开放
+                    {t('games.unreleased', '未开放')}
                   </Button>
                 )}
               </div>

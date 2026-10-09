@@ -100,7 +100,7 @@ export const SplashLoginPage: React.FC = () => {
             <motion.div
               whileHover={{ rotate: 10, scale: 1.1 }}
               transition={{ type: 'spring', stiffness: 300 }}
-              className="w-20 h-20 mx-auto rounded-3xl bg-[var(--theme-primary,#5B5BF0)] text-white flex items-center justify-center shadow-lg shadow-indigo-500/30"
+              className="w-20 h-20 mx-auto rounded-3xl bg-[var(--theme-primary,#5B5BF0)] text-white flex items-center justify-center shadow-lg shadow-[var(--theme-primary,#5B5BF0)]/30"
             >
               <Gamepad2 className="w-11 h-11" />
             </motion.div>

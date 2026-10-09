@@ -13,8 +13,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         whileHover={hoverEffect ? { y: -4, transition: { duration: 0.2 } } : undefined}
         className={cn(
-          'rounded-3xl bg-card text-card-foreground border border-border/60 shadow-lg shadow-indigo-950/5 overflow-hidden transition-shadow backdrop-blur-sm',
-          hoverEffect && 'hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer',
+          'rounded-3xl bg-card text-card-foreground border border-border/60 shadow-lg shadow-neutral-950/5 dark:shadow-black/20 overflow-hidden transition-shadow backdrop-blur-sm',
+          hoverEffect && 'hover:shadow-xl hover:shadow-[var(--theme-primary,#5B5BF0)]/10 cursor-pointer',
           className
         )}
         {...props}

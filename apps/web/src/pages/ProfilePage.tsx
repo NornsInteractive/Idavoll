@@ -192,7 +192,7 @@ export const ProfilePage: React.FC = () => {
       {/* User Info Card */}
       <Card className="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 border-2 border-border/80">
         <div className="relative group">
-          <Avatar src={selectedAvatar} alt={nickname} size="xl" className="ring-4 ring-indigo-500/20" />
+          <Avatar src={selectedAvatar} alt={nickname} size="xl" className="ring-4 ring-[var(--theme-primary,#5B5BF0)]/20" />
         </div>
 
         <div className="space-y-3 text-center sm:text-left flex-1">
@@ -222,7 +222,7 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   onClick={() => setIsEditingNick(true)}
                   className="p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
-                  title="修改昵称"
+                  title={t('profile.editNick')}
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
@@ -234,7 +234,7 @@ export const ProfilePage: React.FC = () => {
 
           {/* Quick Avatar Change Swatches */}
           <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
-            <span className="text-xs font-bold text-muted-foreground mr-1">更换头像:</span>
+            <span className="text-xs font-bold text-muted-foreground mr-1">{t('profile.changeAvatar')}</span>
             {AVATAR_SEEDS.map((seed) => {
               const url = `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`;
               const isCur = selectedAvatar === url;
@@ -279,16 +279,16 @@ export const ProfilePage: React.FC = () => {
 
       {/* Cumulative Stats Row (Only real stats, empty state if 0) */}
       <div className="space-y-3">
-        <h3 className="text-lg font-black text-foreground">累计游戏统计</h3>
+        <h3 className="text-lg font-black text-foreground">{t('profile.cumulativeStats')}</h3>
         {isProfileLoading ? (
           <Card className="p-8 text-center space-y-2 border-2 border-border/80">
             <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-            <p className="text-xs text-muted-foreground font-medium">正在加载战绩统计...</p>
+            <p className="text-xs text-muted-foreground font-medium">{t('profile.loadingStats')}</p>
           </Card>
         ) : isProfileError ? (
           <Card className="p-8 text-center space-y-3 border-2 border-rose-500/30 bg-rose-500/5">
             <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-            <h4 className="text-sm font-bold text-foreground">战绩统计加载失败</h4>
+            <h4 className="text-sm font-bold text-foreground">{t('profile.statsLoadFailed')}</h4>
             <Button
               size="sm"
               variant="surface"
@@ -314,7 +314,7 @@ export const ProfilePage: React.FC = () => {
               <h4 className="text-2xl font-black font-mono text-[var(--theme-primary,#5B5BF0)]">
                 {stats.totalGames} 局
               </h4>
-              <span className="text-[11px] text-muted-foreground">胜场 {stats.wins} 次</span>
+              <span className="text-[11px] text-muted-foreground">{t('profile.winsCount', { count: stats.wins })}</span>
             </Card>
 
             <Card className="p-5 text-center space-y-1">
@@ -322,7 +322,7 @@ export const ProfilePage: React.FC = () => {
               <h4 className="text-2xl font-black font-mono text-emerald-500">
                 {Number(stats.winRate ?? 0).toFixed(1)}%
               </h4>
-              <span className="text-[11px] text-muted-foreground">胜率表现</span>
+              <span className="text-[11px] text-muted-foreground">{t('profile.winRateLabel')}</span>
             </Card>
 
             <Card className="p-5 text-center space-y-1">
@@ -331,16 +331,16 @@ export const ProfilePage: React.FC = () => {
                 {Number(stats.accuracy ?? 0).toFixed(1)}%
               </h4>
               <span className="text-[11px] text-muted-foreground">
-                猜对 {stats.correctGuesses}/{stats.guesses}
+                {t('profile.guessesRatio', { correct: stats.correctGuesses, total: stats.guesses })}
               </span>
             </Card>
 
             <Card className="p-5 text-center space-y-1">
               <span className="text-xs font-bold text-muted-foreground">{t('profile.statsDrawings')}</span>
-              <h4 className="text-2xl font-black font-mono text-indigo-500">
+              <h4 className="text-2xl font-black font-mono text-[var(--theme-primary,#5B5BF0)]">
                 {stats.drawings} 幅
               </h4>
-              <span className="text-[11px] text-muted-foreground">已保存画作</span>
+              <span className="text-[11px] text-muted-foreground">{t('profile.drawingsLabel')}</span>
             </Card>
           </div>
         )}
@@ -358,7 +358,7 @@ export const ProfilePage: React.FC = () => {
           {isPreviewLoading && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-              <span>正在加载画作...</span>
+              <span>{t('profile.loadingDrawing')}</span>
             </div>
           )}
         </div>
@@ -386,13 +386,13 @@ export const ProfilePage: React.FC = () => {
         {isDrawingsLoading ? (
           <div className="py-8 text-center text-xs text-muted-foreground font-medium flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-            <span>正在加载画作列表...</span>
+            <span>{t('profile.loadingDrawings')}</span>
           </div>
         ) : isDrawingsError ? (
           <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>画作列表加载失败</span>
+              <span>{t('profile.drawingsLoadFailed')}</span>
             </div>
             <Button
               size="sm"
@@ -424,7 +424,7 @@ export const ProfilePage: React.FC = () => {
                     {new Date(draw.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <span className="text-[11px] font-bold text-primary">点击查看回放 →</span>
+                <span className="text-[11px] font-bold text-primary">{t('profile.viewPlayback')}</span>
               </div>
             ))}
           </div>
@@ -436,20 +436,20 @@ export const ProfilePage: React.FC = () => {
         <div className="flex items-center justify-between pb-2 border-b border-border">
           <div className="flex items-center gap-2">
             <History className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-black text-foreground">最近对局战绩 ({matches.length})</h3>
+            <h3 className="text-lg font-black text-foreground">{t('profile.recentMatches')} ({matches.length})</h3>
           </div>
         </div>
 
         {isMatchesLoading ? (
           <div className="py-8 text-center text-xs text-muted-foreground font-medium flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-            <span>正在加载对局战绩...</span>
+            <span>{t('profile.loadingMatches')}</span>
           </div>
         ) : isMatchesError ? (
           <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>战绩列表加载失败</span>
+              <span>{t('profile.matchesLoadFailed')}</span>
             </div>
             <Button
               size="sm"
@@ -472,10 +472,10 @@ export const ProfilePage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-foreground">
-                      冠军: {m.winner_nickname}
+                      {t('profile.winnerLabel', { name: m.winner_nickname })}
                     </span>
                     <Badge variant="subtle" className="text-[10px]">
-                      {m.total_rounds} 轮
+                      {t('profile.roundsCount', { count: m.total_rounds })}
                     </Badge>
                   </div>
                   <span className="text-[11px] text-muted-foreground">
@@ -491,7 +491,7 @@ export const ProfilePage: React.FC = () => {
                       title={sc.nickname}
                     >
                       <Avatar src={sc.avatar} alt={sc.nickname} size="sm" />
-                      <span className="font-mono font-bold text-[11px]">{sc.score}分</span>
+                      <span className="font-mono font-bold text-[11px]">{t('profile.pointsCount', { count: sc.score })}</span>
                     </div>
                   ))}
                 </div>
@@ -521,7 +521,7 @@ export const ProfilePage: React.FC = () => {
             onClick={toggleTheme}
             className="gap-2 font-bold px-4 h-10 cursor-pointer"
           >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[var(--theme-primary,#5B5BF0)]" />}
             <span>{isDark ? t('profile.darkMode') : t('profile.lightMode')}</span>
           </Button>
         </div>

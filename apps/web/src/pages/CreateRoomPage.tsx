@@ -54,7 +54,7 @@ export const CreateRoomPage: React.FC = () => {
   } = useForm<CreateRoomFormValues>({
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
-      title: `${nickname || '玩家'} 的开心涂鸦局`,
+      title: t('createRoom.defaultRoomName', { name: nickname || t('common.player') }),
       maxPlayers: 8,
       drawDuration: 60,
       totalRounds: 3,
@@ -90,7 +90,7 @@ export const CreateRoomPage: React.FC = () => {
       const canonicalRoomId = await connectRoom(res.roomId, payload.password);
       navigate(`/room/${canonicalRoomId}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '创建房间失败，请重试';
+      const msg = err instanceof Error ? err.message : t('createRoom.createFailed');
       setSubmitError(msg);
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export const CreateRoomPage: React.FC = () => {
         className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         <ChevronLeft className="w-4 h-4" />
-        <span>返回大厅</span>
+        <span>{t('common.backToLobby')}</span>
       </button>
 
       {submitError && (
@@ -127,7 +127,7 @@ export const CreateRoomPage: React.FC = () => {
               {t('createRoom.title')}
             </h2>
             <p className="text-xs text-muted-foreground font-medium">
-              自定义派对规则，创建后将生成专属 6 位房号与邀请链接！
+              {t('createRoom.subtitle')}
             </p>
           </div>
 
@@ -152,7 +152,7 @@ export const CreateRoomPage: React.FC = () => {
             {/* Max Players */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                最大容纳玩家数: {selectedPlayers} 人 (2-12人)
+                {t('createRoom.maxPlayersLabel', { count: selectedPlayers })}
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[4, 6, 8, 12].map((num) => (
@@ -167,7 +167,7 @@ export const CreateRoomPage: React.FC = () => {
                         : 'bg-muted/70 text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    {num} 人
+                    {t('createRoom.playerCount', { count: num })}
                   </button>
                 ))}
               </div>
@@ -180,9 +180,9 @@ export const CreateRoomPage: React.FC = () => {
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { sec: 45, label: '45秒 (快速抢答)' },
-                  { sec: 60, label: '60秒 (标准推荐)' },
-                  { sec: 90, label: '90秒 (从容作画)' },
+                  { sec: 45, label: t('createRoom.durationFast') },
+                  { sec: 60, label: t('createRoom.durationStandard') },
+                  { sec: 90, label: t('createRoom.durationRelaxed') },
                 ].map((item) => (
                   <button
                     key={item.sec}
@@ -204,7 +204,7 @@ export const CreateRoomPage: React.FC = () => {
             {/* Total Rounds */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                比赛总轮数: {selectedRounds} 轮 (1-10轮)
+                {t('createRoom.totalRoundsLabel', { count: selectedRounds })}
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[2, 3, 5, 8].map((round) => (
@@ -219,7 +219,7 @@ export const CreateRoomPage: React.FC = () => {
                         : 'bg-muted/70 text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    {round} 轮
+                    {t('createRoom.roundsCount', { count: round })}
                   </button>
                 ))}
               </div>
@@ -276,7 +276,7 @@ export const CreateRoomPage: React.FC = () => {
                     {...register('password')}
                     type="password"
                     maxLength={64}
-                    placeholder="请输入 4-64 位密码"
+                    placeholder={t('createRoom.passwordPlaceholder')}
                     disabled={loading}
                     className="font-mono tracking-wider text-center"
                   />
@@ -297,7 +297,7 @@ export const CreateRoomPage: React.FC = () => {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>正在创建并连接房间...</span>
+                  <span>{t('createRoom.creatingRoom')}</span>
                 </>
               ) : (
                 <span>{t('createRoom.submit')}</span>

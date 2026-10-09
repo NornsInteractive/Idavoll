@@ -193,7 +193,7 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
       return {
         badge: '1',
         medal: '🥇',
-        label: isTiedRank ? '并列冠军' : 'MVP 冠军',
+        label: isTiedRank ? t('settlement.tiedChampion') : t('settlement.mvpChampion'),
         ring: 'ring-amber-400',
         badgeBg: 'bg-amber-400 text-amber-950',
         pedestalClass:
@@ -206,7 +206,7 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
       return {
         badge: '2',
         medal: '🥈',
-        label: isTiedRank ? '并列亚军' : '亚军',
+        label: isTiedRank ? t('settlement.tiedRunnerUp') : t('settlement.runnerUp'),
         ring: 'ring-slate-300 dark:ring-slate-600',
         badgeBg: 'bg-slate-300 text-slate-800',
         pedestalClass: 'bg-slate-200/80 dark:bg-slate-800/80 text-muted-foreground',
@@ -218,7 +218,7 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
       return {
         badge: '3',
         medal: '🥉',
-        label: isTiedRank ? '并列季军' : '季军',
+        label: isTiedRank ? t('settlement.tiedThird') : t('settlement.thirdPlace'),
         ring: 'ring-amber-700/50',
         badgeBg: 'bg-amber-700 text-amber-100',
         pedestalClass: 'bg-amber-900/15 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
@@ -229,7 +229,7 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
     return {
       badge: `${rank}`,
       medal: '🏅',
-      label: `第 ${rank} 名`,
+      label: t('settlement.rankN', { rank }),
       ring: 'ring-border',
       badgeBg: 'bg-muted text-muted-foreground',
       pedestalClass: 'bg-muted/40 text-muted-foreground',
@@ -271,7 +271,7 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
           <button
             type="button"
             onClick={onClose}
-            aria-label="关闭结算弹窗"
+            aria-label={t('settlement.closeAria')}
             className="absolute top-3.5 right-3.5 z-20 p-2 rounded-full bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/60 shadow-xs"
           >
             <X className="w-4 h-4" />
@@ -312,14 +312,14 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
                 </motion.div>
                 <div className="flex items-center gap-1.5">
                   <Badge className="bg-amber-500 text-amber-950 font-black text-xs px-2.5 py-0.5">
-                    本场获胜
+                    {t('settlement.wonMatch')}
                   </Badge>
                 </div>
                 <h2 id="game-result-title" className="text-xl sm:text-2xl font-black text-foreground">
-                  {isTied ? '🎉 并列优胜！' : '👑 恭喜获胜！'}
+                  {isTied ? t('settlement.tiedVictory') : t('settlement.soloVictory')}
                 </h2>
                 <p className="text-xs sm:text-sm text-muted-foreground font-semibold">
-                  你以 <span className="text-amber-500 font-black">{myPodium?.score ?? 0} 分</span> 夺得本场优胜！
+                  {t('settlement.victoryDesc', { score: myPodium?.score ?? 0 })}
                 </p>
               </div>
             ) : (
@@ -329,16 +329,16 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
                 </div>
                 {myPodium && (
                   <Badge variant="subtle" className="text-muted-foreground font-bold text-xs px-2.5 py-0.5">
-                    本场惜败
+                    {t('settlement.lostMatch')}
                   </Badge>
                 )}
                 <h2 id="game-result-title" className="text-xl sm:text-2xl font-black text-foreground">
-                  {myPodium ? '对局结算 · 本场惜败' : t('settlement.title', '游戏对局结算')}
+                  {myPodium ? t('settlement.settleDefeat') : t('settlement.title')}
                 </h2>
                 <p className="text-xs sm:text-sm text-muted-foreground font-semibold">
                   {myPodium
-                    ? `你获得第 ${myPodium.rank} 名（得分 ${myPodium.score} 分），再接再厉！`
-                    : '本场比赛已圆满结束，感谢精彩参与！'}
+                    ? t('settlement.defeatDesc', { rank: myPodium.rank, score: myPodium.score })
+                    : t('settlement.gameEndedThanks')}
                 </p>
               </div>
             )}
@@ -464,7 +464,7 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
                     <span>{t('settlement.scoreboardTitle', '全场积分排行榜')}</span>
                   </h4>
                   <span className="text-[11px] text-muted-foreground font-semibold">
-                    共 {podiumList.length} 位玩家
+                    {t('settlement.totalPlayers', { count: podiumList.length })}
                   </span>
                 </div>
 
@@ -497,19 +497,19 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
                           <Avatar src={player.avatar} alt={player.nickname} size="sm" />
                           <span className="truncate text-foreground">
                             {player.nickname}
-                            {isMe ? ' (我)' : ''}
+                            {isMe ? ` (${t('settlement.me')})` : ''}
                           </span>
                           {isWinner && (
                             <Badge
                               variant="default"
                               className="text-[9px] px-1.5 py-0 bg-amber-500 text-amber-950 font-black shrink-0"
                             >
-                              🏆 胜
+                              🏆 {t('settlement.winShort')}
                             </Badge>
                           )}
                         </div>
                         <span className="font-mono font-black text-sm text-foreground shrink-0 pl-2">
-                          {player.score} <span className="text-[11px] font-normal text-muted-foreground">分</span>
+                          {player.score} <span className="text-[11px] font-normal text-muted-foreground">{t('settlement.points')}</span>
                         </span>
                       </div>
                     );
@@ -528,10 +528,10 @@ export const GameResultDialog: React.FC<GameResultDialogProps> = ({
                 onClick={onClose}
                 className="font-bold text-xs h-9 px-4 cursor-pointer"
               >
-                <span>{t('settlement.viewRoom', '查看房间')}</span>
+                <span>{t('settlement.viewRoom')}</span>
               </Button>
               <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                {isHost ? '房主可开启下一局' : '留在房间等待房主开局'}
+                {isHost ? t('settlement.hostCanRestart') : t('settlement.stayInRoomWaiting')}
               </span>
             </div>
 
