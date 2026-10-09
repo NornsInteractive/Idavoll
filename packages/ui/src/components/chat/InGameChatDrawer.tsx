@@ -56,7 +56,6 @@ export interface InGameChatDrawerLabels {
   emptyMessages?: string;
   quickChatPrefix?: string;
   quickPhraseAria?: string;
-  quickPhrases?: QuickPhraseItem[];
   // Input
   holdToTalk?: string;
   releaseToMute?: string;
@@ -144,7 +143,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   labels,
   quickPhrases,
 }) => {
-  const activeQuickPhrases = quickPhrases ?? labels?.quickPhrases ?? QUICK_PHRASES;
+  const activeQuickPhrases = quickPhrases && quickPhrases.length > 0 ? quickPhrases : QUICK_PHRASES;
   const [activeTab, setActiveTab] = useState<'chat' | 'phrases'>('chat');
   const [inputText, setInputText] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -415,30 +414,8 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               })}
             </div>
 
-            {/* Chat Body & Real Messages / Quick Phrases Tab */}
-            {activeTab === 'phrases' ? (
-              <div className="flex-1 p-4 overflow-y-auto space-y-2 min-h-0 bg-background/50">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {activeQuickPhrases.map((item) => (
-                    <button
-                      key={item.text}
-                      type="button"
-                      onClick={() => handleQuickPhrase(item.text)}
-                      aria-label={
-                        labels?.quickPhraseAria
-                          ? `${labels.quickPhraseAria} ${item.text}`
-                          : `${labels?.quickChatPrefix ?? '快聊:'} ${item.text}`
-                      }
-                      className="p-3 rounded-2xl bg-card hover:bg-muted border border-border text-xs font-bold text-foreground flex items-center gap-2.5 transition-transform active:scale-95 shadow-2xs cursor-pointer text-left"
-                    >
-                      {item.icon && <span className="text-base shrink-0">{item.icon}</span>}
-                      <span className="truncate">{item.text}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 bg-background/50">
+            {/* Chat Body & Real Messages */}
+            <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 bg-background/50">
                 {roundInfo && currentDrawerNickname && (
                   <div className="flex justify-center">
                     <div className="px-3.5 py-1 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
@@ -498,7 +475,6 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   })
                 )}
               </div>
-            )}
 
             {/* Quick Phrase Chips Bar */}
             <div className="flex items-center gap-2 px-4 py-2 border-t border-border/40 bg-muted/10 overflow-x-auto no-scrollbar shrink-0">

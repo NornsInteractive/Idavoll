@@ -318,9 +318,8 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
       inputPlaceholderGuesser: t('gomoku.chatPlaceholder', '发送聊天消息...'),
       inputAriaArtist: t('gomoku.chatAria', '发送聊天消息'),
       inputAriaGuesser: t('gomoku.chatAria', '发送聊天消息'),
-      quickPhrases: quickChatItems,
     }),
-    [chatDrawerLabels, t, quickChatItems]
+    [chatDrawerLabels, t]
   );
 
   return (
@@ -652,9 +651,9 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         </section>
 
         {/* 3. CENTRAL INTERACTIVE GOMOKU BOARD (15x15) */}
-        <section className="relative flex items-center justify-center w-full max-w-[390px] sm:max-w-[460px] md:max-w-[500px] aspect-square my-auto shrink-0">
+        <section className="relative flex items-center justify-center w-full max-w-[340px] sm:max-w-[440px] md:max-w-[480px] aspect-square my-auto shrink-0">
           {/* Wood Board Outer Surface */}
-          <div className="relative w-full h-full rounded-2xl sm:rounded-3xl p-3 sm:p-5 bg-gradient-to-br from-amber-100 via-amber-200 to-amber-300 dark:from-[#3a2717] dark:via-[#2b1c10] dark:to-[#1e130a] border-4 border-amber-400/90 dark:border-amber-900/80 shadow-2xl overflow-hidden flex flex-col justify-between">
+          <div className="relative w-full h-full rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 bg-gradient-to-br from-amber-100 via-amber-200 to-amber-300 dark:from-[#3a2717] dark:via-[#2b1c10] dark:to-[#1e130a] border-4 border-amber-400/90 dark:border-amber-900/80 shadow-2xl overflow-hidden flex flex-col justify-between">
             {/* Subtle Wood Texture Ring */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.12)_100%)] pointer-events-none rounded-2xl" />
 
@@ -680,9 +679,12 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
             {/* Top Column Labels (A-O) */}
             {showCoordinates && (
-              <div className="grid grid-cols-15 w-full text-center text-[9px] sm:text-[10px] font-black text-amber-950/70 dark:text-amber-300/60 pb-1">
+              <div
+                className="grid grid-cols-15 w-full text-center text-[9px] sm:text-[10px] font-black text-amber-950/70 dark:text-amber-300/60 pb-1 shrink-0"
+                style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}
+              >
                 {COL_LABELS.map((col) => (
-                  <div key={col} className="w-full text-center">
+                  <div key={col} className="w-full text-center leading-none">
                     {col}
                   </div>
                 ))}
@@ -690,18 +692,20 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
             )}
 
             {/* 15x15 Grid Core */}
-            <div className="relative flex-1 w-full h-full flex items-center justify-center">
+            <div className="relative flex-1 w-full min-h-0 flex items-center justify-center">
               {/* Intersection lines drawing via SVG */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                 {/* Horizontal & Vertical Grid Lines */}
                 {Array.from({ length: BOARD_SIZE }).map((_, i) => {
-                  const pct = (i / (BOARD_SIZE - 1)) * 100;
+                  const pct = ((i + 0.5) / BOARD_SIZE) * 100;
+                  const startPct = (0.5 / BOARD_SIZE) * 100;
+                  const endPct = ((BOARD_SIZE - 0.5) / BOARD_SIZE) * 100;
                   return (
                     <React.Fragment key={i}>
                       <line
-                        x1="0"
+                        x1={startPct}
                         y1={pct}
-                        x2="100"
+                        x2={endPct}
                         y2={pct}
                         stroke="currentColor"
                         className="text-amber-950/60 dark:text-amber-200/40"
@@ -709,9 +713,9 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                       />
                       <line
                         x1={pct}
-                        y1="0"
+                        y1={startPct}
                         x2={pct}
-                        y2="100"
+                        y2={endPct}
                         stroke="currentColor"
                         className="text-amber-950/60 dark:text-amber-200/40"
                         strokeWidth="0.75"
@@ -722,8 +726,8 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
                 {/* Star Points (星位与天元) */}
                 {STAR_POINTS.map((pt, idx) => {
-                  const cx = (pt.x / (BOARD_SIZE - 1)) * 100;
-                  const cy = (pt.y / (BOARD_SIZE - 1)) * 100;
+                  const cx = ((pt.x + 0.5) / BOARD_SIZE) * 100;
+                  const cy = ((pt.y + 0.5) / BOARD_SIZE) * 100;
                   return (
                     <circle
                       key={idx}
@@ -738,7 +742,13 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
               </svg>
 
               {/* 15x15 Interactive Grid Touch Points */}
-              <div className="absolute inset-0 grid grid-cols-15 grid-rows-15 w-full h-full">
+              <div
+                className="absolute inset-0 grid grid-cols-15 grid-rows-15 w-full h-full"
+                style={{
+                  gridTemplateColumns: 'repeat(15, minmax(0, 1fr))',
+                  gridTemplateRows: 'repeat(15, minmax(0, 1fr))',
+                }}
+              >
                 {Array.from({ length: BOARD_SIZE }).map((_, y) =>
                   Array.from({ length: BOARD_SIZE }).map((_, x) => {
                     const stone = board[y]?.[x] || null;
@@ -803,9 +813,12 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
             {/* Bottom Row Labels (1-15) */}
             {showCoordinates && (
-              <div className="grid grid-cols-15 w-full text-center text-[9px] sm:text-[10px] font-black text-amber-950/70 dark:text-amber-300/60 pt-1">
+              <div
+                className="grid grid-cols-15 w-full text-center text-[9px] sm:text-[10px] font-black text-amber-950/70 dark:text-amber-300/60 pt-1 shrink-0"
+                style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}
+              >
                 {Array.from({ length: BOARD_SIZE }).map((_, i) => (
-                  <div key={i} className="w-full text-center">
+                  <div key={i} className="w-full text-center leading-none">
                     {15 - i}
                   </div>
                 ))}
@@ -881,7 +894,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           >
             <Undo2 className="w-4 h-4 mb-0.5 text-foreground group-hover:text-primary transition-colors" />
             <span className="text-[11px] font-bold">{t('gomoku.actions.undo', '悔棋')}</span>
-            <span className="text-[9px] text-muted-foreground font-medium scale-90">
+            <span className="hidden sm:inline-block text-[9px] text-muted-foreground font-medium scale-90 whitespace-nowrap truncate max-w-full">
               {externalUndoRemaining !== undefined
                 ? `${externalUndoRemaining}`
                 : t('gomoku.actions.undoBadge', '需对方同意')}
@@ -897,7 +910,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           >
             <Handshake className="w-4 h-4 mb-0.5 text-foreground group-hover:text-primary transition-colors" />
             <span className="text-[11px] font-bold">{t('gomoku.actions.draw', '求和')}</span>
-            <span className="text-[9px] text-muted-foreground font-medium scale-90">
+            <span className="hidden sm:inline-block text-[9px] text-muted-foreground font-medium scale-90 whitespace-nowrap truncate max-w-full">
               {t('gomoku.actions.drawBadge', '协议和棋')}
             </span>
           </Button>
@@ -911,7 +924,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           >
             <Flag className="w-4 h-4 mb-0.5 text-rose-500 group-hover:scale-110 transition-transform" />
             <span className="text-[11px] font-bold">{t('gomoku.actions.resign', '认输')}</span>
-            <span className="text-[9px] text-rose-500/80 font-medium scale-90">
+            <span className="hidden sm:inline-block text-[9px] text-rose-500/80 font-medium scale-90 whitespace-nowrap truncate max-w-full">
               {t('gomoku.actions.resign', '放弃对局')}
             </span>
           </Button>
@@ -925,7 +938,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           >
             <Lightbulb className="w-4 h-4 mb-0.5 text-amber-500 group-hover:scale-110 transition-transform" />
             <span className="text-[11px] font-bold">{t('gomoku.actions.hint', 'AI 提示')}</span>
-            <span className="text-[9px] text-amber-500/80 font-medium scale-90">
+            <span className="hidden sm:inline-block text-[9px] text-amber-500/80 font-medium scale-90 whitespace-nowrap truncate max-w-full">
               {t('gomoku.actions.hintBadge', '提示')}
             </span>
           </Button>
