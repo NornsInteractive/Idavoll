@@ -41,5 +41,15 @@
   ],
   "triggers": {
     "crons": ["*/10 * * * *"]
-  }
+  },
+  "routes": [
+    {
+      "pattern": "idavoll.norns.cc.cd",
+      "custom_domain": true
+    },
+    {
+      "pattern": "idavoll-api.norns.cc.cd",
+      "custom_domain": true
+    }
+  ]
 }

@@ -8,7 +8,7 @@ import { Env } from './env';
 export { GameRoomDO };
 
 export const app = new Hono<{ Bindings: Env; Variables: { user: UserAccount } }>();
-const allowed = (env: Env) => (env.ALLOWED_ORIGINS || 'https://idavoll.pages.dev,http://localhost:5173,http://127.0.0.1:5173').split(',');
+const allowed = (env: Env) => (env.ALLOWED_ORIGINS || 'https://idavoll.norns.cc.cd,https://idavoll-api.norns.cc.cd,https://idavoll.pages.dev,http://localhost:5173,http://127.0.0.1:5173').split(',');
 app.use('*', cors({ origin: (origin, c) => allowed(c.env).includes(origin) ? origin : undefined, allowHeaders: ['Authorization', 'Content-Type'], allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'] }));
 app.use('/api/*', async (c, next) => {
   const length = Number(c.req.header('Content-Length') || 0);
@@ -144,6 +144,20 @@ app.post('/api/rooms/:roomId/voice', async c => {
   if (!response.ok) throw new HTTPException(503, { message: '语音连接暂时不可用' });
   const result = await response.json() as { iceServers: unknown[] };
   return c.json({ iceServers: result.iceServers, expiresAt: Date.now() + 3600000 });
+});
+app.all('*', async c => {
+  const url = new URL(c.req.url);
+  url.hostname = 'idavoll.pages.dev';
+  url.protocol = 'https:';
+  url.port = '';
+  const headers = new Headers(c.req.raw.headers);
+  headers.set('host', 'idavoll.pages.dev');
+  return fetch(new Request(url.toString(), {
+    method: c.req.method,
+    headers,
+    body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
+    redirect: 'manual',
+  }));
 });
 export default {
   fetch: app.fetch,
