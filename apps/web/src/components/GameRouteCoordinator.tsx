@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
+import { useGomokuStore } from '../store/useGomokuStore';
 import { retryRoom } from '../services/room-session';
 
 export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -12,6 +13,7 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
   const room = useRoomStore((s) => s.room);
   const connectionState = useRoomStore((s) => s.connectionState);
   const gameState = useGameStore((s) => s.gameState);
+  const gomokuState = useGomokuStore((s) => s.gameState);
   const isRetryingRef = useRef(false);
 
   const pathname = location.pathname;
@@ -45,28 +47,41 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
     if (!room) return;
     if (!isGameOrRoomRoute) return;
 
+    const isGomokuGame = (room.settings?.gameId as string) === 'gomoku';
+
     if (room.status === 'waiting') {
       if (pathname.startsWith('/game/')) {
         navigate(`/room/${room.roomId}`, { replace: true });
       }
     } else if (room.status === 'playing') {
-      if (gameState?.status === 'game_over') {
-        if (pathname !== `/room/${room.roomId}`) {
-          navigate(`/room/${room.roomId}`, { replace: true });
-        }
-      } else if ((room.settings?.gameId as string) === 'gomoku') {
-        if (pathname !== '/game/gomoku') {
-          navigate('/game/gomoku', { replace: true });
-        }
-      } else if (gameState?.drawerId) {
-        const isMeDrawer = gameState.drawerId === userId;
-        if (isMeDrawer) {
-          if (pathname !== '/game/drawer' && pathname !== '/game/fullscreen') {
-            navigate('/game/drawer', { replace: true });
+      if (isGomokuGame) {
+        // Gomoku game routing
+        if (gomokuState?.status === 'game_over') {
+          if (pathname !== `/room/${room.roomId}`) {
+            navigate(`/room/${room.roomId}`, { replace: true });
           }
         } else {
-          if (pathname !== '/game/guesser' && pathname !== '/game/fullscreen') {
-            navigate('/game/guesser', { replace: true });
+          // Both 'playing' and 'round_over' remain in /game/gomoku
+          if (pathname !== '/game/gomoku') {
+            navigate('/game/gomoku', { replace: true });
+          }
+        }
+      } else {
+        // Draw and Guess routing
+        if (gameState?.status === 'game_over') {
+          if (pathname !== `/room/${room.roomId}`) {
+            navigate(`/room/${room.roomId}`, { replace: true });
+          }
+        } else if (gameState?.drawerId) {
+          const isMeDrawer = gameState.drawerId === userId;
+          if (isMeDrawer) {
+            if (pathname !== '/game/drawer' && pathname !== '/game/fullscreen') {
+              navigate('/game/drawer', { replace: true });
+            }
+          } else {
+            if (pathname !== '/game/guesser' && pathname !== '/game/fullscreen') {
+              navigate('/game/guesser', { replace: true });
+            }
           }
         }
       }
@@ -75,7 +90,18 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
         navigate(`/room/${room.roomId}`, { replace: true });
       }
     }
-  }, [room?.status, room?.roomId, room?.settings?.gameId, gameState?.status, gameState?.drawerId, userId, isGameOrRoomRoute, pathname, navigate]);
+  }, [
+    room?.status,
+    room?.roomId,
+    room?.settings?.gameId,
+    gameState?.status,
+    gameState?.drawerId,
+    gomokuState?.status,
+    userId,
+    isGameOrRoomRoute,
+    pathname,
+    navigate,
+  ]);
 
   return <>{children}</>;
 };

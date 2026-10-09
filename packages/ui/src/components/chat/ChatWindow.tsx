@@ -5,6 +5,16 @@ import { ChatMessage } from '@idavoll/protocol';
 import { Avatar } from '../ui/avatar';
 import { Button } from '../ui/button';
 
+export interface ChatWindowLabels {
+  title?: string;
+  placeholder?: string;
+  danmakuOn?: string;
+  danmakuOff?: string;
+  empty?: string;
+  quickEmoji?: string;
+  send?: string;
+}
+
 export interface ChatWindowProps {
   messages: ChatMessage[];
   currentUserId: string;
@@ -15,6 +25,7 @@ export interface ChatWindowProps {
   isDanmakuDefault?: boolean;
   className?: string;
   aboveInputSlot?: React.ReactNode;
+  labels?: ChatWindowLabels;
 }
 
 const QUICK_EMOJIS = ['🎉', '👏', '🎨', '🔥', '🤔', '🤣', '❤️', '💡'];
@@ -23,13 +34,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
   currentUserId,
   onSendMessage,
-  title = '房间聊天',
-  placeholder = '发消息或猜答案...',
+  title,
+  placeholder,
   enableDanmakuToggle = true,
   isDanmakuDefault = false,
   className = '',
   aboveInputSlot,
+  labels,
 }) => {
+  const displayTitle = labels?.title ?? title ?? '房间聊天';
+  const displayPlaceholder = labels?.placeholder ?? placeholder ?? '发消息或猜答案...';
+  const danmakuOnText = labels?.danmakuOn ?? '🚀 弹幕模式开启';
+  const danmakuOffText = labels?.danmakuOff ?? '弹幕已关';
+  const emptyText = labels?.empty ?? '还没有发言，快发条消息热热场吧~';
+  const quickEmojiTitle = labels?.quickEmoji ?? '快捷表情';
+  const sendText = labels?.send ?? '发送';
   const [inputText, setInputText] = useState('');
   const [isDanmaku, setIsDanmaku] = useState(isDanmakuDefault);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -59,7 +78,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-muted/40">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#2EC4A6] animate-pulse" />
-          <h4 className="font-extrabold text-base text-foreground tracking-tight">{title}</h4>
+          <h4 className="font-extrabold text-base text-foreground tracking-tight">{displayTitle}</h4>
         </div>
 
         {enableDanmakuToggle && (
@@ -72,7 +91,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
-            {isDanmaku ? '🚀 弹幕模式开启' : '弹幕已关'}
+            {isDanmaku ? danmakuOnText : danmakuOffText}
           </button>
         )}
       </div>
@@ -82,7 +101,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-6">
             <Sparkles className="w-8 h-8 text-[var(--theme-primary,#5B5BF0)]/50 mb-2" />
-            <p className="text-sm font-medium">还没有发言，快发条消息热热场吧~</p>
+            <p className="text-sm font-medium">{emptyText}</p>
           </div>
         )}
 
@@ -185,7 +204,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           type="button"
           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
           className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-          title="快捷表情"
+          title={quickEmojiTitle}
         >
           <Smile className="w-5 h-5" />
         </button>
@@ -194,13 +213,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder={placeholder}
+          placeholder={displayPlaceholder}
           className="flex-1 bg-muted/50 rounded-full px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary,#5B5BF0)]"
         />
 
         <Button type="submit" size="sm" className="h-9 px-4 gap-1.5">
           <Send className="w-3.5 h-3.5" />
-          <span>发送</span>
+          <span>{sendText}</span>
         </Button>
       </form>
     </div>

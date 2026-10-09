@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
@@ -8,12 +8,12 @@ import {
   Timer,
   Zap,
   PlusCircle,
-  HelpCircle,
-  ShieldCheck,
   ChevronLeft,
   Sparkles,
   Loader2,
   AlertCircle,
+  HelpCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@idavoll/ui';
 import { quickMatch } from '../services/api';
@@ -22,6 +22,9 @@ import { connectRoom } from '../services/room-session';
 export const GameDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isGomoku = location.pathname.includes('gomoku');
 
   const [isMatching, setIsMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,11 +33,11 @@ export const GameDetailPage: React.FC = () => {
     setIsMatching(true);
     setError(null);
     try {
-      const match = await quickMatch();
+      const match = await quickMatch(isGomoku ? 'gomoku' : 'draw-and-guess');
       const canonicalRoomId = await connectRoom(match.roomId, undefined, match.ticket);
       navigate(`/room/${canonicalRoomId}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '快速匹配失败，请重试';
+      const msg = err instanceof Error ? err.message : t('lobby.quickMatchFailed', '快速匹配失败，请重试');
       setError(msg);
     } finally {
       setIsMatching(false);
@@ -42,7 +45,11 @@ export const GameDetailPage: React.FC = () => {
   };
 
   const handleCreateRoom = () => {
-    navigate('/create-room');
+    if (isGomoku) {
+      navigate('/create-room?game=gomoku');
+    } else {
+      navigate('/create-room');
+    }
   };
 
   return (
@@ -73,25 +80,34 @@ export const GameDetailPage: React.FC = () => {
           <div className="relative z-10 space-y-4 max-w-2xl">
             <div className="flex items-center gap-2">
               <Badge className="bg-white/20 text-white border border-white/30 font-black">
-                {t('gameDetail.flagship')}
+                {isGomoku ? t('gameDetail.gomoku.flagship', '♟️ 经典博弈') : t('gameDetail.flagship')}
               </Badge>
               <span className="text-xs font-bold text-white/80">
-                {t('gameDetail.playersBadge')}
+                {isGomoku ? t('gameDetail.gomoku.playersBadge', '支持 2 位玩家黑白对弈') : t('gameDetail.playersBadge')}
               </span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
-              {t('gameDetail.title')}
+              {isGomoku ? t('gameDetail.gomoku.title', '五子棋 (Gomoku)') : t('gameDetail.title')}
             </h1>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {[
-                t('gameDetail.tagCasual'),
-                t('gameDetail.tagBoard'),
-                t('gameDetail.tagDanmaku'),
-                t('gameDetail.tagVocab'),
-                t('gameDetail.tagCrossPlatform'),
-              ].map((tag) => (
+              {(isGomoku
+                ? [
+                    t('gameDetail.gomoku.tagCasual', '二人对弈'),
+                    t('gameDetail.gomoku.tagBoard', '经典黑白'),
+                    t('gameDetail.gomoku.tagDanmaku', '战术算法'),
+                    t('gameDetail.gomoku.tagVocab', '棋谱回放'),
+                    t('gameDetail.gomoku.tagCrossPlatform', '实时语音'),
+                  ]
+                : [
+                    t('gameDetail.tagCasual'),
+                    t('gameDetail.tagBoard'),
+                    t('gameDetail.tagDanmaku'),
+                    t('gameDetail.tagVocab'),
+                    t('gameDetail.tagCrossPlatform'),
+                  ]
+              ).map((tag) => (
                 <span
                   key={tag}
                   className="px-3 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95"
@@ -106,7 +122,7 @@ export const GameDetailPage: React.FC = () => {
                 size="lg"
                 disabled={isMatching}
                 onClick={handleStartMatch}
-                className="bg-white text-[var(--theme-primary,#5B5BF0)] hover:bg-white/90 font-black gap-2 shadow-xl"
+                className="bg-white text-[var(--theme-primary,#5B5BF0)] hover:bg-white/90 font-black gap-2 shadow-xl cursor-pointer"
               >
                 {isMatching ? (
                   <>
@@ -125,7 +141,7 @@ export const GameDetailPage: React.FC = () => {
                 size="lg"
                 variant="outline"
                 onClick={handleCreateRoom}
-                className="border-white/80 text-white hover:bg-white/20 font-black gap-2"
+                className="border-white/80 text-white hover:bg-white/20 font-black gap-2 cursor-pointer"
               >
                 <PlusCircle className="w-5 h-5" />
                 <span>{t('gameDetail.createRoomBtn')}</span>
@@ -141,9 +157,11 @@ export const GameDetailPage: React.FC = () => {
           <div className="w-10 h-10 rounded-2xl bg-[var(--theme-primary,#5B5BF0)]/15 text-[var(--theme-primary,#5B5BF0)] flex items-center justify-center font-black">
             1
           </div>
-          <h4 className="text-lg font-black text-foreground">{t('gameDetail.step1Title')}</h4>
+          <h4 className="text-lg font-black text-foreground">
+            {isGomoku ? t('gameDetail.gomoku.step1Title') : t('gameDetail.step1Title')}
+          </h4>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            {t('gameDetail.step1Desc')}
+            {isGomoku ? t('gameDetail.gomoku.step1Desc') : t('gameDetail.step1Desc')}
           </p>
         </Card>
 
@@ -151,9 +169,11 @@ export const GameDetailPage: React.FC = () => {
           <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center font-black">
             2
           </div>
-          <h4 className="text-lg font-black text-foreground">{t('gameDetail.step2Title')}</h4>
+          <h4 className="text-lg font-black text-foreground">
+            {isGomoku ? t('gameDetail.gomoku.step2Title') : t('gameDetail.step2Title')}
+          </h4>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            {t('gameDetail.step2Desc')}
+            {isGomoku ? t('gameDetail.gomoku.step2Desc') : t('gameDetail.step2Desc')}
           </p>
         </Card>
 
@@ -161,47 +181,55 @@ export const GameDetailPage: React.FC = () => {
           <div className="w-10 h-10 rounded-2xl bg-teal-500/15 text-teal-600 flex items-center justify-center font-black">
             3
           </div>
-          <h4 className="text-lg font-black text-foreground">{t('gameDetail.step3Title')}</h4>
+          <h4 className="text-lg font-black text-foreground">
+            {isGomoku ? t('gameDetail.gomoku.step3Title') : t('gameDetail.step3Title')}
+          </h4>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            {t('gameDetail.step3Desc')}
+            {isGomoku ? t('gameDetail.gomoku.step3Desc') : t('gameDetail.step3Desc')}
           </p>
         </Card>
       </div>
 
-      {/* Word Banks and Difficulty Info based on real WordBank */}
+      {/* Word Banks / Rules Info Card */}
       <Card className="p-6 space-y-4">
         <h4 className="text-lg font-extrabold text-foreground flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-[var(--theme-primary,#5B5BF0)]" />
-          <span>{t('gameDetail.wordbankTitle')}</span>
+          <span>{isGomoku ? t('gameDetail.gomoku.rulesTitle') : t('gameDetail.wordbankTitle')}</span>
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 bg-muted/40 rounded-2xl space-y-1.5 border border-border/60">
             <Badge variant="mint" className="text-[10px]">
-              {t('gameDetail.easyBadge')}
+              {isGomoku ? t('gameDetail.gomoku.ruleRoundsBadge') : t('gameDetail.easyBadge')}
             </Badge>
-            <h5 className="text-sm font-extrabold text-foreground">{t('gameDetail.easyTitle')}</h5>
+            <h5 className="text-sm font-extrabold text-foreground">
+              {isGomoku ? t('gameDetail.gomoku.ruleRoundsTitle') : t('gameDetail.easyTitle')}
+            </h5>
             <p className="text-xs text-muted-foreground">
-              {t('gameDetail.easyDesc')}
+              {isGomoku ? t('gameDetail.gomoku.ruleRoundsDesc') : t('gameDetail.easyDesc')}
             </p>
           </div>
 
           <div className="p-4 bg-muted/40 rounded-2xl space-y-1.5 border border-border/60">
             <Badge variant="default" className="text-[10px]">
-              {t('gameDetail.mediumBadge')}
+              {isGomoku ? t('gameDetail.gomoku.ruleTimeBadge') : t('gameDetail.mediumBadge')}
             </Badge>
-            <h5 className="text-sm font-extrabold text-foreground">{t('gameDetail.mediumTitle')}</h5>
+            <h5 className="text-sm font-extrabold text-foreground">
+              {isGomoku ? t('gameDetail.gomoku.ruleTimeTitle') : t('gameDetail.mediumTitle')}
+            </h5>
             <p className="text-xs text-muted-foreground">
-              {t('gameDetail.mediumDesc')}
+              {isGomoku ? t('gameDetail.gomoku.ruleTimeDesc') : t('gameDetail.mediumDesc')}
             </p>
           </div>
 
           <div className="p-4 bg-muted/40 rounded-2xl space-y-1.5 border border-border/60">
             <Badge variant="subtle" className="text-[10px]">
-              {t('gameDetail.hardBadge')}
+              {isGomoku ? t('gameDetail.gomoku.ruleTacticsBadge') : t('gameDetail.hardBadge')}
             </Badge>
-            <h5 className="text-sm font-extrabold text-foreground">{t('gameDetail.hardTitle')}</h5>
+            <h5 className="text-sm font-extrabold text-foreground">
+              {isGomoku ? t('gameDetail.gomoku.ruleTacticsTitle') : t('gameDetail.hardTitle')}
+            </h5>
             <p className="text-xs text-muted-foreground">
-              {t('gameDetail.hardDesc')}
+              {isGomoku ? t('gameDetail.gomoku.ruleTacticsDesc') : t('gameDetail.hardDesc')}
             </p>
           </div>
         </div>

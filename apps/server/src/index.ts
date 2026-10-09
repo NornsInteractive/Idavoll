@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
-import { GuestInputSchema, ProfileInputSchema, RoomSettingsSchema, JoinInputSchema, UserAccount } from '@idavoll/protocol';
+import { GuestInputSchema, ProfileInputSchema, RoomSettingsSchema, JoinInputSchema, MatchInputSchema, UserAccount } from '@idavoll/protocol';
 import { signJWT, verifyJWT } from './auth';
 import { GameRoomDO } from './room-do';
 import { Env } from './env';
@@ -63,7 +63,7 @@ app.patch('/api/me', async c => {
   return c.json({ user });
 });
 app.get('/api/me/matches', async c => {
-  const records = await c.env.DB.prepare('SELECT m.* FROM match_records m JOIN match_participants p ON p.match_id=m.id WHERE p.user_id=? ORDER BY m.played_at DESC LIMIT 50').bind(c.get('user').id).all();
+  const records = await c.env.DB.prepare("SELECT m.*,COALESCE(r.game_id,'draw-and-guess') AS game_id FROM match_records m JOIN match_participants p ON p.match_id=m.id LEFT JOIN rooms r ON r.id=m.room_id WHERE p.user_id=? ORDER BY m.played_at DESC LIMIT 50").bind(c.get('user').id).all();
   return c.json({ matches: records.results.map(({ scores_json, ...record }) => ({ ...record, scores: JSON.parse(String(scores_json)) })) });
 });
 app.get('/api/me/drawings', async c => {
@@ -84,7 +84,7 @@ app.get('/api/presence', async c => {
 });
 app.get('/api/rooms', async c => {
   const rows = await c.env.DB.prepare("SELECT * FROM rooms WHERE status='waiting' AND player_count<json_extract(settings_json,'$.maxPlayers') AND json_extract(settings_json,'$.isPrivate')=0 AND updated_at>? ORDER BY updated_at DESC LIMIT 50").bind(Date.now() - 90000).all();
-  return c.json({ rooms: rows.results.map(r => { const settings = JSON.parse(String(r.settings_json)); return { roomId: r.id, roomCode: r.room_code, title: r.title, hostId: r.host_id, status: r.status, playerCount: r.player_count, maxPlayers: settings.maxPlayers, isPrivate: settings.isPrivate }; }) });
+  return c.json({ rooms: rows.results.map(r => { const settings = JSON.parse(String(r.settings_json)); return { roomId: r.id, roomCode: r.room_code, title: r.title, gameId: r.game_id, hostId: r.host_id, status: r.status, playerCount: r.player_count, maxPlayers: settings.maxPlayers, isPrivate: settings.isPrivate }; }) });
 });
 function roomStub(env: Env, roomId: string) { return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomId)); }
 async function createRoom(env: Env, user: UserAccount, input: unknown): Promise<string> {
@@ -108,12 +108,14 @@ async function createRoom(env: Env, user: UserAccount, input: unknown): Promise<
 }
 app.post('/api/rooms', async c => c.json({ roomId: await createRoom(c.env, c.get('user'), await c.req.json()) }, 201));
 app.post('/api/rooms/match', async c => {
-  const rows = await c.env.DB.prepare("SELECT id FROM rooms WHERE status='waiting' AND player_count>0 AND player_count<json_extract(settings_json,'$.maxPlayers') AND json_extract(settings_json,'$.isPrivate')=0 AND updated_at>? ORDER BY player_count DESC LIMIT 10").bind(Date.now() - 90000).all<{ id: string }>();
+  const body = await c.req.text();
+  const { gameId } = MatchInputSchema.parse(body ? JSON.parse(body) : {});
+  const rows = await c.env.DB.prepare("SELECT id FROM rooms WHERE game_id=? AND status='waiting' AND player_count>0 AND player_count<json_extract(settings_json,'$.maxPlayers') AND json_extract(settings_json,'$.isPrivate')=0 AND updated_at>? ORDER BY player_count DESC LIMIT 10").bind(gameId, Date.now() - 90000).all<{ id: string }>();
   for (const row of rows.results) {
     const response = await roomStub(c.env, row.id).fetch(new Request('https://room/join', { method: 'POST', body: JSON.stringify({ user: c.get('user') }) }));
     if (response.ok) return response;
   }
-  const roomId = await createRoom(c.env, c.get('user'), { title: `${c.get('user').nickname} 的房间` });
+  const roomId = await createRoom(c.env, c.get('user'), { title: `${c.get('user').nickname} 的房间`, gameId });
   return roomStub(c.env, roomId).fetch(new Request('https://room/join', { method: 'POST', body: JSON.stringify({ user: c.get('user') }) }));
 });
 app.post('/api/rooms/:identifier/join', async c => {

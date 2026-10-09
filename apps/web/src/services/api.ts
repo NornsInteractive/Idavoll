@@ -1,4 +1,4 @@
-import { UserAccount, UserStats, RoomSettings, RoomSummary, MatchRecord, DrawingRecord, DrawStroke } from '@idavoll/protocol';
+import { UserAccount, UserStats, RoomSettings, RoomSummary, MatchRecord, DrawingRecord, DrawStroke, GameId } from '@idavoll/protocol';
 import { useUserStore } from '../store/useUserStore';
 
 export const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -19,7 +19,7 @@ export const saveProfile = (nickname: string, avatar: string) => api<{ user: Use
 export const fetchRooms = () => api<{ rooms: RoomSummary[] }>('/rooms');
 export const createRoom = (settings: RoomSettings) => api<{ roomId: string }>('/rooms', 'POST', settings);
 export const joinRoom = (idOrCode: string, password?: string) => api<{ roomId: string; roomCode: string; ticket: string }>(`/rooms/${encodeURIComponent(idOrCode)}/join`, 'POST', { password });
-export const quickMatch = () => api<{ roomId: string; roomCode: string; ticket: string }>('/rooms/match', 'POST', {});
+export const quickMatch = (gameId: GameId = 'draw-and-guess') => api<{ roomId: string; roomCode: string; ticket: string }>('/rooms/match', 'POST', { gameId });
 export const fetchPresence = () => api<{ onlineCount: number }>('/presence');
 export const heartbeat = () => api<{ ok: boolean }>('/presence', 'POST', {});
 export const fetchMatches = () => api<{ matches: MatchRecord[] }>('/me/matches');

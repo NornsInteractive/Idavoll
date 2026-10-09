@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,11 +23,13 @@ import {
   Mic,
   MicOff,
 } from 'lucide-react';
-import { Card, Button, Badge, Avatar, ChatWindow, VoiceDock, Input } from '@idavoll/ui';
+import { Card, Button, Badge, Avatar, ChatWindow, ChatWindowLabels, VoiceDock, Input } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
+import { useGomokuStore } from '../store/useGomokuStore';
 import { GameResultDialog } from '../components/GameResultDialog';
+import { GomokuResultDialog } from '../components/GomokuResultDialog';
 import { connectRoom, leaveRoom, disconnectRoom } from '../services/room-session';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { RoomSettings } from '@idavoll/protocol';
@@ -65,15 +67,31 @@ export const RoomWaitingPage: React.FC = () => {
     dismissResult,
   } = useGameStore();
 
+  const isGomoku = room?.settings?.gameId === 'gomoku';
+  const gomokuGameState = useGomokuStore((s) => s.gameState);
+  const gomokuResultDialogOpen = useGomokuStore((s) => s.resultDialogOpen);
+  const dismissGomokuResult = useGomokuStore((s) => s.dismissResult);
+
+  const chatWindowLabels = useMemo<ChatWindowLabels>(() => ({
+    title: isGomoku ? t('chat.title') : t('roomWaiting.chatWindowTitle'),
+    placeholder: isGomoku ? t('gomoku.chatPlaceholder') : t('chat.placeholder'),
+    danmakuOn: t('chat.danmakuOn'),
+    danmakuOff: t('chat.danmakuOff'),
+    empty: t('chat.empty'),
+    quickEmoji: t('chat.quickEmoji'),
+    send: t('chat.send'),
+  }), [isGomoku, t]);
+
   const [copied, setCopied] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [localShowResult, setLocalShowResult] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
 
-  // Real game over check: gameState is game_over AND has scores/podium/aborted data
+  // Real game over check for draw-and-guess
   const hasRealGameOver = Boolean(
-    gameState?.status === 'game_over' &&
+    !isGomoku &&
+      gameState?.status === 'game_over' &&
       ((gameState.scores && gameState.scores.length > 0) ||
         (gameState.gamePodium && gameState.gamePodium.length > 0) ||
         gameState.aborted)
@@ -81,12 +99,22 @@ export const RoomWaitingPage: React.FC = () => {
 
   const isResultDialogOpen = Boolean(hasRealGameOver && (resultDialogOpen || localShowResult));
 
+  const isGomokuDialogOpen = Boolean(
+    isGomoku &&
+      gomokuGameState?.status === 'game_over' &&
+      (gomokuResultDialogOpen || localShowResult)
+  );
+
   const handleRestartGame = () => {
     if (!isHost || room?.status !== 'settlement' || connectionState !== 'connected') {
       return;
     }
     setIsRestarting(true);
-    dismissResult();
+    if (isGomoku) {
+      dismissGomokuResult();
+    } else {
+      dismissResult();
+    }
     setLocalShowResult(false);
     try {
       restartGame();
@@ -97,11 +125,12 @@ export const RoomWaitingPage: React.FC = () => {
 
   // Reset localShowResult and isRestarting when room resets to waiting or leaves game_over
   useEffect(() => {
-    if (room?.status === 'waiting' || gameState?.status !== 'game_over') {
+    const isGameOver = isGomoku ? gomokuGameState?.status === 'game_over' : gameState?.status === 'game_over';
+    if (room?.status === 'waiting' || !isGameOver) {
       setLocalShowResult(false);
       setIsRestarting(false);
     }
-  }, [room?.status, gameState?.status]);
+  }, [room?.status, gameState?.status, gomokuGameState?.status, isGomoku]);
 
   // Recover isRestarting on connection departure or room error so host can retry
   useEffect(() => {
@@ -213,8 +242,8 @@ export const RoomWaitingPage: React.FC = () => {
           }
         })
         .catch((err: any) => {
-          const msg = err instanceof Error ? err.message : '加入房间失败';
-          if (msg.includes('密码') || err?.status === 403) {
+          const msg = err instanceof Error ? err.message : t('lobby.joinRoomFailed');
+          if (msg.includes('密码') || /password/i.test(msg) || err?.status === 403) {
             setPasswordModalOpen(true);
           } else {
             setConnectError(msg);
@@ -279,7 +308,7 @@ export const RoomWaitingPage: React.FC = () => {
         navigate(`/room/${canonicalRoomId}`, { replace: true });
       }
     } catch (err: any) {
-      const msg = err instanceof Error ? err.message : '密码错误，请重试';
+      const msg = err instanceof Error ? err.message : t('lobby.passwordError');
       setPasswordError(msg);
     } finally {
       setIsConnecting(false);
@@ -297,8 +326,8 @@ export const RoomWaitingPage: React.FC = () => {
         }
       })
       .catch((err: any) => {
-        const msg = err instanceof Error ? err.message : '连接失败';
-        if (msg.includes('密码') || err?.status === 403) {
+        const msg = err instanceof Error ? err.message : t('roomWaiting.notConnected');
+        if (msg.includes('密码') || /password/i.test(msg) || err?.status === 403) {
           setPasswordModalOpen(true);
         } else {
           setConnectError(msg);
@@ -317,10 +346,10 @@ export const RoomWaitingPage: React.FC = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }).catch(() => {
-        prompt('请复制以下房间邀请链接：', inviteUrl);
+        prompt(t('roomWaiting.copyInvitePrompt'), inviteUrl);
       });
     } else {
-      prompt('请复制以下房间邀请链接：', inviteUrl);
+      prompt(t('roomWaiting.copyInvitePrompt'), inviteUrl);
     }
   };
 
@@ -331,10 +360,10 @@ export const RoomWaitingPage: React.FC = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }).catch(() => {
-        prompt('房间号：', room.roomCode);
+        prompt(t('roomWaiting.roomCodePrompt', '房间号：'), room.roomCode);
       });
     } else {
-      prompt('房间号：', room.roomCode);
+      prompt(t('roomWaiting.roomCodePrompt', '房间号：'), room.roomCode);
     }
   };
 
@@ -353,10 +382,11 @@ export const RoomWaitingPage: React.FC = () => {
     const newSettings: RoomSettings = {
       ...room.settings,
       title: editTitle.trim(),
+      gameId: room.settings.gameId,
       drawDuration: editDuration,
       totalRounds: editRounds,
-      wordDifficulty: editDifficulty,
-      maxPlayers: editMaxPlayers,
+      wordDifficulty: isGomoku ? 'medium' : editDifficulty,
+      maxPlayers: isGomoku ? 2 : editMaxPlayers,
     };
 
     pendingSettingsRef.current = newSettings;
@@ -366,7 +396,7 @@ export const RoomWaitingPage: React.FC = () => {
     setTimeout(() => {
       if (pendingSettingsRef.current) {
         setIsSavingSettings(false);
-        setSettingsError('设置更新超时，请重试');
+        setSettingsError(t('roomWaiting.settingsTimeout', '设置更新超时，请重试'));
         pendingSettingsRef.current = null;
       }
     }, 5000);
@@ -399,7 +429,7 @@ export const RoomWaitingPage: React.FC = () => {
           <div className="flex flex-col items-center justify-center space-y-3">
             <Loader2 className="w-10 h-10 text-[var(--theme-primary,#5B5BF0)] animate-spin" />
             <p className="text-sm font-bold text-muted-foreground">
-              {isConnecting ? '正在连接房间与服务器...' : t('roomWaiting.notConnected')}
+              {isConnecting ? t('roomWaiting.connectingServer', '正在连接房间与服务器...') : t('roomWaiting.notConnected')}
             </p>
           </div>
         )}
@@ -530,19 +560,36 @@ export const RoomWaitingPage: React.FC = () => {
                       ? 'opacity-40 cursor-not-allowed'
                       : 'hover:text-foreground hover:bg-muted cursor-pointer'
                   }`}
-                  title={!isWaiting ? '仅在房间等待时可修改房间设置' : t('roomWaiting.editSettings')}
+                  title={!isWaiting ? t('roomWaiting.editSettingsWaitingOnly') : t('roomWaiting.editSettings')}
                 >
                   <Settings className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
             <p className="text-[10px] text-muted-foreground font-medium truncate">
-              作画 {room.settings?.drawDuration}s · 共 {room.settings?.totalRounds} 轮 ·{' '}
-              {room.settings?.wordDifficulty === 'easy'
-                ? '简单'
-                : room.settings?.wordDifficulty === 'hard'
-                ? '挑战'
-                : '标准'}
+              {isGomoku
+                ? t('roomWaiting.gomokuHeaderDesc', {
+                    step: room.settings?.drawDuration,
+                    rounds: room.settings?.totalRounds,
+                    defaultValue: `落子 ${room.settings?.drawDuration}s · 共 ${room.settings?.totalRounds} 局 · 2人对弈`,
+                  })
+                : t('roomWaiting.drawHeaderDesc', {
+                    duration: room.settings?.drawDuration,
+                    rounds: room.settings?.totalRounds,
+                    diff:
+                      room.settings?.wordDifficulty === 'easy'
+                        ? t('createRoom.diffEasy')
+                        : room.settings?.wordDifficulty === 'hard'
+                        ? t('createRoom.diffHard')
+                        : t('createRoom.diffMedium'),
+                    defaultValue: `作画 ${room.settings?.drawDuration}s · 共 ${room.settings?.totalRounds} 轮 · ${
+                      room.settings?.wordDifficulty === 'easy'
+                        ? '简单'
+                        : room.settings?.wordDifficulty === 'hard'
+                        ? '挑战'
+                        : '标准'
+                    }`,
+                  })}
             </p>
           </div>
         </div>
@@ -552,7 +599,7 @@ export const RoomWaitingPage: React.FC = () => {
             type="button"
             onClick={handleCopyCode}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-[var(--theme-primary,#5B5BF0)] text-[var(--theme-primary,#5B5BF0)] shadow-xs font-black text-xs hover:scale-105 transition-all cursor-pointer"
-            title="点击复制房号"
+            title={t('roomWaiting.copyRoomCode', '点击复制房号')}
           >
             {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
             <span>#{room.roomCode}</span>
@@ -604,19 +651,36 @@ export const RoomWaitingPage: React.FC = () => {
                       ? 'opacity-40 cursor-not-allowed'
                       : 'hover:text-foreground hover:bg-muted cursor-pointer'
                   }`}
-                  title={!isWaiting ? '仅在房间等待时可修改房间设置' : t('roomWaiting.editSettings')}
+                  title={!isWaiting ? t('roomWaiting.editSettingsWaitingOnly') : t('roomWaiting.editSettings')}
                 >
                   <Settings className="w-4 h-4" />
                 </button>
               )}
             </div>
             <p className="text-xs text-muted-foreground font-medium">
-              作画时间: {room.settings?.drawDuration}s · 共 {room.settings?.totalRounds} 轮 · 难度:{' '}
-              {room.settings?.wordDifficulty === 'easy'
-                ? '简单'
-                : room.settings?.wordDifficulty === 'hard'
-                ? '挑战'
-                : '标准'}
+              {isGomoku
+                ? t('roomWaiting.gomokuDesktopDesc', {
+                    step: room.settings?.drawDuration,
+                    rounds: room.settings?.totalRounds,
+                    defaultValue: `落子时限: ${room.settings?.drawDuration}s · 比赛总局数: ${room.settings?.totalRounds} 局 · 2人对弈`,
+                  })
+                : t('roomWaiting.drawDesktopDesc', {
+                    duration: room.settings?.drawDuration,
+                    rounds: room.settings?.totalRounds,
+                    diff:
+                      room.settings?.wordDifficulty === 'easy'
+                        ? t('createRoom.diffEasy')
+                        : room.settings?.wordDifficulty === 'hard'
+                        ? t('createRoom.diffHard')
+                        : t('createRoom.diffMedium'),
+                    defaultValue: `作画时间: ${room.settings?.drawDuration}s · 共 ${room.settings?.totalRounds} 轮 · 难度: ${
+                      room.settings?.wordDifficulty === 'easy'
+                        ? '简单'
+                        : room.settings?.wordDifficulty === 'hard'
+                        ? '挑战'
+                        : '标准'
+                    }`,
+                  })}
             </p>
           </div>
         </div>
@@ -630,7 +694,7 @@ export const RoomWaitingPage: React.FC = () => {
           >
             {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
             <span>{t('roomWaiting.roomCode')}: {room.roomCode}</span>
-            <span className="text-[11px] opacity-75">{copied ? '已复制!' : '点击复制'}</span>
+            <span className="text-[11px] opacity-75">{copied ? t('roomWaiting.copied', '已复制!') : t('roomWaiting.clickToCopy', '点击复制')}</span>
           </button>
 
           <Button
@@ -665,17 +729,17 @@ export const RoomWaitingPage: React.FC = () => {
               <div className="flex items-center gap-1.5 font-black text-foreground">
                 <span className="text-sm">{t('roomWaiting.playerSeats')}</span>
                 <Badge variant="subtle" className="text-[10px] px-1.5 py-0 font-bold">
-                  {room.players.length} / {maxSlots} 人
+                  {t('roomWaiting.playerUnit', { count: room.players.length, max: maxSlots })}
                 </Badge>
               </div>
               {speakingPlayers.length > 0 ? (
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-pulse truncate max-w-[170px]">
                   <Volume2 className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{speakingPlayers.map((p) => p.nickname).join('、')} 正在说话...</span>
+                  <span className="truncate">{t('roomWaiting.speakingWithDots', { names: speakingPlayers.map((p) => p.nickname).join('、') })}</span>
                 </span>
               ) : isSettlement ? (
                 <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
-                  {isHost ? '对局已结束，点击右侧「再来一局」' : '对局已结束，等待房主开启新局...'}
+                  {isHost ? t('roomWaiting.settledClickRestart') : t('roomWaiting.settledWaitHost')}
                 </span>
               ) : (
                 <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
@@ -688,8 +752,8 @@ export const RoomWaitingPage: React.FC = () => {
                       ? t('roomWaiting.allReadyToStart')
                       : t('roomWaiting.atLeastTwoPlayers')
                     : isMeReady
-                    ? '已准备，等待房主开始'
-                    : '点击右侧按钮准备'}
+                    ? t('roomWaiting.readyWaitHost')
+                    : t('roomWaiting.clickRightToReady')}
                 </span>
               )}
             </div>
@@ -704,7 +768,7 @@ export const RoomWaitingPage: React.FC = () => {
                       variant="surface"
                       onClick={() => setLocalShowResult(true)}
                       className="h-8 px-2 font-bold text-xs gap-1 cursor-pointer"
-                      title="查看战绩"
+                      title={t('roomWaiting.viewStats')}
                     >
                       <Trophy className="w-3.5 h-3.5 text-amber-500" />
                     </Button>
@@ -717,11 +781,11 @@ export const RoomWaitingPage: React.FC = () => {
                       className="h-8 px-3 font-black text-xs gap-1 shadow-md cursor-pointer disabled:opacity-50"
                     >
                       <RotateCcw className={`w-3.5 h-3.5 ${isRestarting ? 'animate-spin' : ''}`} />
-                      <span>再来一局</span>
+                      <span>{t('roomWaiting.playAgain')}</span>
                     </Button>
                   ) : (
                     <Badge variant="subtle" className="text-[10px] px-2 py-1 font-bold text-muted-foreground whitespace-nowrap">
-                      等待新对局
+                      {t('roomWaiting.waitingNewGame')}
                     </Badge>
                   )}
                 </>
@@ -778,12 +842,12 @@ export const RoomWaitingPage: React.FC = () => {
                       />
                     </div>
                     {isSpeaking && (
-                      <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-xs animate-bounce" title="正在说话">
+                      <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-xs animate-bounce" title={t('roomWaiting.speaking')}>
                         <Volume2 className="w-2.5 h-2.5" />
                       </span>
                     )}
                     {!isSpeaking && playerMuted && (
-                      <span className="absolute -bottom-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-xs" title="已静音">
+                      <span className="absolute -bottom-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-xs" title={t('roomWaiting.muted')}>
                         <MicOff className="w-2.5 h-2.5" />
                       </span>
                     )}
@@ -792,14 +856,14 @@ export const RoomWaitingPage: React.FC = () => {
                     isSpeaking ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-foreground'
                   }`}>
                     {player.nickname}
-                    {isMe ? ' (我)' : ''}
+                    {isMe ? ` (${t('settlement.me')})` : ''}
                   </span>
                   {isSpeaking ? (
                     <Badge
                       className="text-[8px] px-1.5 py-0 font-extrabold leading-tight bg-emerald-500 hover:bg-emerald-500 text-white animate-pulse flex items-center justify-center gap-0.5 w-full"
                     >
                       <Volume2 className="w-2 h-2 shrink-0" />
-                      <span>说话中</span>
+                      <span>{t('roomWaiting.speakingStatus')}</span>
                     </Badge>
                   ) : (
                     <Badge
@@ -825,7 +889,7 @@ export const RoomWaitingPage: React.FC = () => {
               >
                 <UserPlus className="w-4 h-4" />
                 <span className="text-[10px] font-bold">{t('roomWaiting.inviteSlot')}</span>
-                <span className="text-[9px] opacity-60">+{emptySlotsCount}空位</span>
+                <span className="text-[9px] opacity-60">{t('roomWaiting.emptySlotCount', { count: emptySlotsCount })}</span>
               </button>
             )}
           </div>
@@ -838,18 +902,18 @@ export const RoomWaitingPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black text-foreground">{t('roomWaiting.playerSeats')}</span>
                 <Badge variant="subtle" className="text-xs font-bold">
-                  {room.players.length} / {maxSlots} 人
+                  {t('roomWaiting.playerUnit', { count: room.players.length, max: maxSlots })}
                 </Badge>
               </div>
 
               {speakingPlayers.length > 0 ? (
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 animate-pulse">
                   <Volume2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>{speakingPlayers.map((p) => p.nickname).join('、')} 正在说话...</span>
+                  <span>{t('roomWaiting.speakingWithDots', { names: speakingPlayers.map((p) => p.nickname).join('、') })}</span>
                 </span>
               ) : isSettlement ? (
                 <span className="text-xs font-semibold text-muted-foreground">
-                  {isHost ? '对局已结束，点击下方「再来一局」即可重置开局' : '对局已结束，等待房主重新开局...'}
+                  {isHost ? t('roomWaiting.settledHostPrompt') : t('roomWaiting.settledGuestPrompt')}
                 </span>
               ) : isHost ? (
                 <span className="text-xs font-semibold text-muted-foreground">
@@ -863,7 +927,7 @@ export const RoomWaitingPage: React.FC = () => {
                 </span>
               ) : (
                 <span className="text-xs font-semibold text-muted-foreground">
-                  {isMeReady ? '已准备，等待房主开始' : '点击下方按钮准备'}
+                  {isMeReady ? t('roomWaiting.readyWaitHost') : t('roomWaiting.clickBottomToReady')}
                 </span>
               )}
             </div>
@@ -905,12 +969,12 @@ export const RoomWaitingPage: React.FC = () => {
                         />
                       </div>
                       {isSpeaking && (
-                        <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-emerald-500 text-white shadow-md animate-bounce" title="正在说话">
+                        <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-emerald-500 text-white shadow-md animate-bounce" title={t('roomWaiting.speaking')}>
                           <Volume2 className="w-3 h-3" />
                         </div>
                       )}
                       {!isSpeaking && playerMuted && (
-                        <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-rose-500 text-white shadow-md" title="已静音">
+                        <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-rose-500 text-white shadow-md" title={t('roomWaiting.muted')}>
                           <MicOff className="w-3 h-3" />
                         </div>
                       )}
@@ -921,9 +985,9 @@ export const RoomWaitingPage: React.FC = () => {
                         isSpeaking ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-foreground'
                       }`}>
                         {player.nickname}
-                        {isMe ? ' (我)' : ''}
+                        {isMe ? ` (${t('settlement.me')})` : ''}
                       </h5>
-                      <p className="text-[11px] text-muted-foreground font-medium">积分: {player.score}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">{t('roomWaiting.scorePoints', { count: player.score })}</p>
                     </div>
 
                     {isSpeaking ? (
@@ -931,7 +995,7 @@ export const RoomWaitingPage: React.FC = () => {
                         className="text-[10px] font-black px-2.5 py-0.5 bg-emerald-500 hover:bg-emerald-500 text-white animate-pulse flex items-center justify-center gap-1"
                       >
                         <Volume2 className="w-2.5 h-2.5" />
-                        <span>正在说话</span>
+                        <span>{t('roomWaiting.speaking')}</span>
                       </Badge>
                     ) : (
                       <Badge
@@ -995,12 +1059,12 @@ export const RoomWaitingPage: React.FC = () => {
                         className="font-bold px-6 gap-2 cursor-pointer"
                       >
                         <Trophy className="w-5 h-5 text-amber-500" />
-                        <span>查看战绩</span>
+                        <span>{t('roomWaiting.viewStats')}</span>
                       </Button>
                     )}
                     {!isHost && (
                       <span className="text-sm font-bold text-muted-foreground">
-                        本局已结束，留在房间等待房主开始新对局
+                        {t('roomWaiting.settledWaitHost')}
                       </span>
                     )}
                   </div>
@@ -1014,7 +1078,7 @@ export const RoomWaitingPage: React.FC = () => {
                         className="w-full sm:w-auto font-black px-8 gap-2 text-base shadow-xl cursor-pointer disabled:opacity-50"
                       >
                         <RotateCcw className={`w-5 h-5 ${isRestarting ? 'animate-spin' : ''}`} />
-                        <span>再来一局（重置房间）</span>
+                        <span>{t('roomWaiting.restartRoom')}</span>
                       </Button>
                     </div>
                   )}
@@ -1060,7 +1124,9 @@ export const RoomWaitingPage: React.FC = () => {
             messages={messages}
             currentUserId={userId}
             onSendMessage={(content, isDanmaku) => sendMessage(content, isDanmaku)}
-            title="房间交流与猜词"
+            title={isGomoku ? t('chat.title') : t('roomWaiting.chatWindowTitle')}
+            placeholder={isGomoku ? t('gomoku.chatPlaceholder') : t('chat.placeholder')}
+            labels={chatWindowLabels}
             className="h-full flex-1 min-h-0 rounded-2xl lg:rounded-3xl"
             aboveInputSlot={
               <div className="lg:hidden px-2.5 py-1.5 border-t border-border/70 bg-muted/20">
@@ -1129,7 +1195,7 @@ export const RoomWaitingPage: React.FC = () => {
 
                 <form onSubmit={handleSaveSettings} className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-muted-foreground">房间标题</label>
+                    <label className="text-xs font-bold text-muted-foreground">{t('roomWaiting.roomTitleLabel')}</label>
                     <Input
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
@@ -1140,9 +1206,11 @@ export const RoomWaitingPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-muted-foreground">作画时间 (秒)</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[45, 60, 90].map((sec) => (
+                    <label className="text-xs font-bold text-muted-foreground">
+                      {isGomoku ? t('createRoom.stepDuration') : t('createRoom.drawDuration')}
+                    </label>
+                    <div className={`grid ${isGomoku ? 'grid-cols-4' : 'grid-cols-3'} gap-2`}>
+                      {(isGomoku ? [30, 60, 90, 120] : [45, 60, 90]).map((sec) => (
                         <button
                           key={sec}
                           type="button"
@@ -1154,16 +1222,18 @@ export const RoomWaitingPage: React.FC = () => {
                               : 'bg-muted/70 text-muted-foreground hover:bg-muted'
                           }`}
                         >
-                          {sec}秒
+                          {t('createRoom.secondsCount', { count: sec })}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-muted-foreground">总轮数</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[2, 3, 5, 8].map((round) => (
+                    <label className="text-xs font-bold text-muted-foreground">
+                      {isGomoku ? t('createRoom.gomokuTotalRounds') : t('createRoom.totalRounds')}
+                    </label>
+                    <div className={`grid ${isGomoku ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
+                      {(isGomoku ? [1, 3, 5] : [2, 3, 5, 8]).map((round) => (
                         <button
                           key={round}
                           type="button"
@@ -1175,36 +1245,38 @@ export const RoomWaitingPage: React.FC = () => {
                               : 'bg-muted/70 text-muted-foreground hover:bg-muted'
                           }`}
                         >
-                          {round}轮
+                          {isGomoku ? t('createRoom.roundsCountGomoku', { count: round }) : t('createRoom.roundsCount', { count: round })}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-muted-foreground">词库难度</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { key: 'easy', label: '简单' },
-                        { key: 'medium', label: '标准' },
-                        { key: 'hard', label: '挑战' },
-                      ].map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          disabled={isSavingSettings}
-                          onClick={() => setEditDifficulty(item.key as any)}
-                          className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                            editDifficulty === item.key
-                              ? 'bg-[var(--theme-primary,#5B5BF0)] text-white'
-                              : 'bg-muted/70 text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
+                  {!isGomoku && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground">{t('createRoom.wordDifficulty')}</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { key: 'easy', label: t('createRoom.diffEasy') },
+                          { key: 'medium', label: t('createRoom.diffMedium') },
+                          { key: 'hard', label: t('createRoom.diffHard') },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            disabled={isSavingSettings}
+                            onClick={() => setEditDifficulty(item.key as any)}
+                            className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              editDifficulty === item.key
+                                ? 'bg-[var(--theme-primary,#5B5BF0)] text-white'
+                                : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex items-center gap-2 pt-2">
                     <Button
@@ -1214,7 +1286,7 @@ export const RoomWaitingPage: React.FC = () => {
                       onClick={() => setSettingsOpen(false)}
                       className="flex-1 font-bold text-xs cursor-pointer"
                     >
-                      取消
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       type="submit"
@@ -1227,7 +1299,7 @@ export const RoomWaitingPage: React.FC = () => {
                           <span>{t('roomWaiting.savingSettings')}</span>
                         </>
                       ) : (
-                        <span>保存设置</span>
+                        <span>{t('roomWaiting.saveSettings')}</span>
                       )}
                     </Button>
                   </div>
@@ -1238,14 +1310,28 @@ export const RoomWaitingPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Game Over Settlement Result Modal */}
+      {/* Game Over Settlement Result Modal - Draw and Guess */}
       <GameResultDialog
-        isOpen={isResultDialogOpen}
+        isOpen={isResultDialogOpen && !isGomoku}
         onClose={() => {
           dismissResult();
           setLocalShowResult(false);
         }}
         gameState={gameState}
+        currentUserId={userId}
+        isHost={isHost}
+        onRestartGame={handleRestartGame}
+        isRestarting={isRestarting}
+      />
+
+      {/* Game Over Settlement Result Modal - Gomoku */}
+      <GomokuResultDialog
+        isOpen={isGomokuDialogOpen}
+        onClose={() => {
+          dismissGomokuResult();
+          setLocalShowResult(false);
+        }}
+        gameState={gomokuGameState}
         currentUserId={userId}
         isHost={isHost}
         onRestartGame={handleRestartGame}

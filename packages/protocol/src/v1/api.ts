@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { RoomSettingsSchema } from './room';
+import { RoomSettingsSchema, GameId, GameIdSchema } from './room';
+import { GomokuActionSchemas } from './gomoku';
 import { DrawStrokeSchema } from './draw';
 
 export const ProfileInputSchema = z.object({
@@ -8,7 +9,9 @@ export const ProfileInputSchema = z.object({
 });
 export const GuestInputSchema = ProfileInputSchema.partial();
 export const JoinInputSchema = z.object({ password: z.string().max(64).optional() });
+export const MatchInputSchema = z.object({ gameId: GameIdSchema.default('draw-and-guess') });
 export const MessageInputSchema = z.discriminatedUnion('topic', [
+  ...GomokuActionSchemas,
   z.object({ topic: z.literal('chat:send'), payload: z.object({ content: z.string().trim().min(1).max(300), isDanmaku: z.boolean().optional() }) }),
   z.object({ topic: z.literal('game:submit_guess'), payload: z.object({ guess: z.string().trim().min(1).max(300) }) }),
   z.object({ topic: z.literal('game:choose_word'), payload: z.object({ word: z.string().min(1).max(50) }) }),
@@ -24,6 +27,6 @@ export const MessageInputSchema = z.discriminatedUnion('topic', [
 
 export interface UserAccount { id: string; nickname: string; avatar: string; }
 export interface UserStats { totalGames: number; wins: number; winRate: number; drawings: number; guesses: number; correctGuesses: number; accuracy: number; }
-export interface RoomSummary { roomId: string; roomCode: string; title: string; hostId: string; status: 'waiting' | 'playing' | 'settlement'; playerCount: number; maxPlayers: number; isPrivate: boolean; }
+export interface RoomSummary { roomId: string; roomCode: string; title: string; gameId: GameId; hostId: string; status: 'waiting' | 'playing' | 'settlement'; playerCount: number; maxPlayers: number; isPrivate: boolean; }
 export interface DrawingRecord { id: string; word: string; created_at: number; }
-export interface MatchRecord { id: string; room_id: string; winner_nickname: string; total_rounds: number; played_at: number; scores: Array<{ playerId: string; nickname: string; avatar: string; score: number }>; }
+export interface MatchRecord { id: string; room_id: string; game_id: GameId; winner_nickname: string | null; total_rounds: number; played_at: number; scores: Array<{ playerId: string; nickname: string; avatar: string; score: number }>; }

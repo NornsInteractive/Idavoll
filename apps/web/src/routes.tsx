@@ -35,6 +35,7 @@ export const router = createBrowserRouter([
           { path: 'lobby', element: <LobbyHomePage /> },
           { path: 'games', element: <GameLibraryPage /> },
           { path: 'games/draw-and-guess', element: <GameDetailPage /> },
+          { path: 'games/gomoku', element: <GameDetailPage /> },
           { path: 'create-room', element: <CreateRoomPage /> },
           { path: 'room/:roomId', element: <RoomWaitingPage /> },
           { path: 'game/drawer', element: <InGameDrawerPage /> },

@@ -1,12 +1,15 @@
-import { RoomState, ChatMessage, UserAccount, RoomSettingsSchema, MessageInputSchema, DrawStroke } from '@idavoll/protocol';
+import { RoomState, ChatMessage, UserAccount, RoomSettingsSchema, MessageInputSchema, DrawStroke, GomokuState, GomokuAction, isGomokuState } from '@idavoll/protocol';
 import { DrawAndGuessGameModule, ServerGameState, gameView } from '@idavoll/game-draw-and-guess';
 import { RoomHost } from '@idavoll/game-sdk';
 import { Env } from './env';
 import { signJWT, verifyJWT } from './auth';
+import { initGomoku, handleGomokuAction, tickGomoku, leaveGomoku, gomokuHint, GomokuRuleError } from './gomoku';
+
+const viewGame = (game: ServerGameState | GomokuState, userId: string) => isGomokuState(game) ? game : gameView(game, userId);
 
 interface Snapshot {
   room: RoomState;
-  game: ServerGameState | null;
+  game: ServerGameState | GomokuState | null;
   messages: ChatMessage[];
   matchId: string;
   disconnected: Record<string, number>;
@@ -59,6 +62,7 @@ export class GameRoomDO implements DurableObject {
     }
     if (!this.data) return Response.json({ error: '房间不存在' }, { status: 404 });
     await this.removeExpired();
+    await this.advanceClock();
     const data = this.data;
     if (url.pathname === '/member') {
       const { userId } = await request.json() as { userId: string };
@@ -100,7 +104,7 @@ export class GameRoomDO implements DurableObject {
       const profile = await this.env.DB.prepare('SELECT nickname,avatar FROM users WHERE id=?').bind(claim.sub).first<{ nickname: string; avatar: string }>();
       if (profile) Object.assign(player, profile);
       await this.save();
-      this.send(server, 'connection:snapshot', { room: data.room, game: data.game ? gameView(data.game, claim.sub) : null, messages: data.messages });
+      this.send(server, 'connection:snapshot', { room: data.room, game: data.game ? viewGame(data.game, claim.sub) : null, messages: data.messages });
       this.broadcastRoom();
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -131,7 +135,7 @@ export class GameRoomDO implements DurableObject {
           if (d.game) {
             const score = d.game.scores.find(s => s.playerId === user.id);
             if (score) Object.assign(score, profile);
-            if (d.game.drawerId === user.id) d.game.drawerNickname = profile.nickname;
+            if (!isGomokuState(d.game) && d.game.drawerId === user.id) d.game.drawerNickname = profile.nickname;
           }
           await this.save(false); this.broadcastRoom(); this.broadcastGame();
         }
@@ -153,6 +157,7 @@ export class GameRoomDO implements DurableObject {
       if (event.topic === 'room:settings_update') {
         if (!host || d.room.status !== 'waiting') throw new Error('仅房主可以在等待时修改设置');
         const { password, ...settings } = RoomSettingsSchema.parse(event.payload);
+        if (settings.gameId !== d.room.settings.gameId) throw new GomokuRuleError('wrong_game');
         if (settings.maxPlayers < d.room.players.length) throw new Error('人数上限小于当前玩家数');
         if (settings.isPrivate && !password && !d.passwordHash) throw new Error('请设置房间密码');
         if (password && (password.length < 4 || password.length > 64)) throw new Error('密码须为 4–64 个字符');
@@ -170,11 +175,26 @@ export class GameRoomDO implements DurableObject {
       if (event.topic === 'room:start_game') {
         if (!host || d.room.status !== 'waiting' || d.room.players.length < 2 || d.room.players.some(p => !p.isOnline || !p.isReady)) throw new Error('需要至少两位在线且准备的玩家，由房主开始');
         d.matchId = crypto.randomUUID(); d.archivedTurns = []; d.redo = [];
-        d.game = this.module.initGame(d.room.players, d.room.settings); d.room.status = 'playing';
+        d.game = d.room.settings.gameId === 'gomoku' ? initGomoku(d.room.players, d.room.settings, d.matchId) : this.module.initGame(d.room.players, d.room.settings);
+        d.room.status = 'playing';
         await this.save(); this.broadcastRoom(); this.broadcastGame(); return;
       }
       await this.advanceClock();
-      const game = d.game;
+      const activeGame = d.game;
+      if (event.topic.startsWith('gomoku:')) {
+        if (!isGomokuState(activeGame)) throw new GomokuRuleError('wrong_game');
+        const action = event as GomokuAction;
+        if (action.topic === 'gomoku:hint') {
+          this.send(ws, 'gomoku:hint', gomokuHint(activeGame, action.payload.revision, user.id));
+          return;
+        }
+        d.game = handleGomokuAction(activeGame, action, user.id);
+        if (d.game.status === 'game_over') await this.save(false);
+        await this.afterGameChange(); await this.save(false); this.broadcastGame();
+        return;
+      }
+      if (isGomokuState(activeGame) && (event.topic.startsWith('draw:') || event.topic.startsWith('game:'))) throw new GomokuRuleError('wrong_game');
+      const game = activeGame && !isGomokuState(activeGame) ? activeGame : null;
       if (event.topic.startsWith('draw:')) {
         if (!game || game.status !== 'drawing' || game.drawerId !== user.id) throw new Error('仅当前画手可以作画');
         if (event.topic === 'draw:stroke') {
@@ -208,7 +228,7 @@ export class GameRoomDO implements DurableObject {
         d.messages = [...d.messages.slice(-99), msg];
         await this.afterGameChange();
         await this.save(false); this.broadcast('chat:message', msg);
-        if (game) this.broadcastGame();
+        if (activeGame) this.broadcastGame();
         return;
       }
       if (event.topic.startsWith('game:')) {
@@ -222,7 +242,9 @@ export class GameRoomDO implements DurableObject {
         return;
       }
     } catch (error) {
-      this.send(ws, 'error', { message: error && typeof error === 'object' && 'issues' in error ? '消息格式不正确' : error instanceof Error ? error.message : '操作失败' });
+      const invalidGomoku = this.data.room.settings.gameId === 'gomoku' && error && typeof error === 'object' && 'issues' in error;
+      const failure = invalidGomoku ? new GomokuRuleError('invalid_action') : error;
+      this.send(ws, 'error', failure instanceof GomokuRuleError ? { code: failure.code, message: failure.message } : { message: failure && typeof failure === 'object' && 'issues' in failure ? '消息格式不正确' : failure instanceof Error ? failure.message : '操作失败' });
     }
   }
   private async afterGameChange() {
@@ -231,6 +253,19 @@ export class GameRoomDO implements DurableObject {
     if (!game) return;
     d.room.currentRound = game.currentRound;
     for (const p of d.room.players) p.score = game.scores.find(s => s.playerId === p.id)?.score || 0;
+    if (isGomokuState(game)) {
+      if (game.status === 'game_over' && d.room.status !== 'settlement') {
+        const winner = game.scores.find(score => score.playerId === game.matchWinnerId);
+        await this.env.DB.batch([
+          this.env.DB.prepare('INSERT OR IGNORE INTO match_records (id,room_id,winner_id,winner_nickname,total_rounds,scores_json,played_at) VALUES (?,?,?,?,?,?,?)').bind(d.matchId, d.room.roomId, winner?.playerId ?? null, winner?.nickname ?? null, game.roundResults.length, JSON.stringify(game.scores), Date.now()),
+          ...game.scores.map(score => this.env.DB.prepare('INSERT OR IGNORE INTO match_participants (match_id,user_id,score,won,guesses,correct_guesses) VALUES (?,?,?,?,?,?)').bind(d.matchId, score.playerId, score.score, score.playerId === game.matchWinnerId ? 1 : 0, 0, 0)),
+        ]);
+        d.room.status = 'settlement';
+        try { await this.updateIndex(); } catch (error) { d.room.status = 'playing'; throw error; }
+        this.broadcastRoom(); this.broadcastGame();
+      }
+      return;
+    }
     if (game.status === 'turn_ended' && game.secretWord && game.strokes.length && !d.archivedTurns.includes(game.turnIndex || 0)) {
       const id = `${d.matchId}_${game.turnIndex || 0}`;
       const storageKey = `drawings/${id}.json`;
@@ -251,6 +286,17 @@ export class GameRoomDO implements DurableObject {
   }
   private async advanceClock() {
     const game = this.data?.game;
+    if (isGomokuState(game)) {
+      if (game.status === 'game_over') { await this.afterGameChange(); return; }
+      if (this.data!.room.status !== 'playing') return;
+      const next = tickGomoku(game);
+      this.data!.game = next;
+      if (next.revision !== game.revision) {
+        if (next.status === 'game_over') await this.save(false);
+        await this.afterGameChange(); await this.save(); this.broadcastRoom(); this.broadcastGame();
+      } else this.broadcast('game:clock', { gameId: 'gomoku', timeLeft: next.timeLeft, deadline: next.deadline });
+      return;
+    }
     if (game && ['turn_ended', 'game_over'].includes(game.status)) await this.afterGameChange();
     if (!game || this.data!.room.status !== 'playing' || !game.deadline) return;
     const remaining = Math.max(0, Math.ceil((game.deadline - Date.now()) / 1000));
@@ -295,7 +341,11 @@ export class GameRoomDO implements DurableObject {
       d.room.hostId = (d.room.players.find(p => p.isOnline) || d.room.players[0]).id;
       d.room.players.forEach(p => { p.isHost = p.id === d.room.hostId; if (p.isHost) p.isReady = true; });
     }
-    if (d.game && d.room.status === 'playing') { d.game = this.module.onPlayerLeave(d.game, userId, this.host()); await this.afterGameChange(); }
+    if (d.game && d.room.status === 'playing') {
+      d.game = isGomokuState(d.game) ? leaveGomoku(d.game, userId) : this.module.onPlayerLeave(d.game, userId, this.host());
+      if (isGomokuState(d.game) && d.game.status === 'game_over') await this.save(false);
+      await this.afterGameChange();
+    }
     await this.save(); this.broadcastRoom(); this.broadcastGame();
   }
   private async save(index = true) {
@@ -324,7 +374,7 @@ export class GameRoomDO implements DurableObject {
   private broadcast(topic: string, payload: unknown) { for (const ws of this.state.getWebSockets()) this.send(ws, topic, payload); }
   private broadcastRoom() { this.broadcast('room:state_sync', this.data!.room); }
   private broadcastGame() {
-    for (const ws of this.state.getWebSockets()) { const a = ws.deserializeAttachment() as SocketData; this.send(ws, 'game:state_sync', this.data!.game ? gameView(this.data!.game, a.userId) : null); }
+    for (const ws of this.state.getWebSockets()) { const a = ws.deserializeAttachment() as SocketData; this.send(ws, 'game:state_sync', this.data!.game ? viewGame(this.data!.game, a.userId) : null); }
   }
   private host(): RoomHost {
     return { getRoomState: () => this.data!.room, broadcast: (topic, data) => this.broadcast(topic, data), sendTo: (id, topic, data) => this.state.getWebSockets(id).forEach(ws => this.send(ws, topic, data)), scheduleTimer: () => { throw new Error('Use Durable Object alarm'); }, cancelTimer: () => {}, kickPlayer: id => { void this.leave(id); } };

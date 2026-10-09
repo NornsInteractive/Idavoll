@@ -1,8 +1,10 @@
 import { GameConnection, WebSocketTransport } from '@idavoll/client-core';
-import { RoomState, DrawAndGuessState, ChatMessage, DrawStroke } from '@idavoll/protocol';
+import { RoomState, DrawAndGuessState, ChatMessage, DrawStroke, GomokuState, GomokuHint, isGomokuState } from '@idavoll/protocol';
 import { API_BASE, joinRoom } from './api';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
+import { useGomokuStore } from '../store/useGomokuStore';
+import i18n from '../i18n';
 import { useUserStore } from '../store/useUserStore';
 import { stopVoice, handleVoiceSignal, syncVoicePeers } from './voice';
 
@@ -11,9 +13,13 @@ let currentRoomId = '';
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let generation = 0;
 let pending: { identifier: string; promise: Promise<string> } | null = null;
+function syncGame(game: DrawAndGuessState | GomokuState | null) {
+  useGameStore.getState().setGameState(isGomokuState(game) ? null : game);
+  useGomokuStore.getState().setGameState(isGomokuState(game) ? game : null);
+}
 export function sendRoomAction(topic: string, payload: unknown): boolean {
   if (connection?.send(topic, payload)) return true;
-  useRoomStore.setState({ error: '连接已断开，请等待重连后重试' });
+  useRoomStore.setState({ error: i18n.t('roomWaiting.notConnected') });
   return false;
 }
 export function connectRoom(identifier: string, password?: string, initialTicket?: string): Promise<string> {
@@ -43,19 +49,25 @@ async function openRoom(identifier: string, password?: string, initialTicket?: s
   connection.onStateChange(state => {
     useRoomStore.setState({ connectionState: state });
     if (state !== 'connected') stopVoice();
-    if (state === 'disconnected') useRoomStore.setState({ error: '房间连接已关闭，可返回大厅重新加入' });
+    if (state === 'disconnected') useRoomStore.setState({ error: i18n.t('roomWaiting.notConnected') });
   });
   connection.onMessage((topic, payload) => {
     if (topic === 'connection:snapshot') {
-      const snapshot = payload as { room: RoomState; game: DrawAndGuessState | null; messages: ChatMessage[] };
+      const snapshot = payload as { room: RoomState; game: DrawAndGuessState | GomokuState | null; messages: ChatMessage[] };
       useRoomStore.setState({ room: snapshot.room, messages: snapshot.messages, error: null });
-      useGameStore.getState().setGameState(snapshot.game);
+      syncGame(snapshot.game);
     }
     if (topic === 'room:state_sync') { useRoomStore.getState().setRoom(payload as RoomState); syncVoicePeers(); }
-    if (topic === 'game:state_sync') useGameStore.getState().setGameState(payload as DrawAndGuessState | null);
+    if (topic === 'game:state_sync') syncGame(payload as DrawAndGuessState | GomokuState | null);
     if (topic === 'game:clock') {
-      const game = useGameStore.getState().gameState;
-      if (game) useGameStore.getState().setGameState({ ...game, ...(payload as { timeLeft: number; deadline: number }) });
+      const clock = payload as { gameId?: string; timeLeft: number; deadline: number };
+      if (clock.gameId === 'gomoku') {
+        const game = useGomokuStore.getState().gameState;
+        if (game) useGomokuStore.getState().setGameState({ ...game, timeLeft: clock.timeLeft, deadline: clock.deadline });
+      } else {
+        const game = useGameStore.getState().gameState;
+        if (game) useGameStore.getState().setGameState({ ...game, timeLeft: clock.timeLeft, deadline: clock.deadline });
+      }
     }
     if (topic === 'draw:stroke') {
       const stroke = payload as DrawStroke;
@@ -63,9 +75,13 @@ async function openRoom(identifier: string, password?: string, initialTicket?: s
       if (game) { const strokes = [...game.strokes]; const index = strokes.findIndex(s => s.id === stroke.id); if (index < 0) strokes.push(stroke); else strokes[index] = stroke; useGameStore.getState().setGameState({ ...game, strokes }); }
     }
     if (topic === 'chat:message') useRoomStore.getState().addMessage(payload as ChatMessage);
+    if (topic === 'gomoku:hint') useGomokuStore.getState().setHint(payload as GomokuHint);
     if (topic === 'game:guess_result') useGameStore.setState({ guessResult: { ...(payload as { correct: boolean; earned: number }), timestamp: Date.now() } });
     if (topic === 'voice:signal') void handleVoiceSignal(payload as { senderId: string; signal: RTCSessionDescriptionInit | RTCIceCandidateInit });
-    if (topic === 'error') useRoomStore.setState({ error: (payload as { message: string }).message });
+    if (topic === 'error') {
+      const error = payload as { code?: string; message: string };
+      useRoomStore.setState({ error: error.code ? i18n.t(`gomoku.errors.${error.code}`, { defaultValue: error.message }) : error.message });
+    }
   });
   connection.connect();
   heartbeatTimer = setInterval(() => { if (connection?.getState() === 'connected') connection.send('room:heartbeat', {}); }, 25000);
@@ -80,7 +96,7 @@ export function disconnectRoom() {
   heartbeatTimer = null;
   connection?.disconnect(); connection = null; currentRoomId = '';
   useRoomStore.setState({ room: null, messages: [], danmakus: [], connectionState: 'disconnected', error: null });
-  useGameStore.getState().setGameState(null);
+  syncGame(null);
   sessionStorage.removeItem('idavoll-room-id');
 }
 export function leaveRoom() { connection?.send('room:leave', {}); disconnectRoom(); }

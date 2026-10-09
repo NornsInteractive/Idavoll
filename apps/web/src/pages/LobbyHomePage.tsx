@@ -343,20 +343,27 @@ export const LobbyHomePage: React.FC = () => {
             </div>
           </Card>
 
-          {/* Secondary Game Card Placeholder */}
-          <Card className="p-6 flex flex-col justify-between space-y-4 opacity-75">
+          {/* Secondary Game Card: Gomoku */}
+          <Card
+            hoverEffect
+            onClick={() => navigate('/games/gomoku')}
+            className="p-6 flex flex-col justify-between space-y-4 border-2 border-primary/20 cursor-pointer"
+          >
             <div>
-              <Badge variant="muted" className="mb-2">
-                {t('lobby.comingSoon', '敬请期待')}
-              </Badge>
-              <h4 className="text-xl font-black text-foreground">{t('lobby.partyLudo', '飞行棋大乱斗')}</h4>
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="mint" className="text-xs font-black">
+                  {t('games.gomokuBadge', '火热开放')}
+                </Badge>
+                <span className="text-xs font-bold text-muted-foreground">{t('games.twoPlayersDuel', '2人对弈')}</span>
+              </div>
+              <h4 className="text-xl font-black text-foreground">{t('games.gomoku', '五子棋 (Gomoku)')}</h4>
               <p className="text-xs text-muted-foreground font-medium mt-1">
-                {t('lobby.partyLudoDesc', '经典复古飞行棋，新增道具卡与多玩家淘汰赛制，正在精心打磨中。')}
+                {t('games.gomokuDesc', '经典黑白双色博弈，五子连珠定胜负！支持对弈回放、局内互动与实时语音。')}
               </p>
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t border-border">
-              <span>状态: {t('lobby.inDev', '研发中')}</span>
-              <span className="font-bold text-muted-foreground">{t('games.unreleased', '暂未开放')}</span>
+              <span className="text-primary font-bold">{t('games.playNow', '立即开始')} →</span>
+              <span className="font-bold text-foreground">{t('games.gomokuBoardSize', '15×15 棋盘')}</span>
             </div>
           </Card>
         </div>
@@ -414,12 +421,15 @@ export const LobbyHomePage: React.FC = () => {
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge variant={room.status === 'waiting' ? 'mint' : 'muted'} className="text-[10px]">
                           {room.status === 'waiting' ? t('lobby.waiting') : t('lobby.playing')}
                         </Badge>
+                        <Badge variant="subtle" className="text-[10px]">
+                          {room.gameId === 'gomoku' ? t('games.gomoku', '五子棋') : t('gameDetail.title', '你画我猜')}
+                        </Badge>
                         {room.isPrivate && (
-                          <span title="加密房间" className="text-muted-foreground">
+                          <span title={t('lobby.privateRoom', '加密房间')} className="text-muted-foreground">
                             <Lock className="w-3.5 h-3.5 text-amber-500" />
                           </span>
                         )}

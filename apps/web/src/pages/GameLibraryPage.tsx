@@ -41,8 +41,8 @@ export const GameLibraryPage: React.FC = () => {
       desc: t('games.gomokuDesc', '经典黑白双色博弈，五子连珠定胜负！支持对弈回放、局内互动与实时语音。'),
       players: t('games.filterAll') === 'All Games' ? '2 Players' : '2 人',
       playTime: t('games.minutesRange', { min: 3, max: 10, defaultValue: '3-10 分钟' }),
-      badge: t('games.unreleased', '未开放'),
-      active: false,
+      badge: t('games.gomokuBadge', '火热开放'),
+      active: true,
     },
     {
       id: 'who-is-spy',

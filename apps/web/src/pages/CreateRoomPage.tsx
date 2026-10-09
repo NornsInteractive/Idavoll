@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,40 +10,51 @@ import { Card, Button, Input, Badge } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { createRoom } from '../services/api';
 import { connectRoom } from '../services/room-session';
-import { RoomSettings } from '@idavoll/protocol';
+import { RoomSettings, GameId } from '@idavoll/protocol';
 
-const createRoomSchema = z
-  .object({
-    title: z.string().trim().min(1, '房间名称至少1个字符').max(30, '房间名称最多30个字符'),
-    maxPlayers: z.number().int().min(2).max(12),
-    drawDuration: z.number().int().min(30).max(120),
-    totalRounds: z.number().int().min(1).max(10),
-    wordDifficulty: z.enum(['easy', 'medium', 'hard']),
-    isPrivate: z.boolean(),
-    password: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.isPrivate) {
-        return !!data.password && data.password.trim().length >= 4 && data.password.trim().length <= 64;
+const getCreateRoomSchema = (t: (key: string, options?: any) => string) =>
+  z
+    .object({
+      title: z
+        .string()
+        .trim()
+        .min(1, t('createRoom.titleMinLength', { defaultValue: '房间名称至少1个字符' }))
+        .max(30, t('createRoom.titleMaxLength', { defaultValue: '房间名称最多30个字符' })),
+      maxPlayers: z.number().int().min(2).max(12),
+      drawDuration: z.number().int().min(30).max(120),
+      totalRounds: z.number().int().min(1).max(10),
+      wordDifficulty: z.enum(['easy', 'medium', 'hard']),
+      isPrivate: z.boolean(),
+      password: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.isPrivate) {
+          return !!data.password && data.password.trim().length >= 4 && data.password.trim().length <= 64;
+        }
+        return true;
+      },
+      {
+        message: t('createRoom.passwordLength', { defaultValue: '私密房间密码须为 4-64 位字符' }),
+        path: ['password'],
       }
-      return true;
-    },
-    {
-      message: '私密房间密码须为 4-64 位字符',
-      path: ['password'],
-    }
-  );
+    );
 
-type CreateRoomFormValues = z.infer<typeof createRoomSchema>;
+type CreateRoomFormValues = z.infer<ReturnType<typeof getCreateRoomSchema>>;
 
 export const CreateRoomPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { nickname } = useUserStore();
+
+  const initialGame: GameId = searchParams.get('game') === 'gomoku' ? 'gomoku' : 'draw-and-guess';
+  const [selectedGame, setSelectedGame] = useState<GameId>(initialGame);
 
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const schema = React.useMemo(() => getCreateRoomSchema(t), [t]);
 
   const {
     register,
@@ -52,10 +63,13 @@ export const CreateRoomPage: React.FC = () => {
     setValue,
     formState: { errors },
   } = useForm<CreateRoomFormValues>({
-    resolver: zodResolver(createRoomSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
-      title: t('createRoom.defaultRoomName', { name: nickname || t('common.player') }),
-      maxPlayers: 8,
+      title:
+        initialGame === 'gomoku'
+          ? t('createRoom.defaultGomokuRoomName', { name: nickname || t('common.player') })
+          : t('createRoom.defaultRoomName', { name: nickname || t('common.player') }),
+      maxPlayers: initialGame === 'gomoku' ? 2 : 8,
       drawDuration: 60,
       totalRounds: 3,
       wordDifficulty: 'medium',
@@ -70,17 +84,36 @@ export const CreateRoomPage: React.FC = () => {
   const selectedRounds = watch('totalRounds');
   const selectedDifficulty = watch('wordDifficulty');
 
+  const isGomoku = selectedGame === 'gomoku';
+
+  const handleSelectGame = (game: GameId) => {
+    setSelectedGame(game);
+    setSearchParams(game === 'gomoku' ? { game: 'gomoku' } : {});
+    if (game === 'gomoku') {
+      setValue('maxPlayers', 2);
+      setValue('totalRounds', 3);
+      setValue('drawDuration', 60);
+      setValue('title', t('createRoom.defaultGomokuRoomName', { name: nickname || t('common.player') }));
+    } else {
+      setValue('maxPlayers', 8);
+      setValue('totalRounds', 3);
+      setValue('drawDuration', 60);
+      setValue('wordDifficulty', 'medium');
+      setValue('title', t('createRoom.defaultRoomName', { name: nickname || t('common.player') }));
+    }
+  };
+
   const onSubmit = async (data: CreateRoomFormValues) => {
     setLoading(true);
     setSubmitError(null);
 
     const payload: RoomSettings = {
       title: data.title.trim(),
-      gameId: 'draw-and-guess',
-      maxPlayers: data.maxPlayers,
+      gameId: selectedGame,
+      maxPlayers: isGomoku ? 2 : data.maxPlayers,
       drawDuration: data.drawDuration,
       totalRounds: data.totalRounds,
-      wordDifficulty: data.wordDifficulty,
+      wordDifficulty: isGomoku ? 'medium' : data.wordDifficulty,
       isPrivate: data.isPrivate,
       password: data.isPrivate && data.password ? data.password.trim() : undefined,
     };
@@ -132,6 +165,41 @@ export const CreateRoomPage: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Game Type Switcher */}
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                {t('createRoom.gameType', '游戏类型')}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleSelectGame('draw-and-guess')}
+                  className={`py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    !isGomoku
+                      ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span>🎨</span>
+                  <span>{t('gameDetail.title', '你画我猜')}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleSelectGame('gomoku')}
+                  className={`py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    isGomoku
+                      ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span>♟️</span>
+                  <span>{t('games.gomoku', '五子棋')}</span>
+                </button>
+              </div>
+            </div>
+
             {/* Room Name */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
@@ -152,106 +220,175 @@ export const CreateRoomPage: React.FC = () => {
             {/* Max Players */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                {t('createRoom.maxPlayersLabel', { count: selectedPlayers })}
+                {isGomoku
+                  ? t('createRoom.gomokuPlayersLocked', '五子棋固定 2 人对弈')
+                  : t('createRoom.maxPlayersLabel', { count: selectedPlayers })}
               </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[4, 6, 8, 12].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => setValue('maxPlayers', num)}
-                    className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
-                      selectedPlayers === num
-                        ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
-                        : 'bg-muted/70 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {t('createRoom.playerCount', { count: num })}
-                  </button>
-                ))}
-              </div>
+              {isGomoku ? (
+                <div className="p-2.5 rounded-2xl bg-muted/60 border border-border text-xs font-extrabold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span>{t('createRoom.playerCount', { count: 2 })}</span>
+                  </span>
+                  <Badge variant="mint" className="text-[10px]">
+                    {t('createRoom.gomokuPlayersLocked', '双人竞技')}
+                  </Badge>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {[4, 6, 8, 12].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setValue('maxPlayers', num)}
+                      className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                        selectedPlayers === num
+                          ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                          : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {t('createRoom.playerCount', { count: num })}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Draw Duration */}
+            {/* Draw Duration / Step Duration */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                {t('createRoom.drawDuration')}
+                {isGomoku
+                  ? t('createRoom.stepDuration', '落子时限 (秒)')
+                  : t('createRoom.drawDuration')}
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { sec: 45, label: t('createRoom.durationFast') },
-                  { sec: 60, label: t('createRoom.durationStandard') },
-                  { sec: 90, label: t('createRoom.durationRelaxed') },
-                ].map((item) => (
-                  <button
-                    key={item.sec}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => setValue('drawDuration', item.sec)}
-                    className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
-                      selectedDuration === item.sec
-                        ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
-                        : 'bg-muted/70 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+              {isGomoku ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { sec: 30, label: t('createRoom.duration30') },
+                    { sec: 60, label: t('createRoom.duration60') },
+                    { sec: 90, label: t('createRoom.duration90') },
+                    { sec: 120, label: t('createRoom.duration120') },
+                  ].map((item) => (
+                    <button
+                      key={item.sec}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setValue('drawDuration', item.sec)}
+                      className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                        selectedDuration === item.sec
+                          ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                          : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { sec: 45, label: t('createRoom.durationFast') },
+                    { sec: 60, label: t('createRoom.durationStandard') },
+                    { sec: 90, label: t('createRoom.durationRelaxed') },
+                  ].map((item) => (
+                    <button
+                      key={item.sec}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setValue('drawDuration', item.sec)}
+                      className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                        selectedDuration === item.sec
+                          ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                          : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Total Rounds */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                {t('createRoom.totalRoundsLabel', { count: selectedRounds })}
+                {isGomoku
+                  ? t('createRoom.gomokuRoundsLabel', { count: selectedRounds })
+                  : t('createRoom.totalRoundsLabel', { count: selectedRounds })}
               </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[2, 3, 5, 8].map((round) => (
-                  <button
-                    key={round}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => setValue('totalRounds', round)}
-                    className={`py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
-                      selectedRounds === round
-                        ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
-                        : 'bg-muted/70 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {t('createRoom.roundsCount', { count: round })}
-                  </button>
-                ))}
-              </div>
+              {isGomoku ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { round: 1, label: t('createRoom.rounds1') },
+                    { round: 3, label: t('createRoom.rounds3') },
+                    { round: 5, label: t('createRoom.rounds5') },
+                  ].map((item) => (
+                    <button
+                      key={item.round}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setValue('totalRounds', item.round)}
+                      className={`py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                        selectedRounds === item.round
+                          ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                          : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {[2, 3, 5, 8].map((round) => (
+                    <button
+                      key={round}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setValue('totalRounds', round)}
+                      className={`py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                        selectedRounds === round
+                          ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                          : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {t('createRoom.roundsCount', { count: round })}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Word Difficulty */}
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                {t('createRoom.wordDifficulty')}
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: 'easy', label: t('createRoom.diffEasy') },
-                  { key: 'medium', label: t('createRoom.diffMedium') },
-                  { key: 'hard', label: t('createRoom.diffHard') },
-                ].map((diff) => (
-                  <button
-                    key={diff.key}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => setValue('wordDifficulty', diff.key as any)}
-                    className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
-                      selectedDifficulty === diff.key
-                        ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
-                        : 'bg-muted/70 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {diff.label}
-                  </button>
-                ))}
+            {/* Word Difficulty (Hidden for Gomoku) */}
+            {!isGomoku && (
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                  {t('createRoom.wordDifficulty')}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: 'easy', label: t('createRoom.diffEasy') },
+                    { key: 'medium', label: t('createRoom.diffMedium') },
+                    { key: 'hard', label: t('createRoom.diffHard') },
+                  ].map((diff) => (
+                    <button
+                      key={diff.key}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setValue('wordDifficulty', diff.key as any)}
+                      className={`py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer ${
+                        selectedDifficulty === diff.key
+                          ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-md'
+                          : 'bg-muted/70 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {diff.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Private Room Toggle & Password */}
             <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-3">
@@ -292,7 +429,7 @@ export const CreateRoomPage: React.FC = () => {
               type="submit"
               size="lg"
               disabled={loading}
-              className="w-full text-base font-black shadow-xl"
+              className="w-full text-base font-black shadow-xl cursor-pointer"
             >
               {loading ? (
                 <>

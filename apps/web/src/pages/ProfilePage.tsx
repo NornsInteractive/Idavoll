@@ -312,7 +312,7 @@ export const ProfilePage: React.FC = () => {
             <Card className="p-5 text-center space-y-1">
               <span className="text-xs font-bold text-muted-foreground">{t('profile.statsTotal')}</span>
               <h4 className="text-2xl font-black font-mono text-[var(--theme-primary,#5B5BF0)]">
-                {stats.totalGames} 局
+                {t('profile.gamesCount', { count: stats.totalGames, defaultValue: `${stats.totalGames} 局` })}
               </h4>
               <span className="text-[11px] text-muted-foreground">{t('profile.winsCount', { count: stats.wins })}</span>
             </Card>
@@ -338,7 +338,7 @@ export const ProfilePage: React.FC = () => {
             <Card className="p-5 text-center space-y-1">
               <span className="text-xs font-bold text-muted-foreground">{t('profile.statsDrawings')}</span>
               <h4 className="text-2xl font-black font-mono text-[var(--theme-primary,#5B5BF0)]">
-                {stats.drawings} 幅
+                {t('profile.drawingsCount', { count: stats.drawings, defaultValue: `${stats.drawings} 幅` })}
               </h4>
               <span className="text-[11px] text-muted-foreground">{t('profile.drawingsLabel')}</span>
             </Card>
@@ -472,8 +472,13 @@ export const ProfilePage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-foreground">
-                      {t('profile.winnerLabel', { name: m.winner_nickname })}
+                      {m.winner_nickname
+                        ? t('profile.winnerLabel', { name: m.winner_nickname })
+                        : t('profile.drawLabel', '平局')}
                     </span>
+                    <Badge variant="subtle" className="text-[10px]">
+                      {m.game_id === 'gomoku' ? t('games.gomoku', '五子棋') : t('gameDetail.title', '你画我猜')}
+                    </Badge>
                     <Badge variant="subtle" className="text-[10px]">
                       {t('profile.roundsCount', { count: m.total_rounds })}
                     </Badge>
