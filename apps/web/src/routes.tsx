@@ -13,6 +13,7 @@ import { InGameGuesserPage } from './pages/InGameGuesserPage';
 import { InGameFullscreenPage } from './pages/InGameFullscreenPage';
 import { GameResultPage } from './pages/GameResultPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { InGameGomokuPage } from './pages/InGameGomokuPage';
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: 'room/:roomId', element: <RoomWaitingPage /> },
           { path: 'game/drawer', element: <InGameDrawerPage /> },
           { path: 'game/guesser', element: <InGameGuesserPage /> },
+          { path: 'game/gomoku', element: <InGameGomokuPage /> },
           { path: 'game/result', element: <GameResultPage /> },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'game/fullscreen', element: <InGameFullscreenPage /> },

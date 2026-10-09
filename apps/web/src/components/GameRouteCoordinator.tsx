@@ -54,6 +54,10 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
         if (pathname !== `/room/${room.roomId}`) {
           navigate(`/room/${room.roomId}`, { replace: true });
         }
+      } else if ((room.settings?.gameId as string) === 'gomoku') {
+        if (pathname !== '/game/gomoku') {
+          navigate('/game/gomoku', { replace: true });
+        }
       } else if (gameState?.drawerId) {
         const isMeDrawer = gameState.drawerId === userId;
         if (isMeDrawer) {
@@ -71,7 +75,7 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
         navigate(`/room/${room.roomId}`, { replace: true });
       }
     }
-  }, [room?.status, room?.roomId, gameState?.status, gameState?.drawerId, userId, isGameOrRoomRoute, pathname, navigate]);
+  }, [room?.status, room?.roomId, room?.settings?.gameId, gameState?.status, gameState?.drawerId, userId, isGameOrRoomRoute, pathname, navigate]);
 
   return <>{children}</>;
 };

@@ -35,6 +35,16 @@ export const GameLibraryPage: React.FC = () => {
       active: true,
     },
     {
+      id: 'gomoku',
+      title: t('games.gomoku', '五子棋 (Gomoku)'),
+      category: 'board',
+      desc: t('games.gomokuDesc', '经典黑白双色博弈，五子连珠定胜负！支持对弈回放、局内互动与实时语音。'),
+      players: t('games.filterAll') === 'All Games' ? '2 Players' : '2 人',
+      playTime: t('games.minutesRange', { min: 3, max: 10, defaultValue: '3-10 分钟' }),
+      badge: t('games.unreleased', '未开放'),
+      active: false,
+    },
+    {
       id: 'who-is-spy',
       title: t('games.whoIsSpy', '谁是卧底 (Who is Spy)'),
       category: 'party',
