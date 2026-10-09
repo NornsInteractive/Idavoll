@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, Radio, AlertCircle } from 'lucide-react';
 import { UserProfile } from '@idavoll/protocol';
+import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Avatar } from '../ui/avatar';
 
@@ -72,7 +73,10 @@ export const VoiceDock: React.FC<VoiceDockProps> = ({
 
   return (
     <div
-      className={`flex items-center justify-between px-4 py-2.5 bg-card/90 backdrop-blur-md rounded-2xl border border-border shadow-sm gap-2 ${className}`}
+      className={cn(
+        'flex items-center justify-between px-4 py-2.5 bg-card/90 backdrop-blur-md rounded-2xl border border-border shadow-sm gap-2',
+        className
+      )}
     >
       {/* Active Voice Speakers & Status */}
       <div className="flex items-center gap-2 overflow-x-auto py-1 min-w-0">

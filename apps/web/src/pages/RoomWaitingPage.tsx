@@ -433,7 +433,7 @@ export const RoomWaitingPage: React.FC = () => {
   const emptySlots = Array.from({ length: emptySlotsCount });
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col p-2 sm:p-3 lg:p-6 lg:h-auto lg:max-h-none lg:overflow-visible gap-2 lg:gap-6">
+    <div className="w-full max-w-7xl mx-auto h-full max-h-full overflow-hidden flex flex-col p-2 sm:p-3 lg:p-6 lg:h-auto lg:max-h-none lg:overflow-visible gap-2 lg:gap-6">
       {/* Mobile Header (< lg) */}
       <div className="flex lg:hidden items-center justify-between shrink-0 px-1 py-0.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -575,19 +575,19 @@ export const RoomWaitingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Content Stack (< lg): Compact Seats + Full Height Visible Chat */}
-      <div className="flex lg:hidden flex-1 min-h-0 flex-col gap-2 overflow-hidden">
-        {/* Compact Player Seats & Voice Panel */}
-        <div className="shrink-0 flex flex-col gap-1.5 bg-card/95 backdrop-blur-md rounded-2xl border border-border p-2.5 shadow-xs">
+      {/* Main Responsive Grid: Mobile flex-col, Desktop 3-column grid */}
+      <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-3 lg:gap-6 overflow-hidden">
+        {/* Mobile Compact Player Seats & Voice Panel (< lg) */}
+        <div className="shrink-0 flex flex-col gap-1.5 bg-card/95 backdrop-blur-md rounded-2xl border border-border p-2 shadow-xs lg:hidden">
           {/* Status Bar */}
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-xs px-0.5">
             <div className="flex items-center gap-1.5 font-black text-foreground">
               <span>{t('roomWaiting.playerSeats')}</span>
               <Badge variant="subtle" className="text-[10px] px-1.5 py-0 font-bold">
                 {room.players.length} / {maxSlots} 人
               </Badge>
             </div>
-            <span className="text-[11px] font-semibold text-muted-foreground truncate">
+            <span className="text-[11px] font-semibold text-muted-foreground truncate max-w-[180px]">
               {isHost
                 ? !isConnected
                   ? t('roomWaiting.notConnected')
@@ -603,35 +603,36 @@ export const RoomWaitingPage: React.FC = () => {
           </div>
 
           {/* Compact Player Avatars Strip */}
-          <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
             {room.players.map((player) => (
               <div
                 key={player.id}
-                className="relative flex flex-col items-center justify-center p-1.5 rounded-xl bg-muted/60 border border-border/80 shrink-0 w-[72px] text-center gap-0.5 shadow-2xs"
+                className="relative flex items-center gap-1.5 px-2 py-1 rounded-xl bg-muted/60 border border-border/80 shrink-0 shadow-2xs"
               >
-                {player.isHost && (
-                  <Crown className="w-3 h-3 absolute top-1 left-1 text-amber-500 fill-amber-500" />
-                )}
-                <Avatar
-                  src={player.avatar}
-                  alt={player.nickname}
-                  size="sm"
-                  status={player.isOnline ? 'online' : 'offline'}
-                />
-                <span className="font-extrabold text-[10px] text-foreground truncate w-full px-0.5">
-                  {player.nickname}
-                  {player.id === userId ? ' (我)' : ''}
-                </span>
-                <Badge
-                  variant={player.isHost ? 'default' : player.isReady ? 'mint' : 'muted'}
-                  className="text-[8px] px-1.5 py-0 font-extrabold"
-                >
-                  {player.isHost
-                    ? t('roomWaiting.hostBadge')
-                    : player.isReady
-                    ? t('roomWaiting.readyBadge')
-                    : t('roomWaiting.waitingBadge')}
-                </Badge>
+                <div className="relative shrink-0">
+                  <Avatar
+                    src={player.avatar}
+                    alt={player.nickname}
+                    size="xs"
+                    status={player.isOnline ? 'online' : 'offline'}
+                  />
+                  {player.isHost && (
+                    <Crown className="w-2.5 h-2.5 absolute -top-1 -left-1 text-amber-500 fill-amber-500" />
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0 max-w-[68px]">
+                  <span className="font-extrabold text-[10px] text-foreground truncate leading-tight">
+                    {player.nickname}
+                    {player.id === userId ? ' (我)' : ''}
+                  </span>
+                  <span className="text-[9px] font-semibold text-muted-foreground truncate leading-tight">
+                    {player.isHost
+                      ? t('roomWaiting.hostBadge')
+                      : player.isReady
+                      ? '✓ ' + t('roomWaiting.readyBadge')
+                      : t('roomWaiting.waitingBadge')}
+                  </span>
+                </div>
               </div>
             ))}
 
@@ -639,11 +640,10 @@ export const RoomWaitingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCopyInvite}
-                className="flex flex-col items-center justify-center p-1.5 rounded-xl border border-dashed border-border/90 hover:border-primary shrink-0 w-[72px] h-[68px] text-center gap-0.5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-xl border border-dashed border-border/90 hover:border-primary shrink-0 text-muted-foreground hover:text-foreground cursor-pointer transition-colors h-[34px]"
               >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span className="text-[9px] font-bold">{t('roomWaiting.inviteSlot')}</span>
-                <span className="text-[8px] opacity-60">+{emptySlotsCount}空位</span>
+                <UserPlus className="w-3 h-3" />
+                <span className="text-[9px] font-bold">+{emptySlotsCount}空位</span>
               </button>
             )}
           </div>
@@ -652,7 +652,7 @@ export const RoomWaitingPage: React.FC = () => {
           <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60">
             <div className="flex-1 min-w-0">
               <VoiceDock
-                players={room.players}
+                players={[]}
                 currentUserId={userId}
                 isMuted={isMuted}
                 onToggleMute={toggleMute}
@@ -665,7 +665,7 @@ export const RoomWaitingPage: React.FC = () => {
                 onSetVoiceMode={setVoiceMode}
                 onHoldToTalk={holdToTalk}
                 labels={voiceDockLabels}
-                className="p-1 px-2.5 rounded-xl border-none shadow-none bg-muted/40"
+                className="p-1 px-2 py-0.5 rounded-xl border-none shadow-none bg-muted/40"
               />
             </div>
 
@@ -675,7 +675,7 @@ export const RoomWaitingPage: React.FC = () => {
                   size="sm"
                   disabled={!canStart}
                   onClick={startGame}
-                  className="h-8 px-4 font-black text-xs gap-1 shadow-md cursor-pointer disabled:opacity-40"
+                  className="h-8 px-3.5 font-black text-xs gap-1 shadow-md cursor-pointer disabled:opacity-40"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>{t('roomWaiting.startGameBtn')}</span>
@@ -685,7 +685,7 @@ export const RoomWaitingPage: React.FC = () => {
                   size="sm"
                   variant={isMeReady ? 'secondary' : 'default'}
                   onClick={togglePlayerReady}
-                  className="h-8 px-4 font-black text-xs shadow-md cursor-pointer"
+                  className="h-8 px-3.5 font-black text-xs shadow-md cursor-pointer"
                 >
                   <span>{isMeReady ? t('roomWaiting.cancelReadyBtn') : t('roomWaiting.readyBtn')}</span>
                 </Button>
@@ -694,22 +694,8 @@ export const RoomWaitingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Fully Visible In-Room Chat Window */}
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <ChatWindow
-            messages={messages}
-            currentUserId={userId}
-            onSendMessage={(content, isDanmaku) => sendMessage(content, isDanmaku)}
-            title="房间交流与猜词"
-            className="h-full flex-1 min-h-0 rounded-2xl"
-          />
-        </div>
-      </div>
-
-      {/* Desktop Main Grid (>= lg): Spacious Seats & Chat */}
-      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6 flex-1 min-h-0">
-        {/* Left: Player Seats */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Desktop Left: Spacious Player Seats (>= lg) */}
+        <div className="hidden lg:block lg:col-span-2 overflow-y-auto space-y-4">
           <Card className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -843,14 +829,14 @@ export const RoomWaitingPage: React.FC = () => {
           </Card>
         </div>
 
-        {/* Right: Reusable In-Room Chat Window */}
-        <div className="h-[560px] lg:h-full flex flex-col">
+        {/* Shared Unified Chat Window */}
+        <div className="flex-1 min-h-0 lg:col-span-1 flex flex-col overflow-hidden h-full">
           <ChatWindow
             messages={messages}
             currentUserId={userId}
             onSendMessage={(content, isDanmaku) => sendMessage(content, isDanmaku)}
             title="房间交流与猜词"
-            className="flex-1"
+            className="h-full flex-1 min-h-0 rounded-2xl lg:rounded-3xl"
           />
         </div>
       </div>
