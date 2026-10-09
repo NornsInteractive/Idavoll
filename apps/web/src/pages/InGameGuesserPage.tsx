@@ -584,15 +584,15 @@ export const InGameGuesserPage: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-1 bg-surface-container px-2 py-0.5 rounded-full text-on-surface font-body-sm text-[12px]">
                         <span>{m.payload.content}</span>
-                        {m.payload.isDanmaku ? (
-                          <span className="text-secondary font-bold text-[10px] flex items-center">
-                            <AppIcon name="chat" className="w-3 h-3" />
-                          </span>
-                        ) : (
+                        {m.payload.type === 'guess' ? (
                           <span className="text-error font-bold text-[11px] flex items-center gap-0.5">
                             <AppIcon name="close" className="w-3 h-3" /> 不对
                           </span>
-                        )}
+                        ) : m.payload.isDanmaku ? (
+                          <span className="text-secondary font-bold text-[10px] flex items-center">
+                            <AppIcon name="chat" className="w-3 h-3" />
+                          </span>
+                        ) : null}
                       </div>
                       <span className="text-[10px] text-outline ml-auto self-center">{timeStr}</span>
                     </div>
@@ -1384,15 +1384,15 @@ export const InGameGuesserPage: React.FC = () => {
                         </span>
                         <div className="flex items-center gap-1 bg-surface-container px-2.5 py-0.5 rounded-full text-on-surface font-body-sm text-xs">
                           <span>{m.payload.content}</span>
-                          {m.payload.isDanmaku ? (
-                            <span className="text-secondary font-bold text-[10px] flex items-center">
-                              <AppIcon name="chat" className="w-3 h-3" />
-                            </span>
-                          ) : (
+                          {m.payload.type === 'guess' ? (
                             <span className="text-error font-bold text-[10px] flex items-center gap-0.5">
                               <AppIcon name="close" className="w-3 h-3" /> 不对
                             </span>
-                          )}
+                          ) : m.payload.isDanmaku ? (
+                            <span className="text-secondary font-bold text-[10px] flex items-center">
+                              <AppIcon name="chat" className="w-3 h-3" />
+                            </span>
+                          ) : null}
                         </div>
                         <span className="text-[10px] text-outline ml-auto self-center">{timeStr}</span>
                       </div>
