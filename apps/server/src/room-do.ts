@@ -191,19 +191,20 @@ export class GameRoomDO implements DurableObject {
         await this.save(false); this.broadcastGame(); return;
       }
       if (event.topic === 'chat:send' || event.topic === 'game:submit_guess') {
+        const isGuess = event.topic === 'game:submit_guess';
         const content = event.topic === 'chat:send' ? event.payload.content : event.payload.guess;
         const isDanmaku = event.topic === 'chat:send' && !!event.payload.isDanmaku;
         if (game?.status === 'drawing' && content.toLocaleLowerCase().includes(game.secretWord.toLocaleLowerCase())) {
-          if (user.id === game.drawerId || game.scores.find(s => s.playerId === user.id)?.hasGuessedCorrectly || content.toLocaleLowerCase() !== game.secretWord.toLocaleLowerCase()) throw new Error('本回合结束前请不要公布答案');
+          if (!isGuess || user.id === game.drawerId || game.scores.find(s => s.playerId === user.id)?.hasGuessedCorrectly || content.toLocaleLowerCase() !== game.secretWord.toLocaleLowerCase()) throw new Error('本回合结束前请不要公布答案');
         }
         let correct = false;
-        if (game?.status === 'drawing' && user.id !== game.drawerId) {
+        if (isGuess && game?.status === 'drawing' && user.id !== game.drawerId) {
           const result = this.module.handleAction(game, { type: 'submit_guess', guess: content }, user.id, this.host());
           d.game = result.state;
           correct = !!result.effects?.some(e => (e as { type: string }).type === 'correct_guess');
           this.send(ws, 'game:guess_result', { correct, earned: correct ? result.state.earnings[user.id] : 0 });
         }
-        const msg: ChatMessage = { version: 'v1', seq: Date.now(), timestamp: Date.now(), senderId: user.id, type: 'chat:message', payload: { id: crypto.randomUUID(), type: correct ? 'correct_guess' : isDanmaku ? 'danmaku' : game?.status === 'drawing' && user.id !== game.drawerId ? 'guess' : 'text', content: correct ? `🎉 ${user.nickname} 猜对了！` : content, senderNickname: user.nickname, senderAvatar: user.avatar, isDanmaku: correct ? false : isDanmaku } };
+        const msg: ChatMessage = { version: 'v1', seq: Date.now(), timestamp: Date.now(), senderId: user.id, type: 'chat:message', payload: { id: crypto.randomUUID(), type: correct ? 'correct_guess' : isDanmaku ? 'danmaku' : isGuess && game?.status === 'drawing' && user.id !== game.drawerId ? 'guess' : 'text', content: correct ? `🎉 ${user.nickname} 猜对了！` : content, senderNickname: user.nickname, senderAvatar: user.avatar, isDanmaku: correct ? false : isDanmaku } };
         d.messages = [...d.messages.slice(-99), msg];
         await this.afterGameChange();
         await this.save(false); this.broadcast('chat:message', msg);

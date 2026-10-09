@@ -503,7 +503,7 @@ export const RoomWaitingPage: React.FC = () => {
   const emptySlots = Array.from({ length: emptySlotsCount });
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-full max-h-full overflow-hidden flex flex-col p-2 sm:p-3 lg:p-6 lg:h-auto lg:max-h-none lg:overflow-visible gap-2 lg:gap-6">
+    <div className="w-full max-w-7xl mx-auto h-full max-h-full overflow-hidden flex flex-col p-2 sm:p-3 lg:p-6 gap-2 lg:gap-6">
       {/* Mobile Header (< lg) */}
       <div className="flex lg:hidden items-center justify-between shrink-0 px-1 py-0.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -832,7 +832,7 @@ export const RoomWaitingPage: React.FC = () => {
         </div>
 
         {/* Desktop Left: Spacious Player Seats (>= lg) */}
-        <div className="hidden lg:block lg:col-span-2 overflow-y-auto space-y-4">
+        <div className="hidden lg:block lg:col-span-2 overflow-y-auto space-y-4 h-full min-h-0">
           <Card className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

@@ -8,6 +8,8 @@ import { Button, Input, Card, Avatar } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { guestLogin } from '../services/api';
 
+import { generateRandomNickname } from '../lib/random-nickname';
+
 const AVATAR_SEEDS = [
   'LuckyFox',
   'StarCat',
@@ -17,16 +19,6 @@ const AVATAR_SEEDS = [
   'MintDragon',
 ];
 
-const RANDOM_NICKNAMES = [
-  '快乐小画家',
-  '毕加索二世',
-  '神笔马良',
-  '灵魂画手阿飞',
-  '猜词小天才',
-  '涂鸦萌主',
-  '闪电画笔',
-];
-
 export const SplashLoginPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -34,7 +26,7 @@ export const SplashLoginPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { token, id, nickname: currentNick, avatar: currentAvatar, setUser } = useUserStore();
 
-  const [nickname, setNickname] = useState(currentNick || '快乐小画家');
+  const [nickname, setNickname] = useState(() => currentNick || generateRandomNickname());
   const [selectedSeed, setSelectedSeed] = useState(AVATAR_SEEDS[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +40,7 @@ export const SplashLoginPage: React.FC = () => {
   }, [token, id, location, navigate]);
 
   const handleRandomize = () => {
-    const randomNick = RANDOM_NICKNAMES[Math.floor(Math.random() * RANDOM_NICKNAMES.length)];
+    const randomNick = generateRandomNickname(nickname);
     const randomSeed = AVATAR_SEEDS[Math.floor(Math.random() * AVATAR_SEEDS.length)];
     setNickname(randomNick);
     setSelectedSeed(randomSeed);

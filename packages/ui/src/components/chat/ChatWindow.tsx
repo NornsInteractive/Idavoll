@@ -54,7 +54,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <div className={`flex flex-col h-full bg-card/95 backdrop-blur-md rounded-3xl border border-border shadow-lg overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full min-h-0 bg-card/95 backdrop-blur-md rounded-3xl border border-border shadow-lg overflow-hidden ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-muted/40">
         <div className="flex items-center gap-2">
@@ -78,7 +78,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Message List */}
-      <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3">
+      <div ref={scrollRef} className="flex-1 min-h-0 p-4 overflow-y-auto space-y-3">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-6">
             <Sparkles className="w-8 h-8 text-[var(--theme-primary,#5B5BF0)]/50 mb-2" />

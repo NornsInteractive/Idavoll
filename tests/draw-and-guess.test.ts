@@ -4,6 +4,7 @@ import {
   calculateDrawerScore,
   DrawAndGuessGameModule,
   WordBank,
+  getRandomWordOptions,
 } from '../packages/games/draw-and-guess/src';
 
 describe('Draw and Guess Game Module & Scoring', () => {
@@ -26,10 +27,22 @@ describe('Draw and Guess Game Module & Scoring', () => {
   });
 
   it('contains valid word bank entries with categories', () => {
-    expect(WordBank.length).toBeGreaterThan(15);
+    expect(WordBank.length).toBeGreaterThanOrEqual(300);
+    expect(new Set(WordBank.map(w => w.word)).size).toBe(WordBank.length);
+    expect(WordBank.every(w => w.word.trim() === w.word && w.word.length > 0 && w.category && w.hint)).toBe(true);
     const watermelon = WordBank.find((w) => w.word === '西瓜');
     expect(watermelon).toBeDefined();
     expect(watermelon?.category).toBe('水果食物');
+  });
+
+  it.each(['easy', 'medium', 'hard'] as const)('难度 %s 有充足题目且选词不重复、不改变原题库', difficulty => {
+    expect(WordBank.filter(w => w.difficulty === difficulty).length).toBeGreaterThanOrEqual(100);
+    const before = [...WordBank];
+    const options = getRandomWordOptions(3, difficulty);
+    expect(options).toHaveLength(3);
+    expect(new Set(options.map(w => w.word)).size).toBe(3);
+    expect(options.every(w => w.difficulty === difficulty && WordBank.includes(w))).toBe(true);
+    expect(WordBank).toEqual(before);
   });
 
   it('runs game initialization and actions through DrawAndGuessGameModule', () => {

@@ -102,7 +102,7 @@ export const Layout: React.FC = () => {
       <div
         className={`min-h-[100dvh] flex flex-col bg-background text-foreground transition-colors duration-200 relative ${
           isRoomWaiting
-            ? 'h-[100dvh] max-h-[100dvh] overflow-hidden md:min-h-[100dvh] md:h-auto md:overflow-y-auto'
+            ? 'h-[100dvh] max-h-[100dvh] overflow-hidden'
             : 'overflow-y-auto'
         }`}
       >
@@ -112,7 +112,7 @@ export const Layout: React.FC = () => {
         </div>
         <main
           className={`flex-1 flex flex-col min-h-0 ${
-            isRoomWaiting ? 'pb-0 h-full overflow-hidden md:h-auto md:overflow-visible md:pb-8' : 'pb-20 md:pb-8'
+            isRoomWaiting ? 'pb-0 h-full overflow-hidden' : 'pb-20 md:pb-8'
           }`}
         >
           <Outlet />

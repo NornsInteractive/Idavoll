@@ -13,7 +13,7 @@ export const InGameFullscreenPage: React.FC = () => {
 
   const { id: userId, nickname } = useUserStore();
   const { room, danmakus, sendMessage } = useRoomStore();
-  const { gameState, currentWord, addStroke, selectWord } = useGameStore();
+  const { gameState, currentWord, addStroke, selectWord, submitGuess } = useGameStore();
 
   const [inputGuess, setInputGuess] = useState('');
   const [currentColor, setCurrentColor] = useState('#413FD6');
@@ -33,6 +33,11 @@ export const InGameFullscreenPage: React.FC = () => {
   }
 
   const isDrawer = gameState.drawerId === userId;
+  const isDrawing = gameState.status === 'drawing';
+  const myScore = gameState.scores?.find((s) => s.playerId === userId);
+  const hasGuessedCorrectly = Boolean(myScore?.hasGuessedCorrectly);
+  const canGuess = !isDrawer && isDrawing && !hasGuessedCorrectly;
+
   const timeLeft = gameState.timeLeft ?? 0;
   const wordHint =
     gameState.wordHint ||
@@ -42,13 +47,16 @@ export const InGameFullscreenPage: React.FC = () => {
       ? `${gameState.currentWordLength}个字`
       : '');
 
-  // Only emit sendMessage(trimmed, true) - server room DO already handles guess evaluation on chat:send
   const handleSendDanmaku = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = inputGuess.trim();
     if (!trimmed) return;
 
-    sendMessage(trimmed, true);
+    if (canGuess) {
+      submitGuess(trimmed);
+    } else {
+      sendMessage(trimmed, true);
+    }
     setInputGuess('');
   };
 
@@ -126,7 +134,13 @@ export const InGameFullscreenPage: React.FC = () => {
             type="text"
             value={inputGuess}
             onChange={(e) => setInputGuess(e.target.value)}
-            placeholder={isDrawer ? '发射弹幕互动...' : '发射弹幕 / 抢答...'}
+            placeholder={
+              isDrawer
+                ? '发射弹幕互动...'
+                : hasGuessedCorrectly
+                ? '已猜中，发射弹幕交流...'
+                : '发射弹幕 / 抢答...'
+            }
             className="flex-1 bg-transparent px-3 py-1.5 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
 
