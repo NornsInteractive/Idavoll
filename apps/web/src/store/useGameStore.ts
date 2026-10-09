@@ -10,6 +10,8 @@ export interface GameStore {
   canUndo: boolean;
   historyStrokes: DrawStroke[];
   guessResult: { correct: boolean; earned: number; timestamp: number } | null;
+  resultDialogOpen: boolean;
+  dismissResult: () => void;
   setGameState: (state: DrawAndGuessState | null) => void;
   addStroke: (stroke: DrawStroke) => void;
   undoStroke: () => void;
@@ -23,7 +25,10 @@ export interface GameStore {
 }
 export const useGameStore = create<GameStore>(set => ({
   gameState: null, currentWord: '', isDrawer: false, canUndo: false, historyStrokes: [], guessResult: null,
+  resultDialogOpen: false,
+  dismissResult: () => set({ resultDialogOpen: false }),
   setGameState: gameState => set(s => ({ gameState, currentWord: gameState?.currentWord || '',
+    resultDialogOpen: gameState?.status === 'game_over' ? (s.gameState?.status !== 'game_over' || s.resultDialogOpen) : false,
     isDrawer: gameState?.drawerId === useUserStore.getState().id, canUndo: !!gameState?.strokes.length,
     historyStrokes: gameState?.strokes || [], guessResult: s.gameState?.turnIndex === gameState?.turnIndex ? s.guessResult : null })),
   addStroke: stroke => { sendRoomAction('draw:stroke', stroke); },

@@ -17,6 +17,8 @@ import {
   X,
   Lock,
   RefreshCw,
+  RotateCcw,
+  Trophy,
   Volume2,
   Mic,
   MicOff,
@@ -24,6 +26,8 @@ import {
 import { Card, Button, Badge, Avatar, ChatWindow, VoiceDock, Input } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
+import { useGameStore } from '../store/useGameStore';
+import { GameResultDialog } from '../components/GameResultDialog';
 import { connectRoom, leaveRoom, disconnectRoom } from '../services/room-session';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { RoomSettings } from '@idavoll/protocol';
@@ -48,15 +52,74 @@ export const RoomWaitingPage: React.FC = () => {
     speakingUserIds,
     togglePlayerReady,
     startGame,
+    restartGame,
     updateSettings,
     connectionState,
     error,
     clearError,
   } = useRoomStore();
 
+  const {
+    gameState,
+    resultDialogOpen,
+    dismissResult,
+  } = useGameStore();
+
   const [copied, setCopied] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [localShowResult, setLocalShowResult] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  // Real game over check: gameState is game_over AND has scores/podium/aborted data
+  const hasRealGameOver = Boolean(
+    gameState?.status === 'game_over' &&
+      ((gameState.scores && gameState.scores.length > 0) ||
+        (gameState.gamePodium && gameState.gamePodium.length > 0) ||
+        gameState.aborted)
+  );
+
+  const isResultDialogOpen = Boolean(hasRealGameOver && (resultDialogOpen || localShowResult));
+
+  const handleRestartGame = () => {
+    if (!isHost || room?.status !== 'settlement' || connectionState !== 'connected') {
+      return;
+    }
+    setIsRestarting(true);
+    dismissResult();
+    setLocalShowResult(false);
+    try {
+      restartGame();
+    } catch {
+      setIsRestarting(false);
+    }
+  };
+
+  // Reset localShowResult and isRestarting when room resets to waiting or leaves game_over
+  useEffect(() => {
+    if (room?.status === 'waiting' || gameState?.status !== 'game_over') {
+      setLocalShowResult(false);
+      setIsRestarting(false);
+    }
+  }, [room?.status, gameState?.status]);
+
+  // Recover isRestarting on connection departure or room error so host can retry
+  useEffect(() => {
+    if (isRestarting) {
+      if (connectionState !== 'connected' || error) {
+        setIsRestarting(false);
+      }
+    }
+  }, [isRestarting, connectionState, error]);
+
+  // Safety timer so isRestarting is never permanently stuck
+  useEffect(() => {
+    if (!isRestarting) return;
+    const timer = setTimeout(() => {
+      setIsRestarting(false);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [isRestarting]);
 
   // Private room password modal on direct invite
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -421,16 +484,19 @@ export const RoomWaitingPage: React.FC = () => {
   const me = room.players.find((p) => p.id === userId);
   const isMeReady = me?.isReady ?? false;
   const speakingPlayers = room.players.filter((p) => speakingUserIds.includes(p.id));
+  const isSettlement = room.status === 'settlement';
+  const isWaiting = room.status === 'waiting';
 
   // Strict Gating:
-  // 1. At least 2 players
-  // 2. All players must be online
-  // 3. All non-host players must be ready
-  // 4. Connection state must be 'connected'
+  // 1. Strictly in waiting phase (not settlement, not playing, no stale game_over mismatch)
+  // 2. At least 2 players
+  // 3. All players must be online
+  // 4. All non-host players must be ready
+  // 5. Connection state must be 'connected'
   const allOnline = room.players.every((p) => p.isOnline);
   const allReady = room.players.every((p) => p.isHost || p.isReady);
   const isConnected = connectionState === 'connected';
-  const canStart = room.players.length >= 2 && allOnline && allReady && isConnected;
+  const canStart = isWaiting && room.players.length >= 2 && allOnline && allReady && isConnected;
 
   const maxSlots = room.settings?.maxPlayers || 8;
   const emptySlotsCount = Math.max(0, maxSlots - room.players.length);
@@ -457,9 +523,14 @@ export const RoomWaitingPage: React.FC = () => {
               {isHost && (
                 <button
                   type="button"
-                  onClick={() => setSettingsOpen(true)}
-                  className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0"
-                  title={t('roomWaiting.editSettings')}
+                  disabled={!isWaiting}
+                  onClick={() => isWaiting && setSettingsOpen(true)}
+                  className={`p-1 rounded-full text-muted-foreground transition-colors shrink-0 ${
+                    !isWaiting
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'hover:text-foreground hover:bg-muted cursor-pointer'
+                  }`}
+                  title={!isWaiting ? '仅在房间等待时可修改房间设置' : t('roomWaiting.editSettings')}
                 >
                   <Settings className="w-3.5 h-3.5" />
                 </button>
@@ -526,9 +597,14 @@ export const RoomWaitingPage: React.FC = () => {
               {isHost && (
                 <button
                   type="button"
-                  onClick={() => setSettingsOpen(true)}
-                  className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-                  title={t('roomWaiting.editSettings')}
+                  disabled={!isWaiting}
+                  onClick={() => isWaiting && setSettingsOpen(true)}
+                  className={`p-1 rounded-full text-muted-foreground transition-colors ${
+                    !isWaiting
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'hover:text-foreground hover:bg-muted cursor-pointer'
+                  }`}
+                  title={!isWaiting ? '仅在房间等待时可修改房间设置' : t('roomWaiting.editSettings')}
                 >
                   <Settings className="w-4 h-4" />
                 </button>
@@ -597,6 +673,10 @@ export const RoomWaitingPage: React.FC = () => {
                   <Volume2 className="w-3 h-3 shrink-0" />
                   <span className="truncate">{speakingPlayers.map((p) => p.nickname).join('、')} 正在说话...</span>
                 </span>
+              ) : isSettlement ? (
+                <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
+                  {isHost ? '对局已结束，点击右侧「再来一局」' : '对局已结束，等待房主开启新局...'}
+                </span>
               ) : (
                 <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[170px]">
                   {isHost
@@ -614,9 +694,38 @@ export const RoomWaitingPage: React.FC = () => {
               )}
             </div>
 
-            {/* Top-Right "准备 / 开始游戏" Action Button */}
-            <div className="shrink-0">
-              {isHost ? (
+            {/* Top-Right Action Button */}
+            <div className="shrink-0 flex items-center gap-1.5">
+              {isSettlement ? (
+                <>
+                  {hasRealGameOver && (
+                    <Button
+                      size="sm"
+                      variant="surface"
+                      onClick={() => setLocalShowResult(true)}
+                      className="h-8 px-2 font-bold text-xs gap-1 cursor-pointer"
+                      title="查看战绩"
+                    >
+                      <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    </Button>
+                  )}
+                  {isHost ? (
+                    <Button
+                      size="sm"
+                      onClick={handleRestartGame}
+                      disabled={isRestarting}
+                      className="h-8 px-3 font-black text-xs gap-1 shadow-md cursor-pointer disabled:opacity-50"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${isRestarting ? 'animate-spin' : ''}`} />
+                      <span>再来一局</span>
+                    </Button>
+                  ) : (
+                    <Badge variant="subtle" className="text-[10px] px-2 py-1 font-bold text-muted-foreground whitespace-nowrap">
+                      等待新对局
+                    </Badge>
+                  )}
+                </>
+              ) : isHost ? (
                 <Button
                   size="sm"
                   disabled={!canStart}
@@ -630,8 +739,9 @@ export const RoomWaitingPage: React.FC = () => {
                 <Button
                   size="sm"
                   variant={isMeReady ? 'secondary' : 'default'}
+                  disabled={!isWaiting}
                   onClick={togglePlayerReady}
-                  className="h-8 px-3.5 font-black text-xs shadow-md cursor-pointer"
+                  className="h-8 px-3.5 font-black text-xs shadow-md cursor-pointer disabled:opacity-40"
                 >
                   <span>{isMeReady ? t('roomWaiting.cancelReadyBtn') : t('roomWaiting.readyBtn')}</span>
                 </Button>
@@ -736,6 +846,10 @@ export const RoomWaitingPage: React.FC = () => {
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 animate-pulse">
                   <Volume2 className="w-3.5 h-3.5 shrink-0" />
                   <span>{speakingPlayers.map((p) => p.nickname).join('、')} 正在说话...</span>
+                </span>
+              ) : isSettlement ? (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {isHost ? '对局已结束，点击下方「再来一局」即可重置开局' : '对局已结束，等待房主重新开局...'}
                 </span>
               ) : isHost ? (
                 <span className="text-xs font-semibold text-muted-foreground">
@@ -870,31 +984,71 @@ export const RoomWaitingPage: React.FC = () => {
 
             {/* Bottom Actions */}
             <div className="pt-4 border-t border-border flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                {!isHost && (
-                  <Button
-                    size="lg"
-                    variant={isMeReady ? 'secondary' : 'default'}
-                    onClick={togglePlayerReady}
-                    className="font-black px-8 cursor-pointer"
-                  >
-                    {isMeReady ? t('roomWaiting.cancelReadyBtn') : t('roomWaiting.readyBtn')}
-                  </Button>
-                )}
-              </div>
+              {isSettlement ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    {hasRealGameOver && (
+                      <Button
+                        size="lg"
+                        variant="surface"
+                        onClick={() => setLocalShowResult(true)}
+                        className="font-bold px-6 gap-2 cursor-pointer"
+                      >
+                        <Trophy className="w-5 h-5 text-amber-500" />
+                        <span>查看战绩</span>
+                      </Button>
+                    )}
+                    {!isHost && (
+                      <span className="text-sm font-bold text-muted-foreground">
+                        本局已结束，留在房间等待房主开始新对局
+                      </span>
+                    )}
+                  </div>
 
-              {isHost && (
-                <div className="flex items-center gap-3">
-                  <Button
-                    size="lg"
-                    disabled={!canStart}
-                    onClick={startGame}
-                    className="w-full sm:w-auto font-black px-8 gap-2 text-base shadow-xl cursor-pointer disabled:opacity-40"
-                  >
-                    <Play className="w-5 h-5 fill-current" />
-                    <span>{t('roomWaiting.startGameBtn')}</span>
-                  </Button>
-                </div>
+                  {isHost && (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        size="lg"
+                        onClick={handleRestartGame}
+                        disabled={isRestarting}
+                        className="w-full sm:w-auto font-black px-8 gap-2 text-base shadow-xl cursor-pointer disabled:opacity-50"
+                      >
+                        <RotateCcw className={`w-5 h-5 ${isRestarting ? 'animate-spin' : ''}`} />
+                        <span>再来一局（重置房间）</span>
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    {!isHost && (
+                      <Button
+                        size="lg"
+                        variant={isMeReady ? 'secondary' : 'default'}
+                        disabled={!isWaiting}
+                        onClick={togglePlayerReady}
+                        className="font-black px-8 cursor-pointer disabled:opacity-40"
+                      >
+                        {isMeReady ? t('roomWaiting.cancelReadyBtn') : t('roomWaiting.readyBtn')}
+                      </Button>
+                    )}
+                  </div>
+
+                  {isHost && (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        size="lg"
+                        disabled={!canStart}
+                        onClick={startGame}
+                        className="w-full sm:w-auto font-black px-8 gap-2 text-base shadow-xl cursor-pointer disabled:opacity-40"
+                      >
+                        <Play className="w-5 h-5 fill-current" />
+                        <span>{t('roomWaiting.startGameBtn')}</span>
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </Card>
@@ -1083,6 +1237,20 @@ export const RoomWaitingPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Game Over Settlement Result Modal */}
+      <GameResultDialog
+        isOpen={isResultDialogOpen}
+        onClose={() => {
+          dismissResult();
+          setLocalShowResult(false);
+        }}
+        gameState={gameState}
+        currentUserId={userId}
+        isHost={isHost}
+        onRestartGame={handleRestartGame}
+        isRestarting={isRestarting}
+      />
     </div>
   );
 };

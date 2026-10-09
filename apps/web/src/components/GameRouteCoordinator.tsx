@@ -20,7 +20,7 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Auto restore room if page refreshed while directly on an in-game page
   useEffect(() => {
-    if (!isGameRoute) return;
+    if (!isGameRoute || isRetryingRef.current) return;
 
     if (!room && connectionState === 'disconnected') {
       const savedRoomId = sessionStorage.getItem('idavoll-room-id');
@@ -51,8 +51,8 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
       }
     } else if (room.status === 'playing') {
       if (gameState?.status === 'game_over') {
-        if (pathname !== '/game/result') {
-          navigate('/game/result', { replace: true });
+        if (pathname !== `/room/${room.roomId}`) {
+          navigate(`/room/${room.roomId}`, { replace: true });
         }
       } else if (gameState?.drawerId) {
         const isMeDrawer = gameState.drawerId === userId;
@@ -67,8 +67,8 @@ export const GameRouteCoordinator: React.FC<{ children: React.ReactNode }> = ({ 
         }
       }
     } else if (room.status === 'settlement') {
-      if (pathname !== '/game/result') {
-        navigate('/game/result', { replace: true });
+      if (pathname !== `/room/${room.roomId}`) {
+        navigate(`/room/${room.roomId}`, { replace: true });
       }
     }
   }, [room?.status, room?.roomId, gameState?.status, gameState?.drawerId, userId, isGameOrRoomRoute, pathname, navigate]);
