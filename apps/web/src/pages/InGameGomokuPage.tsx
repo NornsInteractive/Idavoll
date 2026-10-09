@@ -23,7 +23,7 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-import { Button, Avatar, InGameChatDrawer, InGameChatDrawerLabels } from '@idavoll/ui';
+import { Button, Avatar, InGameChatDrawer, InGameChatDrawerLabels, QuickPhraseItem } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
@@ -289,12 +289,15 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   };
 
   // Quick preset chat phrases
-  const quickChatPhrases = [
-    t('gomoku.quickChats.respect', '承让了！'),
-    t('gomoku.quickChats.brilliant', '这步走得妙啊 👍'),
-    t('gomoku.quickChats.hurry', '快点吧，我等得花儿都谢了 🌸'),
-    t('gomoku.quickChats.rematch', '再来一局！'),
-  ];
+  const quickChatItems = useMemo<QuickPhraseItem[]>(
+    () => [
+      { icon: '🤝', text: t('gomoku.quickChats.respect', '承让了！') },
+      { icon: '👍', text: t('gomoku.quickChats.brilliant', '这步走得妙啊 👍') },
+      { icon: '🌸', text: t('gomoku.quickChats.hurry', '快点吧，我等得花儿都谢了 🌸') },
+      { icon: '🔄', text: t('gomoku.quickChats.rematch', '再来一局！') },
+    ],
+    [t]
+  );
 
   // Quick emoticons
   const quickEmojis = [
@@ -315,8 +318,9 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
       inputPlaceholderGuesser: t('gomoku.chatPlaceholder', '发送聊天消息...'),
       inputAriaArtist: t('gomoku.chatAria', '发送聊天消息'),
       inputAriaGuesser: t('gomoku.chatAria', '发送聊天消息'),
+      quickPhrases: quickChatItems,
     }),
-    [chatDrawerLabels, t]
+    [chatDrawerLabels, t, quickChatItems]
   );
 
   return (
@@ -814,13 +818,13 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         <section className="w-full max-w-md sm:max-w-xl space-y-2 mt-2 shrink-0">
           {/* Preset Quick Chat Bubbles */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {quickChatPhrases.map((phrase, idx) => (
+            {quickChatItems.map((item, idx) => (
               <button
                 key={idx}
-                onClick={() => handleQuickChatClick(phrase)}
+                onClick={() => handleQuickChatClick(item.text)}
                 className="px-2.5 py-1 rounded-full bg-card hover:bg-muted border border-border/80 text-xs font-semibold text-foreground whitespace-nowrap shadow-2xs hover:shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
               >
-                {phrase}
+                {item.text}
               </button>
             ))}
           </div>
@@ -933,8 +937,8 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         isOpen={isChatDrawerOpen}
         onClose={() => setIsChatDrawerOpen(false)}
         messages={messages}
-        onSendMessage={(text) => {
-          if (!isPreview) sendMessage(text, false);
+        onSendMessage={(text, isDanmaku) => {
+          if (!isPreview) sendMessage(text, isDanmaku);
         }}
         players={room?.players || []}
         currentUserId={currentUserId}
@@ -948,6 +952,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         voiceMode={voiceMode}
         onSetVoiceMode={isPreview ? () => {} : setVoiceMode}
         labels={gomokuChatLabels}
+        quickPhrases={quickChatItems}
       />
 
       {/* EXIT GAME CONFIRMATION MODAL */}

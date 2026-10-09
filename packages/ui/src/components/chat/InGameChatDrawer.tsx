@@ -15,6 +15,11 @@ import { ChatMessage, UserProfile } from '@idavoll/protocol';
 import { Avatar } from '../ui/avatar';
 import { Button } from '../ui/button';
 
+export interface QuickPhraseItem {
+  icon?: string;
+  text: string;
+}
+
 export interface InGameChatDrawerLabels {
   // Header
   roomChatTitle?: string;
@@ -51,6 +56,7 @@ export interface InGameChatDrawerLabels {
   emptyMessages?: string;
   quickChatPrefix?: string;
   quickPhraseAria?: string;
+  quickPhrases?: QuickPhraseItem[];
   // Input
   holdToTalk?: string;
   releaseToMute?: string;
@@ -102,9 +108,10 @@ export interface InGameChatDrawerProps {
   currentDrawerNickname?: string;
   isDrawer?: boolean;
   labels?: InGameChatDrawerLabels;
+  quickPhrases?: QuickPhraseItem[];
 }
 
-const QUICK_PHRASES = [
+const QUICK_PHRASES: QuickPhraseItem[] = [
   { icon: '👍', text: '画得太棒了' },
   { icon: '😂', text: '抽象艺术' },
   { icon: '⏳', text: '猜快点猜快点' },
@@ -135,7 +142,9 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   currentDrawerNickname = '',
   isDrawer = false,
   labels,
+  quickPhrases,
 }) => {
+  const activeQuickPhrases = quickPhrases ?? labels?.quickPhrases ?? QUICK_PHRASES;
   const [activeTab, setActiveTab] = useState<'chat' | 'phrases'>('chat');
   const [inputText, setInputText] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -230,7 +239,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                 aria-label={
                   labels?.chatTabAria
                     ? `${labels.chatTabAria} (${messages.length})`
-                    : `聊天动态 (${messages.length}条)`
+                    : `${labels?.chatTab ?? '聊天动态'} (${messages.length})`
                 }
                 className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                   activeTab === 'chat'
@@ -244,7 +253,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('phrases')}
-                aria-label={labels?.phrasesTabAria ?? (labels?.phrasesTab ?? '快捷短语')}
+                aria-label={labels?.phrasesTabAria ?? labels?.phrasesTab ?? '快捷短语'}
                 className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                   activeTab === 'phrases'
                     ? 'bg-card text-[var(--theme-primary,#5B5BF0)] shadow-sm'
@@ -406,67 +415,90 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               })}
             </div>
 
-            {/* Chat Body & Real Messages */}
-            <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 bg-background/50">
-              {roundInfo && currentDrawerNickname && (
-                <div className="flex justify-center">
-                  <div className="px-3.5 py-1 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>
-                      {roundInfo} · {labels?.artistLabel ?? '画手为'} {currentDrawerNickname}
-                    </span>
+            {/* Chat Body & Real Messages / Quick Phrases Tab */}
+            {activeTab === 'phrases' ? (
+              <div className="flex-1 p-4 overflow-y-auto space-y-2 min-h-0 bg-background/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {activeQuickPhrases.map((item) => (
+                    <button
+                      key={item.text}
+                      type="button"
+                      onClick={() => handleQuickPhrase(item.text)}
+                      aria-label={
+                        labels?.quickPhraseAria
+                          ? `${labels.quickPhraseAria} ${item.text}`
+                          : `${labels?.quickChatPrefix ?? '快聊:'} ${item.text}`
+                      }
+                      className="p-3 rounded-2xl bg-card hover:bg-muted border border-border text-xs font-bold text-foreground flex items-center gap-2.5 transition-transform active:scale-95 shadow-2xs cursor-pointer text-left"
+                    >
+                      {item.icon && <span className="text-base shrink-0">{item.icon}</span>}
+                      <span className="truncate">{item.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 bg-background/50">
+                {roundInfo && currentDrawerNickname && (
+                  <div className="flex justify-center">
+                    <div className="px-3.5 py-1 rounded-full bg-[var(--theme-primary,#5B5BF0)]/10 text-[var(--theme-primary,#5B5BF0)] text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>
+                        {roundInfo} · {labels?.artistLabel ?? '画手为'} {currentDrawerNickname}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Message List */}
-              {messages.length === 0 ? (
-                <div className="h-32 flex items-center justify-center text-xs text-muted-foreground">
-                  {labels?.emptyMessages ?? '暂无消息记录，开始发言吧！'}
-                </div>
-              ) : (
-                messages.map((msg) => {
-                  const isMe = msg.senderId === currentUserId;
-                  const isCorrect = msg.payload.type === 'correct_guess';
+                {/* Message List */}
+                {messages.length === 0 ? (
+                  <div className="h-32 flex items-center justify-center text-xs text-muted-foreground">
+                    {labels?.emptyMessages ?? '暂无消息记录，开始发言吧！'}
+                  </div>
+                ) : (
+                  messages.map((msg) => {
+                    const isMe = msg.senderId === currentUserId;
+                    const isCorrect = msg.payload.type === 'correct_guess';
 
-                  if (isCorrect) {
+                    if (isCorrect) {
+                      return (
+                        <div key={msg.payload.id} className="flex justify-center">
+                          <div className="px-3 py-1 rounded-full bg-emerald-500 text-white font-extrabold text-xs shadow-md">
+                            🎉 {msg.payload.senderNickname} 猜中了正确答案！
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div key={msg.payload.id} className="flex justify-center">
-                        <div className="px-3 py-1 rounded-full bg-emerald-500 text-white font-extrabold text-xs shadow-md">
-                          🎉 {msg.payload.senderNickname} 猜中了正确答案！
+                      <div
+                        key={msg.payload.id}
+                        className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                      >
+                        <Avatar src={msg.payload.senderAvatar} alt={msg.payload.senderNickname} size="sm" />
+                        <div className={`max-w-[78%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                          <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-bold text-muted-foreground">
+                            <span>{msg.payload.senderNickname}</span>
+                            <span className="text-[10px] opacity-75">
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div
+                            className={`p-3 rounded-2xl text-xs sm:text-sm font-semibold shadow-sm leading-relaxed ${
+                              isMe
+                                ? 'bg-[var(--theme-primary,#5B5BF0)] text-white rounded-br-none'
+                                : 'bg-card text-foreground border border-border/80 rounded-bl-none'
+                            }`}
+                          >
+                            {msg.payload.content}
+                          </div>
                         </div>
                       </div>
                     );
-                  }
-
-                  return (
-                    <div
-                      key={msg.payload.id}
-                      className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
-                    >
-                      <Avatar src={msg.payload.senderAvatar} alt={msg.payload.senderNickname} size="sm" />
-                      <div className={`max-w-[78%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                        <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-bold text-muted-foreground">
-                          <span>{msg.payload.senderNickname}</span>
-                          <span className="text-[10px] opacity-75">
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <div
-                          className={`p-3 rounded-2xl text-xs sm:text-sm font-semibold shadow-sm leading-relaxed ${
-                            isMe
-                              ? 'bg-[var(--theme-primary,#5B5BF0)] text-white rounded-br-none'
-                              : 'bg-card text-foreground border border-border/80 rounded-bl-none'
-                          }`}
-                        >
-                          {msg.payload.content}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                  })
+                )}
+              </div>
+            )}
 
             {/* Quick Phrase Chips Bar */}
             <div className="flex items-center gap-2 px-4 py-2 border-t border-border/40 bg-muted/10 overflow-x-auto no-scrollbar shrink-0">
@@ -474,7 +506,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
                 <span>{labels?.quickChatPrefix ?? '快聊:'}</span>
               </span>
-              {QUICK_PHRASES.map((item) => (
+              {activeQuickPhrases.map((item) => (
                 <button
                   key={item.text}
                   type="button"
@@ -482,11 +514,11 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   aria-label={
                     labels?.quickPhraseAria
                       ? `${labels.quickPhraseAria} ${item.text}`
-                      : `发送快捷短语: ${item.text}`
+                      : `${labels?.quickChatPrefix ?? '快聊:'} ${item.text}`
                   }
                   className="px-3 py-1 rounded-full bg-card hover:bg-muted border border-border text-xs font-bold text-foreground flex items-center gap-1 shrink-0 transition-transform active:scale-95 shadow-2xs cursor-pointer"
                 >
-                  <span>{item.icon}</span>
+                  {item.icon && <span>{item.icon}</span>}
                   <span>{item.text}</span>
                 </button>
               ))}
