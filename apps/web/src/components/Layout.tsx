@@ -81,10 +81,25 @@ export const Layout: React.FC = () => {
     </>
   );
 
+  const isGomokuSession = location.pathname === '/game/gomoku';
+
   if (isGameCanvasSession) {
     return (
       <GameRouteCoordinator>
         <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden flex flex-col bg-background text-foreground transition-colors duration-200 touch-none overscroll-none relative">
+          {alerts}
+          <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
+            <Outlet />
+          </main>
+        </div>
+      </GameRouteCoordinator>
+    );
+  }
+
+  if (isGomokuSession) {
+    return (
+      <GameRouteCoordinator>
+        <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden flex flex-col bg-background text-foreground transition-colors duration-200 relative">
           {alerts}
           <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
             <Outlet />

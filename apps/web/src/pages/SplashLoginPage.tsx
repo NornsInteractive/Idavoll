@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,35 @@ export const SplashLoginPage: React.FC = () => {
   const [selectedSeed, setSelectedSeed] = useState(AVATAR_SEEDS[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isPointerDownRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollStartRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isPointerDownRef.current = true;
+    startXRef.current = e.clientX;
+    scrollStartRef.current = scrollContainerRef.current?.scrollLeft || 0;
+    hasDraggedRef.current = false;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPointerDownRef.current || !scrollContainerRef.current) return;
+    const dx = e.clientX - startXRef.current;
+    if (Math.abs(dx) > 4) {
+      hasDraggedRef.current = true;
+      scrollContainerRef.current.scrollLeft = scrollStartRef.current - dx;
+    }
+  };
+
+  const handlePointerUp = () => {
+    isPointerDownRef.current = false;
+    setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 60);
+  };
 
   // If already authenticated, redirect to target or lobby
   useEffect(() => {
@@ -122,30 +151,47 @@ export const SplashLoginPage: React.FC = () => {
 
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Avatar Selection Carousel */}
-            <div>
+            <div className="w-full">
               <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground mb-3 text-center">
                 {t('login.selectAvatar')}
               </label>
-              <div className="flex items-center justify-center gap-3">
-                {AVATAR_SEEDS.map((seed) => {
-                  const url = `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`;
-                  const isSelected = selectedSeed === seed;
-                  return (
-                    <motion.button
-                      key={seed}
-                      type="button"
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setSelectedSeed(seed)}
-                      className={`relative rounded-full p-1 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'ring-4 ring-[var(--theme-primary,#5B5BF0)] scale-110 shadow-md'
-                          : 'opacity-70 hover:opacity-100 hover:scale-105'
-                      }`}
-                    >
-                      <Avatar src={url} alt={seed} size="md" />
-                    </motion.button>
-                  );
-                })}
+              <div
+                ref={scrollContainerRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                className="w-full overflow-x-auto no-scrollbar py-2 px-1 overscroll-x-contain touch-pan-x cursor-grab active:cursor-grabbing select-none"
+              >
+                <div className="flex items-center gap-3 min-w-max justify-start sm:justify-center px-2">
+                  {AVATAR_SEEDS.map((seed) => {
+                    const url = `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`;
+                    const isSelected = selectedSeed === seed;
+                    return (
+                      <motion.button
+                        key={seed}
+                        type="button"
+                        whileTap={{ scale: 0.92 }}
+                        onClick={(e) => {
+                          if (hasDraggedRef.current) return;
+                          setSelectedSeed(seed);
+                          (e.currentTarget as HTMLElement).scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest',
+                            inline: 'center',
+                          });
+                        }}
+                        className={`relative rounded-full p-1 transition-all cursor-pointer shrink-0 ${
+                          isSelected
+                            ? 'ring-4 ring-[var(--theme-primary,#5B5BF0)] scale-110 shadow-md'
+                            : 'opacity-70 hover:opacity-100 hover:scale-105'
+                        }`}
+                      >
+                        <Avatar src={url} alt={seed} size="md" />
+                      </motion.button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
