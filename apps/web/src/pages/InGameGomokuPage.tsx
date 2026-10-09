@@ -20,12 +20,15 @@ import {
   Sparkles,
   AlertCircle,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react';
-import { Button, Avatar, InGameChatDrawer } from '@idavoll/ui';
+import { Button, Avatar, InGameChatDrawer, InGameChatDrawerLabels } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { leaveRoom } from '../services/room-session';
+import { useVoiceLabels } from '../hooks/useVoiceLabels';
 
 /**
  * Gomoku Board Coordinates (15 x 15)
@@ -87,6 +90,7 @@ export interface GomokuContractProps {
     rank?: string;
     winRate?: string;
   };
+  isPreview?: boolean;
   onPlaceStone?: (x: number, y: number) => void;
   onRequestUndo?: () => void;
   onRequestDraw?: () => void;
@@ -115,6 +119,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   winner: _externalWinner,
   opponentPlayer: externalOpponent,
   myPlayer: externalMyPlayer,
+  isPreview = false,
   onPlaceStone,
   onRequestUndo,
   onRequestDraw,
@@ -124,25 +129,39 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   onSendEmoji,
   onLeaveRoom,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { chatDrawerLabels, voiceDockLabels } = useVoiceLabels();
 
-  // Global user & room stores (truthful real room data)
+  // Global user & theme stores
   const currentUserId = useUserStore((s) => s.id);
   const userNickname = useUserStore((s) => s.nickname);
   const userAvatar = useUserStore((s) => s.avatar);
+  const isDark = useUserStore((s) => s.isDark);
+  const toggleTheme = useUserStore((s) => s.toggleTheme);
+  const setLanguage = useUserStore((s) => s.setLanguage);
 
+  // Global room stores (isolated completely when in preview mode)
   const {
-    room,
-    messages,
+    room: rawRoom,
+    messages: rawMessages,
     sendMessage,
-    isMuted,
-    isDeafened,
-    voiceStatus,
-    voiceError,
-    speakingUserIds,
-    voiceMode,
+    isMuted: rawIsMuted,
+    isDeafened: rawIsDeafened,
+    voiceStatus: rawVoiceStatus,
+    voiceError: rawVoiceError,
+    speakingUserIds: rawSpeakingUserIds,
+    voiceMode: rawVoiceMode,
   } = useRoomStore();
+
+  const room = isPreview ? null : rawRoom;
+  const messages = isPreview ? [] : rawMessages;
+  const speakingUserIds = isPreview ? [] : rawSpeakingUserIds;
+  const isMuted = isPreview ? false : rawIsMuted;
+  const isDeafened = isPreview ? false : rawIsDeafened;
+  const voiceStatus = isPreview ? 'off' : rawVoiceStatus;
+  const voiceError = isPreview ? null : rawVoiceError;
+  const voiceMode = isPreview ? 'hold' : rawVoiceMode;
 
   // Local UI display toggles
   const [copied, setCopied] = useState(false);
@@ -169,10 +188,10 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   const lastMove = externalLastMove || null;
   const turnTimeRemaining = externalTurnTimeRemaining;
 
-  // Real room opponent resolution (truthful user data from room.players, without fake rank/winRate)
+  // Real room opponent resolution (truthful user data without fake rank/winRate; isolated in preview)
   const realOpponent = useMemo(() => {
     if (externalOpponent) return externalOpponent;
-    if (room?.players && room.players.length > 1) {
+    if (!isPreview && room?.players && room.players.length > 1) {
       const opp = room.players.find((p) => p.id !== currentUserId);
       if (opp) {
         return {
@@ -191,18 +210,19 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
       rank: undefined,
       winRate: undefined,
     };
-  }, [externalOpponent, room?.players, currentUserId, t]);
+  }, [externalOpponent, isPreview, room?.players, currentUserId, t]);
 
   const myNickname = externalMyPlayer?.nickname || userNickname || t('common.player', '玩家');
   const myAvatar = externalMyPlayer?.avatarUrl || userAvatar;
   const myRank = externalMyPlayer?.rank;
 
   const isMyTurn = isPlaying && currentTurn === myColor;
-  const isOpponentSpeaking = realOpponent?.id ? speakingUserIds.includes(realOpponent.id) : false;
-  const isMeSpeaking = currentUserId ? speakingUserIds.includes(currentUserId) : false;
+  const isOpponentSpeaking = !isPreview && realOpponent?.id ? speakingUserIds.includes(realOpponent.id) : false;
+  const isMeSpeaking = !isPreview && currentUserId ? speakingUserIds.includes(currentUserId) : false;
 
   // Handle cell click / stone placement - only when playing, on my turn, and cell is empty
   const handleCellClick = (x: number, y: number) => {
+    if (isPreview) return;
     if (!isPlaying) return;
     if (!isMyTurn) return;
     if (board[y]?.[x] !== null) return;
@@ -211,7 +231,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
     }
   };
 
-  const roomCode = room?.roomCode || room?.roomId;
+  const roomCode = isPreview ? undefined : (room?.roomCode || room?.roomId);
 
   const handleCopyRoomId = () => {
     if (!roomCode) return;
@@ -224,7 +244,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   const handleQuickChatClick = (text: string) => {
     if (onSendQuickChat) {
       onSendQuickChat(text);
-    } else if (room) {
+    } else if (!isPreview && room) {
       sendMessage(text, true);
     }
   };
@@ -232,7 +252,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   const handleEmojiClick = (emoji: string) => {
     if (onSendEmoji) {
       onSendEmoji(emoji);
-    } else if (room) {
+    } else if (!isPreview && room) {
       sendMessage(emoji, true);
     }
   };
@@ -240,6 +260,14 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   const handleExit = () => {
     if (onLeaveRoom) {
       onLeaveRoom();
+    } else if (isPreview) {
+      setShowExitDialog(false);
+      // Safe exit for preview: navigate(-1) if history exists, otherwise go to /games or /login
+      if (typeof window !== 'undefined' && window.history.length > 1 && window.history.state?.idx > 0) {
+        navigate(-1);
+      } else {
+        navigate(currentUserId ? '/games' : '/login');
+      }
     } else {
       leaveRoom();
       navigate('/lobby');
@@ -248,7 +276,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
   const handleResign = () => {
     setShowResignDialog(false);
-    if (onResign) {
+    if (!isPreview && onResign) {
       onResign();
     }
   };
@@ -278,27 +306,80 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
   const moveHistory = externalHistory || [];
 
+  // Localized Gomoku chat drawer labels (replaces drawing/guesser specific prompts)
+  const gomokuChatLabels = useMemo<InGameChatDrawerLabels>(
+    () => ({
+      ...chatDrawerLabels,
+      roomChatTitle: t('gomoku.voice.chatDrawer', '房间聊天'),
+      inputPlaceholderArtist: t('gomoku.chatPlaceholder', '发送聊天消息...'),
+      inputPlaceholderGuesser: t('gomoku.chatPlaceholder', '发送聊天消息...'),
+      inputAriaArtist: t('gomoku.chatAria', '发送聊天消息'),
+      inputAriaGuesser: t('gomoku.chatAria', '发送聊天消息'),
+    }),
+    [chatDrawerLabels, t]
+  );
+
   return (
     <div className="flex flex-col h-[100dvh] max-h-[100dvh] bg-background text-foreground overflow-hidden select-none">
+      {/* 0. PREVIEW BANNER (ISOLATED UI PREVIEW MODE) */}
+      {isPreview && (
+        <div className="w-full bg-[var(--theme-primary,#5B5BF0)]/10 border-b border-[var(--theme-primary,#5B5BF0)]/20 px-2.5 sm:px-6 py-1 shrink-0 z-30 flex items-center justify-between text-xs font-semibold text-foreground gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--theme-primary,#5B5BF0)] text-white shrink-0">
+              {t('gomoku.preview.badge', 'UI 预览')}
+            </span>
+            <span className="text-[11px] sm:text-xs text-foreground/90 font-medium truncate">
+              {t('gomoku.preview.notice', '五子棋界面预览 · 暂未开放对局')}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Theme mode toggle for rapid inspection */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+              aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+            >
+              {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </button>
+            {/* Language toggle for rapid parity check */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextLang = i18n.language.startsWith('en') ? 'zh-CN' : 'en';
+                i18n.changeLanguage(nextLang);
+                setLanguage(nextLang);
+              }}
+              className="px-1.5 py-0.5 rounded text-[11px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              title={t('theme.switchLang')}
+              aria-label={t('theme.switchLang')}
+            >
+              {i18n.language.startsWith('en') ? '中' : 'EN'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP NAVIGATION BAR */}
-      <header className="w-full bg-card/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-2 shrink-0 z-20 flex items-center justify-between gap-2 shadow-xs">
+      <header className="w-full bg-card/80 backdrop-blur-md border-b border-border px-2.5 sm:px-6 py-1.5 sm:py-2 shrink-0 z-20 flex items-center justify-between gap-1.5 sm:gap-2 shadow-xs">
         {/* Left: Back + Room Code + Mode */}
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8 rounded-full hover:bg-muted shrink-0"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-muted shrink-0 cursor-pointer"
             onClick={() => setShowExitDialog(true)}
-            aria-label={t('gomoku.exitRoom', '退出对局')}
+            aria-label={isPreview ? t('gomoku.preview.exitBtn', '退出预览') : t('gomoku.exitRoom', '退出对局')}
           >
-            <ChevronLeft className="w-5 h-5 text-foreground" />
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
           </Button>
 
           {/* Room # with Copy Chip (only displayed if roomCode exists) */}
           {roomCode && (
             <button
               onClick={handleCopyRoomId}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/80 hover:bg-muted text-xs font-bold text-foreground transition-all shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-muted/80 hover:bg-muted text-[11px] sm:text-xs font-bold text-foreground transition-all shrink-0 cursor-pointer"
               title={t('gomoku.copied', '房间号已复制')}
             >
               <span className="text-primary font-black">#</span>
@@ -312,7 +393,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           )}
 
           {/* Match format badge (only if totalRounds is specified) */}
-          {externalTotalRounds !== undefined && (
+          {!isPreview && externalTotalRounds !== undefined && (
             <span className="hidden sm:inline-flex text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
               {t('gomoku.roundBadgeNormal', { current: externalTotalRounds, defaultValue: `${externalTotalRounds}局` })}
             </span>
@@ -320,11 +401,16 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         </div>
 
         {/* Center: Round / Match Status Badge */}
-        <div className="flex items-center justify-center shrink-0">
-          {externalRoundIndex !== undefined ? (
-            <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-extrabold text-xs sm:text-sm tracking-wide shadow-xs flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>
+        <div className="flex items-center justify-center min-w-0 flex-1 px-1">
+          {isPreview ? (
+            <div className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] sm:text-xs tracking-wide shadow-xs flex items-center gap-1 max-w-[170px] xs:max-w-none truncate">
+              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+              <span className="truncate">{t('gomoku.preview.unreleasedStatus', '界面预览 · 暂未开放')}</span>
+            </div>
+          ) : externalRoundIndex !== undefined ? (
+            <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-extrabold text-[11px] sm:text-sm tracking-wide shadow-xs flex items-center gap-1.5 truncate">
+              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate">
                 {externalTotalRounds && externalRoundIndex === externalTotalRounds
                   ? t('gomoku.roundBadge', {
                       current: externalRoundIndex,
@@ -337,20 +423,20 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
               </span>
             </div>
           ) : isPlaying ? (
-            <div className="px-3 py-1 rounded-full bg-muted border border-border text-foreground font-bold text-xs sm:text-sm">
+            <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-muted border border-border text-foreground font-bold text-[11px] sm:text-sm truncate">
               {t('gomoku.title', '五子棋')}
             </div>
           ) : (
-            <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs sm:text-sm">
+            <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-[11px] sm:text-sm truncate">
               {t('gomoku.opponentWaiting', '等待对局开始')}
             </div>
           )}
         </div>
 
         {/* Right: Spectators + Audio/Voice + Chat Toggle */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Spectators (only if spectatorCount > 0) */}
-          {externalSpectatorCount !== undefined && externalSpectatorCount > 0 && (
+          {!isPreview && externalSpectatorCount !== undefined && externalSpectatorCount > 0 && (
             <div className="hidden xs:flex items-center gap-1 px-2 py-1 rounded-full bg-muted/60 text-xs text-muted-foreground font-medium">
               <Eye className="w-3.5 h-3.5 text-primary" />
               <span>{externalSpectatorCount}</span>
@@ -361,9 +447,11 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8 rounded-full hover:bg-muted shrink-0 text-muted-foreground"
-            onClick={() => toggleDeafen()}
-            aria-label={isDeafened ? '取消静音全员' : '静音全员'}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-muted shrink-0 text-muted-foreground cursor-pointer"
+            onClick={() => {
+              if (!isPreview) toggleDeafen();
+            }}
+            aria-label={isDeafened ? voiceDockLabels.undeafenAria : voiceDockLabels.deafenAria}
           >
             {isDeafened ? (
               <VolumeX className="w-4 h-4 text-rose-500" />
@@ -376,13 +464,13 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8 rounded-full hover:bg-muted shrink-0 relative text-muted-foreground"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-muted shrink-0 relative text-muted-foreground cursor-pointer"
             onClick={() => setIsChatDrawerOpen(true)}
             aria-label={t('gomoku.voice.chatDrawer', '房间聊天')}
           >
             <MessageSquare className="w-4 h-4 text-foreground" />
             {messages.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
             )}
           </Button>
         </div>
@@ -520,12 +608,19 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           </div>
 
           {/* Turn Banner Strip */}
-          <div className="mt-2 pt-2 border-t border-border/60 flex items-center justify-between text-xs font-bold text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              {isPlaying ? (
+          <div className="mt-2 pt-2 border-t border-border/60 flex items-center justify-between text-xs font-bold text-muted-foreground gap-2">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+              {isPreview ? (
                 <>
-                  <span className={`w-2 h-2 rounded-full ${isMyTurn ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
-                  <span className={isMyTurn ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : ''}>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  <span className="text-amber-600 dark:text-amber-400 text-[11px] sm:text-xs truncate">
+                    {t('gomoku.preview.waitingBackend', '当前仅供界面展示，暂不支持落子对弈')}
+                  </span>
+                </>
+              ) : isPlaying ? (
+                <>
+                  <span className={`w-2 h-2 rounded-full ${isMyTurn ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'} shrink-0`} />
+                  <span className={`${isMyTurn ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : ''} truncate`}>
                     {currentTurn === 'black'
                       ? t('gomoku.turnBlackAlert', '当前轮到黑方落子')
                       : t('gomoku.turnWhiteAlert', '当前轮到白方落子')}
@@ -533,13 +628,13 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                 </>
               ) : (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/60" />
-                  <span>{t('gomoku.opponentWaiting', '等待对局开始')}</span>
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/60 shrink-0" />
+                  <span className="truncate">{t('gomoku.opponentWaiting', '等待对局开始')}</span>
                 </>
               )}
             </div>
             {lastMove ? (
-              <span className="text-[11px] text-muted-foreground/90">
+              <span className="text-[11px] text-muted-foreground/90 shrink-0">
                 {t('gomoku.lastMoveInfo', {
                   coord: formatCoord(lastMove.x, lastMove.y),
                   step: lastMove.step,
@@ -547,7 +642,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                 })}
               </span>
             ) : (
-              <span className="text-[11px] text-muted-foreground/60">{t('gomoku.noMoveYet', '等待首手落子')}</span>
+              <span className="text-[11px] text-muted-foreground/60 shrink-0">{t('gomoku.noMoveYet', '等待首手落子')}</span>
             )}
           </div>
         </section>
@@ -645,7 +740,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                     const stone = board[y]?.[x] || null;
                     const isLast = lastMove && lastMove.x === x && lastMove.y === y;
                     const isHovered = hoveredCell && hoveredCell.x === x && hoveredCell.y === y;
-                    const canClick = isPlaying && isMyTurn && stone === null && !!onPlaceStone;
+                    const canClick = !isPreview && isPlaying && isMyTurn && stone === null && !!onPlaceStone;
 
                     return (
                       <div
@@ -749,18 +844,21 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
             {/* Quick Voice PTT Pill */}
             <button
               onMouseDown={() => {
-                if (voiceMode === 'hold') holdToTalk(true);
+                if (!isPreview && voiceMode === 'hold') holdToTalk(true);
               }}
               onMouseUp={() => {
-                if (voiceMode === 'hold') holdToTalk(false);
+                if (!isPreview && voiceMode === 'hold') holdToTalk(false);
               }}
               onTouchStart={() => {
-                if (voiceMode === 'hold') holdToTalk(true);
+                if (!isPreview && voiceMode === 'hold') holdToTalk(true);
               }}
               onTouchEnd={() => {
-                if (voiceMode === 'hold') holdToTalk(false);
+                if (!isPreview && voiceMode === 'hold') holdToTalk(false);
               }}
-              className="px-3 py-1 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 active:scale-95 cursor-pointer"
+              disabled={isPreview}
+              className={`px-3 py-1 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 active:scale-95 ${
+                isPreview ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+              }`}
             >
               <Radio className={`w-3.5 h-3.5 ${isMeSpeaking ? 'animate-ping' : ''}`} />
               <span>{t('gomoku.voice.holdToTalk', '按住说话')}</span>
@@ -768,12 +866,12 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           </div>
         </section>
 
-        {/* 5. BOTTOM ACTION CONTROLS BAR (对局操作金刚键 - 无状态或未轮到时依据真实条件禁用) */}
+        {/* 5. BOTTOM ACTION CONTROLS BAR (对局操作金刚键 - 预览中全部安全禁用) */}
         <section className="w-full max-w-md sm:max-w-xl grid grid-cols-4 gap-2 pt-2 pb-1 shrink-0">
           {/* 悔棋 (Undo) */}
           <Button
             variant="outline"
-            disabled={!onRequestUndo || !isPlaying || (externalUndoRemaining !== undefined && externalUndoRemaining <= 0)}
+            disabled={isPreview || !onRequestUndo || !isPlaying || (externalUndoRemaining !== undefined && externalUndoRemaining <= 0)}
             className="flex flex-col items-center justify-center py-2 h-auto rounded-xl border-border hover:bg-muted text-foreground relative group disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={onRequestUndo}
           >
@@ -789,7 +887,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           {/* 求和 (Draw) */}
           <Button
             variant="outline"
-            disabled={!onRequestDraw || !isPlaying}
+            disabled={isPreview || !onRequestDraw || !isPlaying}
             className="flex flex-col items-center justify-center py-2 h-auto rounded-xl border-border hover:bg-muted text-foreground relative group disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={onRequestDraw}
           >
@@ -803,7 +901,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           {/* 认输 (Resign) */}
           <Button
             variant="outline"
-            disabled={!onResign || !isPlaying}
+            disabled={isPreview || !onResign || !isPlaying}
             className="flex flex-col items-center justify-center py-2 h-auto rounded-xl border-rose-300/40 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 relative group disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => setShowResignDialog(true)}
           >
@@ -817,7 +915,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           {/* AI 提示 (Hint) */}
           <Button
             variant="outline"
-            disabled={!onRequestHint || !isPlaying}
+            disabled={isPreview || !onRequestHint || !isPlaying}
             className="flex flex-col items-center justify-center py-2 h-auto rounded-xl border-border hover:bg-muted text-foreground relative group disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={onRequestHint}
           >
@@ -835,18 +933,21 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         isOpen={isChatDrawerOpen}
         onClose={() => setIsChatDrawerOpen(false)}
         messages={messages}
-        onSendMessage={(text) => sendMessage(text, false)}
+        onSendMessage={(text) => {
+          if (!isPreview) sendMessage(text, false);
+        }}
         players={room?.players || []}
         currentUserId={currentUserId}
         isMuted={isMuted}
-        onToggleMute={toggleMute}
+        onToggleMute={isPreview ? () => {} : toggleMute}
         isDeafened={isDeafened}
-        onToggleDeafen={toggleDeafen}
+        onToggleDeafen={isPreview ? () => {} : toggleDeafen}
         speakingUserIds={speakingUserIds}
         voiceStatus={voiceStatus}
         voiceError={voiceError}
         voiceMode={voiceMode}
-        onSetVoiceMode={setVoiceMode}
+        onSetVoiceMode={isPreview ? () => {} : setVoiceMode}
+        labels={gomokuChatLabels}
       />
 
       {/* EXIT GAME CONFIRMATION MODAL */}
@@ -865,10 +966,12 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-foreground">
-                    {t('gomoku.exitConfirmTitle', '退出确认')}
+                    {isPreview ? t('gomoku.preview.exitTitle', '退出预览') : t('gomoku.exitConfirmTitle', '退出确认')}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {t('gomoku.exitConfirmDesc', '对局正在进行中，提前离开将被判定为认输，确定要退出房间吗？')}
+                    {isPreview
+                      ? t('gomoku.preview.exitDesc', '确定要退出五子棋界面预览吗？')
+                      : t('gomoku.exitConfirmDesc', '对局正在进行中，提前离开将被判定为认输，确定要退出房间吗？')}
                   </p>
                 </div>
               </div>
@@ -877,7 +980,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                   {t('common.cancel', '取消')}
                 </Button>
                 <Button className="bg-rose-600 hover:bg-rose-700 text-white font-bold" onClick={handleExit}>
-                  {t('gomoku.exitRoom', '退出对局')}
+                  {isPreview ? t('gomoku.preview.exitBtn', '退出预览') : t('gomoku.exitRoom', '退出对局')}
                 </Button>
               </div>
             </motion.div>

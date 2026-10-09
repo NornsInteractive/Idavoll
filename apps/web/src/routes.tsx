@@ -21,6 +21,10 @@ export const router = createBrowserRouter([
     element: <SplashLoginPage />,
   },
   {
+    path: '/preview/gomoku',
+    element: <InGameGomokuPage isPreview />,
+  },
+  {
     path: '/',
     element: <Layout />,
     children: [
