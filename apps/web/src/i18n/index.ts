@@ -20,6 +20,7 @@ const resources = {
         switchToLight: '切换亮色模式',
         switchToDark: '切换暗色模式',
         switchLang: '切换语言 (ZH / EN)',
+        selectAccent: '选择主题色',
       },
       common: {
         reconnecting: '网络连接中断，正在自动重连中...',
@@ -124,6 +125,11 @@ const resources = {
         roundTime: '30-120秒/轮',
         minutesRange: '{{min}}-{{max}} 分钟',
         unreleased: '未开放',
+        viewGrid: '网格视图',
+        viewList: '列表视图',
+        noGamesFound: '未找到相关游戏',
+        noGamesDesc: '换个关键词或分类筛选试试看吧',
+        resetFilters: '重置筛选',
       },
       gameDetail: {
         title: '你画我猜 (Draw & Guess)',
@@ -498,6 +504,7 @@ const resources = {
         switchToLight: 'Switch to Light Mode',
         switchToDark: 'Switch to Dark Mode',
         switchLang: 'Switch Language (ZH / EN)',
+        selectAccent: 'Select Theme Color',
       },
       common: {
         reconnecting: 'Connection lost. Reconnecting...',
@@ -602,6 +609,11 @@ const resources = {
         roundTime: '30-120s / Turn',
         minutesRange: '{{min}}-{{max}} mins',
         unreleased: 'Unavailable',
+        viewGrid: 'Grid View',
+        viewList: 'List View',
+        noGamesFound: 'No games found',
+        noGamesDesc: 'Try searching with different keywords or category filter',
+        resetFilters: 'Reset Filters',
       },
       gameDetail: {
         title: 'Draw & Guess',
