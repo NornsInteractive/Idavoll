@@ -174,41 +174,53 @@ export const InGameGuesserPage: React.FC = () => {
           } flex flex-col justify-between bg-surface shadow-2xl relative overflow-hidden select-none`}
         >
           {/* TOP BAR / GAME HUD */}
-          <header className="w-full bg-surface-container-lowest px-3 pt-2 pb-1.5 shadow-xs flex flex-col gap-1 shrink-0 z-20">
+          <header className="w-full bg-surface-container-lowest px-2 sm:px-3 pt-2 pb-1.5 shadow-xs flex flex-col gap-1 shrink-0 z-20">
             {/* Upper Status Row */}
-            <div className="flex items-center justify-between">
-              {/* Room & Round Chips & Identity Badge */}
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between gap-1">
+              {/* Room & Round Status Info */}
+              <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="tactile-btn flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
+                  className="tactile-btn flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-xl bg-surface-container text-on-surface-variant hover:bg-surface-variant transition-colors cursor-pointer text-left shrink-0"
                   title={t('inGame.copyRoomCode', '点击复制房号')}
+                  aria-label={t('inGame.copyRoomCode', '点击复制房号')}
                 >
-                  <AppIcon name="tag" className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-label-sm text-[12px] font-bold tracking-tight">
-                    {roomCode} {copiedCode ? '✓' : ''}
-                  </span>
+                  <AppIcon name="tag" className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <div className="flex flex-col leading-tight">
+                    <span className="font-label-sm text-[11px] sm:text-[12px] font-extrabold tracking-tight text-on-surface">
+                      #{roomCode} {copiedCode ? '✓' : ''}
+                    </span>
+                    <span className="text-[10px] font-bold text-primary whitespace-nowrap">
+                      {t('inGame.turnNumGuesser', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮` })}
+                    </span>
+                  </div>
                 </button>
-                <span className="text-[11px] font-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-bold">
-                  {t('inGame.turnNumGuesser', { current: currentRound, total: totalRounds, defaultValue: `第 ${currentRound}/${totalRounds} 轮` })}
-                </span>
                 {/* Identity Badge: Guesser */}
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-bold">
+                <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-bold shrink-0">
                   <AppIcon name="visibility" className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-label-sm">{t('inGame.guesserRole', '猜题者')}</span>
                 </div>
               </div>
 
               {/* Timer & Top Controls */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 shrink-0">
                 {/* Circular Countdown Timer */}
-                <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-error-container text-secondary font-extrabold text-[12px] shadow-xs">
+                <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-error-container text-secondary font-extrabold text-[12px] shadow-xs shrink-0">
                   <div className="absolute inset-0 rounded-full border-2 border-secondary-container timer-ring"></div>
                   <span>{timeLeft}s</span>
                 </div>
                 {/* Utility Icons */}
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsLeaderboardOpen(true)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 text-on-surface-variant cursor-pointer"
+                    title={t('inGame.leaderboard', '实时积分榜')}
+                    aria-label={t('inGame.leaderboard', '实时积分榜')}
+                  >
+                    <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsRulesOpen(true)}
@@ -618,29 +630,6 @@ export const InGameGuesserPage: React.FC = () => {
               onToggleMute={toggleMute}
               onHoldToTalk={(pressed) => holdToTalk(pressed)}
               isSpeaking={!isMuted}
-              leftSlot={
-                <div className="flex items-center gap-1">
-                  {/* Rank & Scoreboard Modal Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setIsLeaderboardOpen(true)}
-                    className="tactile-btn flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container shadow-2xs cursor-pointer text-xs font-bold"
-                  >
-                    <AppIcon name="leaderboard" className="w-3.5 h-3.5 text-secondary-container" />
-                    <span className="hidden sm:inline">{t('inGame.leaderboard', '积分榜')}</span>
-                  </button>
-                  {/* Quick Reaction Trigger */}
-                  <button
-                    type="button"
-                    onClick={() => handleSendReaction('🔥')}
-                    className="tactile-btn px-2 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container flex items-center justify-center shadow-2xs cursor-pointer text-xs"
-                    title={t('inGame.quickReaction', '快速喝彩')}
-                    aria-label={t('inGame.quickReaction', '快速喝彩')}
-                  >
-                    <span>🔥</span>
-                  </button>
-                </div>
-              }
               labels={{
                 ...bottomBarLabels,
                 sendAria:
@@ -674,7 +663,7 @@ export const InGameGuesserPage: React.FC = () => {
               type="button"
               onClick={handleCopyCode}
               className="tactile-btn flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant cursor-pointer"
-              title="点击复制房号"
+              title={t('inGame.copyRoomCode', '点击复制房号')}
             >
               <AppIcon name="tag" className="w-4 h-4 text-primary" />
               <span className="font-label-sm text-xs font-bold tracking-tight">
@@ -688,8 +677,20 @@ export const InGameGuesserPage: React.FC = () => {
 
             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-highest text-primary font-bold text-xs">
               <AppIcon name="visibility" className="w-4 h-4" />
-              <span>猜题者</span>
+              <span>{t('inGame.guesserRole', '猜题者')}</span>
             </div>
+
+            {/* Desktop Leaderboard Entry Button */}
+            <button
+              type="button"
+              onClick={() => setIsLeaderboardOpen(true)}
+              aria-label={t('inGame.leaderboard', '实时积分榜')}
+              title={t('inGame.leaderboard', '实时积分榜')}
+              className="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface text-xs font-bold transition-colors cursor-pointer shrink-0"
+            >
+              <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
+              <span>{t('inGame.leaderboard', '实时积分榜')}</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -942,17 +943,6 @@ export const InGameGuesserPage: React.FC = () => {
                 onToggleMute={toggleMute}
                 onHoldToTalk={(pressed) => holdToTalk(pressed)}
                 isSpeaking={!isMuted}
-                rightSlot={
-                  <button
-                    type="button"
-                    onClick={() => handleSendReaction('🔥')}
-                    className="tactile-btn px-2 py-1 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant shadow-2xs cursor-pointer text-xs"
-                    title={t('inGame.quickReaction', '热烈反应')}
-                    aria-label={t('inGame.quickReaction', '热烈反应')}
-                  >
-                    <span>🔥</span>
-                  </button>
-                }
                 labels={{
                   ...bottomBarLabels,
                   sendAria:
@@ -1157,20 +1147,29 @@ export const InGameGuesserPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Leaderboard Modal for Mobile */}
+      {/* Leaderboard Modal for Mobile & Desktop */}
       {isLeaderboardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-surface p-5 rounded-3xl border border-surface-container shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => setIsLeaderboardOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-surface p-5 rounded-3xl border border-surface-container shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-surface-container">
               <div className="flex items-center gap-1.5">
                 <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
-                <h3 className="font-headline-sm text-base font-extrabold text-on-surface">房间积分榜</h3>
+                <h3 className="font-headline-sm text-base font-extrabold text-on-surface">
+                  {t('inGame.leaderboard', '房间积分榜')}
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsLeaderboardOpen(false)}
                 className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
-                aria-label="关闭"
+                aria-label={t('common.close', '关闭')}
+                title={t('common.close', '关闭')}
               >
                 <AppIcon name="close" className="w-4 h-4" />
               </button>
@@ -1197,16 +1196,20 @@ export const InGameGuesserPage: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-1">
                           <span className="font-bold text-xs text-on-surface">{p.nickname}</span>
-                          {isMe && <span className="text-[10px] text-primary font-bold">(你)</span>}
+                          {isMe && <span className="text-[10px] text-primary font-bold">{t('voice.me', '(我)')}</span>}
                         </div>
                         <span className="text-[10px] text-outline">
-                          {isDrawer ? '🎨 画手' : hasCorrect ? '✓ 已猜中' : '待猜'}
+                          {isDrawer
+                            ? `🎨 ${t('inGame.imArtist', '作画中')}`
+                            : hasCorrect
+                            ? t('inGame.guessedCorrectly', '✓ 已猜中')
+                            : t('inGame.imGuessing', '猜词中')}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="font-black text-sm text-primary font-mono">{scoreVal}</span>
-                      <span className="text-[10px] text-outline block">分</span>
+                      <span className="text-[10px] text-outline block">{t('settlement.points', '分')}</span>
                     </div>
                   </div>
                 );
