@@ -31,6 +31,8 @@ export interface InGameBottomBarLabels {
   modeChatTitle?: string;
   holdToTalk?: string;
   releaseToMute?: string;
+  holdToTalkShort?: string;
+  releaseToMuteShort?: string;
   holdToTalkAria?: string;
   releaseToMuteAria?: string;
   mute?: string;
@@ -233,24 +235,87 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
   const displaySendLabel = sendLabel ?? labels?.send ?? (isEnglish ? 'Send' : '发送');
   const displayPlaceholder = placeholder || labels?.placeholder || (isEnglish ? 'Type a message...' : '发送消息...');
 
+  const renderVoiceButton = () => {
+    if (!showVoiceButton) return null;
+
+    const buttonAria =
+      voiceMode === 'hold'
+        ? isSpeaking || !isMuted
+          ? labels?.releaseToMuteAria ?? (isEnglish ? 'Release to mute' : '松开静音')
+          : labels?.holdToTalkAria ?? (isEnglish ? 'Hold to talk' : '按住说话')
+        : isMuted
+        ? labels?.unmuteAria ?? (isEnglish ? 'Click to unmute' : '点击开麦')
+        : labels?.muteAria ?? (isEnglish ? 'Mute' : '点击静音');
+
+    const fullLabel =
+      voiceMode === 'hold'
+        ? isSpeaking || !isMuted
+          ? labels?.releaseToMute ?? (isEnglish ? 'Release to mute' : '松开发言')
+          : labels?.holdToTalk ?? (isEnglish ? 'Hold to talk' : '按住说话')
+        : isMuted
+        ? labels?.unmute ?? (isEnglish ? 'Unmute' : '开麦')
+        : labels?.mute ?? (isEnglish ? 'Mute' : '静音');
+
+    const shortLabel =
+      voiceMode === 'hold'
+        ? isSpeaking || !isMuted
+          ? labels?.releaseToMuteShort ?? (isEnglish ? 'Release' : '松开')
+          : labels?.holdToTalkShort ?? (isEnglish ? 'Hold' : '按住')
+        : fullLabel;
+
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={releaseTalk}
+        onLostPointerCapture={releaseTalk}
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={releaseTalk}
+        onClick={voiceMode === 'open' ? onToggleMute : undefined}
+        aria-label={buttonAria}
+        title={buttonAria}
+        className={cn(
+          'h-7 px-1.5 sm:px-2.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 active:scale-95 select-none touch-none',
+          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+          isSpeaking || !isMuted
+            ? 'bg-primary text-primary-foreground shadow-xs animate-pulse'
+            : 'bg-primary/10 hover:bg-primary/20 text-primary'
+        )}
+      >
+        {voiceMode === 'hold' ? (
+          <Radio className={cn('w-3.5 h-3.5', isSpeaking && 'animate-ping')} />
+        ) : isMuted ? (
+          <MicOff className="w-3.5 h-3.5 text-muted-foreground" />
+        ) : (
+          <Mic className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline whitespace-nowrap">{fullLabel}</span>
+        <span className="sm:hidden whitespace-nowrap text-[11px]">{shortLabel}</span>
+      </button>
+    );
+  };
+
   return (
     <div className={cn('w-full flex flex-col gap-1.5 shrink-0', className)}>
       {aboveInputSlot}
 
       <form
         onSubmit={handleSubmit}
-        className="flex items-center gap-1.5 w-full bg-card/90 dark:bg-card/95 border border-border/80 rounded-xl px-2 py-1 shadow-2xs"
+        className="flex items-center gap-1 sm:gap-1.5 w-full bg-card/90 dark:bg-card/95 border border-border/80 rounded-xl px-1 sm:px-2 py-1 shadow-2xs"
       >
         {/* Guesser Mode Toggle */}
         {showModeToggle &&
           (hasGuessedCorrect ? (
             <div
-              className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0 select-none shadow-2xs"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary font-bold text-xs shrink-0 select-none shadow-2xs"
               title={labels?.modeGuessed ?? (isEnglish ? 'Guessed' : '已猜中')}
             >
               <span>🎉</span>
-              <span className="hidden xs:inline">{labels?.modeGuessed ?? (isEnglish ? 'Guessed' : '已猜中')}</span>
-              <span>{labels?.modeChat ?? (isEnglish ? 'Chat' : '聊天')}</span>
+              <span className="hidden sm:inline">{labels?.modeGuessed ?? (isEnglish ? 'Guessed' : '已猜中')}</span>
+              <span className="hidden sm:inline">{labels?.modeChat ?? (isEnglish ? 'Chat' : '聊天')}</span>
             </div>
           ) : (
             <button
@@ -258,7 +323,7 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
               disabled={disabled}
               onClick={onToggleMode}
               className={cn(
-                'tactile-btn flex items-center gap-1 px-2 py-1 rounded-full font-bold text-xs shrink-0 transition-all cursor-pointer border shadow-2xs',
+                'tactile-btn flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-full font-bold text-xs shrink-0 transition-all cursor-pointer border shadow-2xs',
                 mode === 'guess'
                   ? 'bg-primary/10 text-primary border-primary/30'
                   : 'bg-muted text-muted-foreground border-border/80 hover:text-foreground'
@@ -276,7 +341,7 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
               }
             >
               <span>{mode === 'guess' ? '🎯' : '💬'}</span>
-              <span className="hidden xs:inline">
+              <span className="hidden sm:inline">
                 {mode === 'guess' ? labels?.modeGuess ?? (isEnglish ? 'Guess' : '猜词') : labels?.modeChat ?? (isEnglish ? 'Chat' : '聊天')}
               </span>
               <span className="text-[10px] opacity-60">⇄</span>
@@ -324,7 +389,7 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
             aria-pressed={isDanmakuOn}
           >
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden xs:inline text-[10px] sm:text-xs">
+            <span className="hidden sm:inline text-[10px] sm:text-xs">
               {isDanmakuOn
                 ? labels?.danmakuOnBadge ?? (isEnglish ? 'Danmaku' : '弹幕')
                 : labels?.danmakuOffBadge ?? (isEnglish ? 'Off' : '关')}
@@ -333,7 +398,7 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
         )}
 
         {/* Text Input */}
-        <div className="flex-1 relative flex items-center min-w-0">
+        <div className="flex-1 relative flex items-center min-w-[56px]">
           <input
             type="text"
             value={value}
@@ -361,15 +426,18 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
           size="sm"
           disabled={disabled || !value.trim()}
           aria-label={labels?.sendAria ?? displaySendLabel}
-          className="h-7 px-2.5 rounded-lg font-bold text-xs gap-1 cursor-pointer shrink-0"
+          className="h-7 px-2 sm:px-2.5 rounded-lg font-bold text-xs gap-1 cursor-pointer shrink-0"
         >
           <Send className="w-3 h-3" />
-          <span className="hidden xs:inline">{displaySendLabel}</span>
+          <span className="hidden sm:inline">{displaySendLabel}</span>
         </Button>
+
+        {/* Voice Button (Rendered inline on the right side of the input in the same row) */}
+        {renderVoiceButton()}
       </form>
 
-      {/* Secondary Action Row (Slots + Voice PTT) */}
-      {(leftSlot || rightSlot || showVoiceButton) && (
+      {/* Secondary Action Row (Slots) */}
+      {(leftSlot || rightSlot) && (
         <div
           className={cn(
             'flex items-center justify-between gap-1.5 w-full',
@@ -381,53 +449,6 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {rightSlot}
-            {showVoiceButton && (
-              <button
-                type="button"
-                disabled={disabled}
-                onPointerDown={handlePointerDown}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={releaseTalk}
-                onLostPointerCapture={releaseTalk}
-                onKeyDown={handleKeyDown}
-                onKeyUp={handleKeyUp}
-                onBlur={releaseTalk}
-                onClick={voiceMode === 'open' ? onToggleMute : undefined}
-                aria-label={
-                  voiceMode === 'hold'
-                    ? isSpeaking || !isMuted
-                      ? labels?.releaseToMuteAria ?? (isEnglish ? 'Release to mute' : '松开静音')
-                      : labels?.holdToTalkAria ?? (isEnglish ? 'Hold to talk' : '按住说话')
-                    : isMuted
-                    ? labels?.unmuteAria ?? (isEnglish ? 'Click to unmute' : '开麦')
-                    : labels?.muteAria ?? (isEnglish ? 'Mute' : '静音')
-                }
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all shrink-0 active:scale-95 select-none touch-none',
-                  disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-                  isSpeaking || !isMuted
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs animate-pulse'
-                    : 'bg-primary/10 hover:bg-primary/20 text-primary'
-                )}
-              >
-                {voiceMode === 'hold' ? (
-                  <Radio className={cn('w-3 h-3', isSpeaking && 'animate-ping')} />
-                ) : isMuted ? (
-                  <MicOff className="w-3 h-3 text-muted-foreground" />
-                ) : (
-                  <Mic className="w-3 h-3" />
-                )}
-                <span>
-                  {voiceMode === 'hold'
-                    ? isSpeaking || !isMuted
-                      ? labels?.releaseToMute ?? (isEnglish ? 'Release to mute' : '松开发言')
-                      : labels?.holdToTalk ?? (isEnglish ? 'Hold to talk' : '按住说话')
-                    : isMuted
-                    ? labels?.unmute ?? (isEnglish ? 'Unmute' : '开麦')
-                    : labels?.mute ?? (isEnglish ? 'Mute' : '静音')}
-                </span>
-              </button>
-            )}
           </div>
         </div>
       )}

@@ -586,7 +586,7 @@ export const InGameGuesserPage: React.FC = () => {
           </section>
 
           {/* GUESS INPUT & INTERACTION CORE BAR (底部黄金触控交互区) */}
-          <footer className="w-full bg-surface-container-lowest px-3 pt-2 pb-3 shadow-lg border-t border-surface-container shrink-0 z-30">
+          <footer className="w-full bg-surface-container-lowest px-2 sm:px-3 pt-1.5 pb-2.5 sm:pb-3 shadow-lg border-t border-surface-container shrink-0 z-30">
             <InGameBottomBar
               value={guessInput}
               onChange={setGuessInput}
@@ -627,7 +627,7 @@ export const InGameGuesserPage: React.FC = () => {
                     className="tactile-btn flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container shadow-2xs cursor-pointer text-xs font-bold"
                   >
                     <AppIcon name="leaderboard" className="w-3.5 h-3.5 text-secondary-container" />
-                    <span className="hidden xs:inline">{t('inGame.leaderboard', '积分榜')}</span>
+                    <span className="hidden sm:inline">{t('inGame.leaderboard', '积分榜')}</span>
                   </button>
                   {/* Quick Reaction Trigger */}
                   <button
@@ -699,66 +699,6 @@ export const InGameGuesserPage: React.FC = () => {
               <span className="font-headline-sm text-sm">{timeLeft}s 倒计时</span>
             </div>
 
-            {/* Push to talk voice */}
-            <button
-              type="button"
-              aria-label={
-                voiceMode === 'hold'
-                  ? !isMuted
-                    ? t('voice.releaseToMuteAria', '松开静音')
-                    : t('voice.holdToTalkAria', '按住说话')
-                  : isMuted
-                  ? t('voice.unmuteAria', '开麦')
-                  : t('voice.muteAria', '静音')
-              }
-              {...(voiceMode === 'hold'
-                ? {
-                    onPointerDown: (e) => {
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      holdToTalk(true);
-                    },
-                    onPointerUp: (e) => {
-                      try {
-                        e.currentTarget.releasePointerCapture(e.pointerId);
-                      } catch {}
-                      holdToTalk(false);
-                    },
-                    onPointerCancel: () => holdToTalk(false),
-                    onLostPointerCapture: () => holdToTalk(false),
-                    onKeyDown: (e) => {
-                      if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-                        e.preventDefault();
-                        holdToTalk(true);
-                      }
-                    },
-                    onKeyUp: (e) => {
-                      if (e.code === 'Space' || e.code === 'Enter') {
-                        e.preventDefault();
-                        holdToTalk(false);
-                      }
-                    },
-                    onBlur: () => holdToTalk(false),
-                  }
-                : {
-                    onClick: toggleMute,
-                  })}
-              className={`tactile-btn px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors select-none touch-none cursor-pointer ${
-                !isMuted
-                  ? 'bg-emerald-600 text-white shadow-sm animate-pulse'
-                  : 'bg-surface-container text-on-surface hover:bg-surface-variant'
-              }`}
-            >
-              <AppIcon name={!isMuted ? 'mic' : 'mic_off'} className="w-4 h-4" />
-              <span>
-                {voiceMode === 'hold'
-                  ? !isMuted
-                    ? t('voice.speakingNow', '发言中...')
-                    : t('voice.holdToTalk', '按住说话 (Space)')
-                  : isMuted
-                  ? t('voice.unmute', '开麦')
-                  : t('voice.mute', '静音')}
-              </span>
-            </button>
 
             {/* Direct Voice Mode Switcher (Hold to Talk vs Open Mic) */}
             <button
@@ -996,6 +936,12 @@ export const InGameGuesserPage: React.FC = () => {
                     ? t('inGame.submitGuessBtn', '抢答提交')
                     : t('inGame.sendChat', '发消息')
                 }
+                showVoiceButton={true}
+                voiceMode={voiceMode}
+                isMuted={isMuted}
+                onToggleMute={toggleMute}
+                onHoldToTalk={(pressed) => holdToTalk(pressed)}
+                isSpeaking={!isMuted}
                 rightSlot={
                   <button
                     type="button"

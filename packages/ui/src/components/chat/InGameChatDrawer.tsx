@@ -60,6 +60,8 @@ export interface InGameChatDrawerLabels {
   // Input
   holdToTalk?: string;
   releaseToMute?: string;
+  holdToTalkShort?: string;
+  releaseToMuteShort?: string;
   holdToTalkAria?: string;
   releaseToMuteAria?: string;
   mute?: string;
@@ -566,6 +568,8 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   danmakuToggleAria: labels?.danmakuToggleAria,
                   holdToTalk: labels?.holdToTalk,
                   releaseToMute: labels?.releaseToMute,
+                  holdToTalkShort: labels?.holdToTalkShort,
+                  releaseToMuteShort: labels?.releaseToMuteShort,
                   holdToTalkAria: labels?.holdToTalkAria,
                   releaseToMuteAria: labels?.releaseToMuteAria,
                   mute: labels?.mute,
