@@ -10,5 +10,6 @@ export * from './components/canvas/PaletteBar';
 export * from './components/chat/ChatWindow';
 export * from './components/chat/InGameChatDrawer';
 export * from './components/chat/DanmakuOverlay';
+export * from './components/chat/InGameBottomBar';
 export * from './components/chat/VoiceDock';
 export * from './components/theme/ThemeToggle';

@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import confetti from 'canvas-confetti';
 import { Loader2 } from 'lucide-react';
 import { AppIcon } from '../components/common/AppIcon';
-import { DrawBoard, InGameChatDrawer, DanmakuOverlay } from '@idavoll/ui';
+import { DrawBoard, InGameChatDrawer, DanmakuOverlay, InGameBottomBar, QuickPhraseItem } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { leaveRoom } from '../services/room-session';
 import { useVoiceLabels } from '../hooks/useVoiceLabels';
+import { useSpacePushToTalk } from '../hooks/useSpacePushToTalk';
 
 export const InGameGuesserPage: React.FC = () => {
   const { t } = useTranslation();
-  const { chatDrawerLabels } = useVoiceLabels();
+  const { chatDrawerLabels, bottomBarLabels } = useVoiceLabels();
   const navigate = useNavigate();
 
   const { id: userId, nickname, avatar } = useUserStore();
@@ -47,58 +48,20 @@ export const InGameGuesserPage: React.FC = () => {
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string; delay: number }[]>([]);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Spacebar push-to-talk handler on desktop
-  const isHoldingSpaceRef = useRef(false);
+  // Global Spacebar push-to-talk handler on desktop
+  useSpacePushToTalk(voiceMode === 'hold', holdToTalk);
 
-  useEffect(() => {
-    const isEditableOrInteractive = (target: EventTarget | null): boolean => {
-      if (!target || !(target instanceof HTMLElement)) return false;
-      const tag = target.tagName.toUpperCase();
-      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(tag)) return true;
-      if (target.isContentEditable || target.getAttribute('contenteditable') === 'true') return true;
-      return false;
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (voiceMode !== 'hold') return;
-      if (e.code === 'Space' && !e.repeat) {
-        if (!isEditableOrInteractive(e.target)) {
-          e.preventDefault();
-          isHoldingSpaceRef.current = true;
-          holdToTalk(true);
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        if (isHoldingSpaceRef.current) {
-          isHoldingSpaceRef.current = false;
-          holdToTalk(false);
-        }
-      }
-    };
-
-    const handleBlur = () => {
-      if (isHoldingSpaceRef.current) {
-        isHoldingSpaceRef.current = false;
-        holdToTalk(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleBlur);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleBlur);
-      if (isHoldingSpaceRef.current) {
-        isHoldingSpaceRef.current = false;
-      }
-      holdToTalk(false);
-    };
-  }, [voiceMode]);
+  // Localized quick phrases for chat drawer
+  const guesserQuickPhrases = useMemo<QuickPhraseItem[]>(
+    () => [
+      { icon: '👍', text: t('inGame.quickPillAwesome', '太神了') },
+      { icon: '💡', text: t('inGame.quickPillHint', '求提示') },
+      { icon: '🤔', text: t('inGame.quickPillHard', '有点难') },
+      { icon: '🎨', text: t('inGame.quickPillArtist', '灵魂画手') },
+      { icon: '🔥', text: t('inGame.quickPillGo', '冲冲冲') },
+    ],
+    [t]
+  );
 
   // Trigger celebration on correct guess
   useEffect(() => {
@@ -623,200 +586,70 @@ export const InGameGuesserPage: React.FC = () => {
           </section>
 
           {/* GUESS INPUT & INTERACTION CORE BAR (底部黄金触控交互区) */}
-          <footer className="w-full bg-surface-container-lowest px-3 pt-2 pb-3 shadow-lg border-t border-surface-container flex flex-col gap-1.5 shrink-0 z-30">
-            {/* Primary Input Field + Mode Switch + Send Button */}
-            <form onSubmit={handleInputSubmit} className="flex items-center gap-1.5">
-              {/* Mode Toggle Button */}
-              {hasGuessedCorrect ? (
-                <div
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0 select-none shadow-xs"
-                  title="你已猜中，进入聊天互动模式"
-                >
-                  <span>🎉</span>
-                  <span className="hidden sm:inline">已猜中</span>
-                  <span>{t('inGame.modeChat', '聊天')}</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setInputMode((m) => (m === 'guess' ? 'chat' : 'guess'))}
-                  className={`tactile-btn flex items-center gap-1 px-2.5 py-2 rounded-full font-bold text-xs shrink-0 transition-all cursor-pointer border shadow-xs ${
-                    effectiveMode === 'guess'
-                      ? 'bg-primary-container text-on-primary-container border-primary/30'
-                      : 'bg-surface-container text-on-surface border-outline-variant/60 hover:bg-surface-container-high'
-                  }`}
-                  title={effectiveMode === 'guess' ? '当前：猜词模式（点击切换聊天）' : '当前：聊天模式（点击切换猜词）'}
-                  aria-label={effectiveMode === 'guess' ? '切换为聊天模式' : '切换为猜词模式'}
-                >
-                  <span>{effectiveMode === 'guess' ? '🎯' : '💬'}</span>
-                  <span>{effectiveMode === 'guess' ? t('inGame.modeGuess', '猜词') : t('inGame.modeChat', '聊天')}</span>
-                  <span className="text-[10px] opacity-60">⇄</span>
-                </button>
-              )}
-
-              <div className="flex-1 relative flex items-center">
-                <input
-                  type="text"
-                  value={guessInput}
-                  onChange={(e) => setGuessInput(e.target.value)}
-                  placeholder={
-                    hasGuessedCorrect
-                      ? guessResult?.earned
-                        ? t('inGame.guessedChatPlaceholderWithScore', { score: guessResult.earned, defaultValue: `已猜中 (+${guessResult.earned}分)！发条消息互动...` })
-                        : t('inGame.guessedChatPlaceholder', '已猜中！发条消息互动...')
-                      : effectiveMode === 'guess'
-                      ? t('inGame.guessInputPlaceholder', '输入你猜测的词语（按 Enter 立即抢答）...')
-                      : t('inGame.chatInputPlaceholder', '输入聊天消息（按 Enter 发送）...')
-                  }
-                  className="w-full pl-3.5 pr-8 py-2 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-[13px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold"
-                />
-                {guessInput && (
+          <footer className="w-full bg-surface-container-lowest px-3 pt-2 pb-3 shadow-lg border-t border-surface-container shrink-0 z-30">
+            <InGameBottomBar
+              value={guessInput}
+              onChange={setGuessInput}
+              onSubmit={handleInputSubmit}
+              showModeToggle={true}
+              mode={effectiveMode}
+              onToggleMode={() => setInputMode((m) => (m === 'guess' ? 'chat' : 'guess'))}
+              hasGuessedCorrect={hasGuessedCorrect}
+              showDanmakuToggle={true}
+              isDanmakuOn={isDanmakuOn}
+              onToggleDanmaku={() => setIsDanmakuOn((p) => !p)}
+              placeholder={
+                hasGuessedCorrect
+                  ? guessResult?.earned
+                    ? t('inGame.guessedChatPlaceholderWithScore', { score: guessResult.earned, defaultValue: `已猜中 (+${guessResult.earned}分)！发条消息互动...` })
+                    : t('inGame.guessedChatPlaceholder', '已猜中！发条消息互动...')
+                  : effectiveMode === 'guess'
+                  ? t('inGame.guessInputPlaceholder', '输入你猜测的词语（按 Enter 立即抢答）...')
+                  : t('inGame.chatInputPlaceholder', '输入聊天消息（按 Enter 发送）...')
+              }
+              sendLabel={
+                effectiveMode === 'guess' && !hasGuessedCorrect
+                  ? t('inGame.submitGuessBtn', '抢答提交')
+                  : t('inGame.sendChat', '发消息')
+              }
+              showVoiceButton={true}
+              voiceMode={voiceMode}
+              isMuted={isMuted}
+              onToggleMute={toggleMute}
+              onHoldToTalk={(pressed) => holdToTalk(pressed)}
+              isSpeaking={!isMuted}
+              leftSlot={
+                <div className="flex items-center gap-1">
+                  {/* Rank & Scoreboard Modal Toggle */}
                   <button
                     type="button"
-                    onClick={() => setGuessInput('')}
-                    className="absolute right-2 text-outline hover:text-on-surface cursor-pointer"
-                    title={t('inGame.clear', '清空')}
+                    onClick={() => setIsLeaderboardOpen(true)}
+                    className="tactile-btn flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container shadow-2xs cursor-pointer text-xs font-bold"
                   >
-                    <AppIcon name="cancel" className="w-4 h-4" />
+                    <AppIcon name="leaderboard" className="w-3.5 h-3.5 text-secondary-container" />
+                    <span className="hidden xs:inline">{t('inGame.leaderboard', '积分榜')}</span>
                   </button>
-                )}
-              </div>
-
-              {/* Big Send / Guess Button */}
-              <button
-                type="submit"
-                disabled={!guessInput.trim()}
-                className={`tactile-btn px-4 py-2 rounded-full font-label-lg text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
-                  effectiveMode === 'guess' && !hasGuessedCorrect
-                    ? 'bg-primary-container text-on-primary-container hover:bg-primary'
-                    : 'bg-primary text-on-primary hover:bg-primary/90'
-                }`}
-              >
-                <span>
-                  {effectiveMode === 'guess' && !hasGuessedCorrect
-                    ? t('inGame.submitGuess', '猜一猜')
-                    : t('inGame.sendChat', '发消息')}
-                </span>
-                <AppIcon name="send" className="w-3.5 h-3.5" />
-              </button>
-            </form>
-
-            {/* Voice Chat & Functional Row */}
-            <div className="flex items-center justify-between pt-0.5">
-              {/* Push to Talk Voice Control */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={
-                    voiceMode === 'hold'
-                      ? !isMuted
-                        ? t('voice.releaseToMuteAria', '松开静音')
-                        : t('voice.holdToTalkAria', '按住说话')
-                      : isMuted
-                      ? t('voice.unmuteAria', '开麦')
-                      : t('voice.muteAria', '静音')
-                  }
-                  {...(voiceMode === 'hold'
-                    ? {
-                        onPointerDown: (e) => {
-                          e.currentTarget.setPointerCapture(e.pointerId);
-                          holdToTalk(true);
-                        },
-                        onPointerUp: (e) => {
-                          try {
-                            e.currentTarget.releasePointerCapture(e.pointerId);
-                          } catch {}
-                          holdToTalk(false);
-                        },
-                        onPointerCancel: () => holdToTalk(false),
-                        onLostPointerCapture: () => holdToTalk(false),
-                        onKeyDown: (e) => {
-                          if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-                            e.preventDefault();
-                            holdToTalk(true);
-                          }
-                        },
-                        onKeyUp: (e) => {
-                          if (e.code === 'Space' || e.code === 'Enter') {
-                            e.preventDefault();
-                            holdToTalk(false);
-                          }
-                        },
-                        onBlur: () => holdToTalk(false),
-                      }
-                    : {
-                        onClick: toggleMute,
-                      })}
-                  className={`tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform shadow-xs cursor-pointer select-none touch-none ${
-                    !isMuted
-                      ? 'bg-emerald-600 text-white shadow-md animate-pulse'
-                      : 'bg-surface-container text-primary hover:bg-surface-variant'
-                  }`}
-                >
-                  <AppIcon name={!isMuted ? 'mic' : 'mic_none'} className="w-4 h-4" />
-                  <span className="font-label-sm text-label-sm font-bold">
-                    {voiceMode === 'hold'
-                      ? !isMuted
-                        ? t('voice.releaseToMute', '松开发言')
-                        : t('voice.holdToTalk', '按住说话')
-                      : isMuted
-                      ? t('voice.unmute', '开麦')
-                      : t('voice.mute', '静音')}
-                  </span>
-                </button>
-
-                {/* Voice Channel Status */}
-                <div
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold ${
-                    voiceStatus === 'connected'
-                      ? 'bg-tertiary-fixed/30 text-tertiary'
-                      : voiceStatus === 'connecting'
-                      ? 'bg-amber-500/20 text-amber-600'
-                      : 'bg-surface-container text-outline'
-                  }`}
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      voiceStatus === 'connected'
-                        ? 'bg-tertiary animate-pulse'
-                        : voiceStatus === 'connecting'
-                        ? 'bg-amber-500 animate-ping'
-                        : 'bg-outline'
-                    }`}
-                  ></span>
-                  <span>
-                    {voiceStatus === 'connected'
-                      ? t('voice.connected', '已连麦')
-                      : voiceStatus === 'connecting'
-                      ? t('voice.connecting', '连接中...')
-                      : t('voice.off', '未开启')}
-                  </span>
+                  {/* Quick Reaction Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => handleSendReaction('🔥')}
+                    className="tactile-btn px-2 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container flex items-center justify-center shadow-2xs cursor-pointer text-xs"
+                    title={t('inGame.quickReaction', '快速喝彩')}
+                    aria-label={t('inGame.quickReaction', '快速喝彩')}
+                  >
+                    <span>🔥</span>
+                  </button>
                 </div>
-              </div>
-
-              {/* Right Side Utility Badges */}
-              <div className="flex items-center gap-1">
-                {/* Rank & Scoreboard Modal Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsLeaderboardOpen(true)}
-                  className="tactile-btn flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container shadow-xs cursor-pointer"
-                >
-                  <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
-                  <span className="font-label-sm text-label-sm font-bold">{t('inGame.leaderboard', '积分榜')}</span>
-                </button>
-                {/* Quick Reaction Trigger */}
-                <button
-                  type="button"
-                  onClick={() => handleSendReaction('🔥')}
-                  className="tactile-btn w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container flex items-center justify-center shadow-xs cursor-pointer"
-                  title={t('inGame.quickReaction', '快速喝彩')}
-                  aria-label={t('inGame.quickReaction', '快速喝彩')}
-                >
-                  <AppIcon name="add_reaction" className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+              }
+              labels={{
+                ...bottomBarLabels,
+                sendAria:
+                  effectiveMode === 'guess' && !hasGuessedCorrect
+                    ? t('inGame.submitGuessBtn', '抢答提交')
+                    : t('inGame.sendChat', '发消息'),
+                clearAria: t('chat.clear', '清空'),
+              }}
+            />
           </footer>
         </main>
       </div>
@@ -1137,99 +970,52 @@ export const InGameGuesserPage: React.FC = () => {
             </section>
 
             {/* Bottom Guess / Chat Input & Interaction Bar */}
-            <footer className="bg-surface-container-lowest p-3 rounded-2xl border border-surface-container shadow-xs flex items-center gap-3 shrink-0">
-              <form onSubmit={handleInputSubmit} className="flex-1 flex items-center gap-2.5">
-                {/* Segmented Mode Selector */}
-                {hasGuessedCorrect ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold shrink-0 shadow-xs select-none">
-                    <span>🎉</span>
-                    <span>已猜中 · 畅聊模式</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center p-0.5 rounded-full bg-surface-container border border-outline-variant/50 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setInputMode('guess')}
-                      className={`tactile-btn px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        effectiveMode === 'guess'
-                          ? 'bg-primary text-on-primary shadow-xs'
-                          : 'text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      <span>🎯</span>
-                      <span>{t('inGame.modeGuess', '猜词')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputMode('chat')}
-                      className={`tactile-btn px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        effectiveMode === 'chat'
-                          ? 'bg-primary text-on-primary shadow-xs'
-                          : 'text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      <span>💬</span>
-                      <span>{t('inGame.modeChat', '聊天')}</span>
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex-1 relative flex items-center">
-                  <AppIcon name={effectiveMode === 'guess' ? 'search' : 'chat'} className="absolute left-3.5 text-outline w-5 h-5 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={guessInput}
-                    onChange={(e) => setGuessInput(e.target.value)}
-                    placeholder={
-                      hasGuessedCorrect
-                        ? guessResult?.earned
-                          ? t('inGame.guessedChatPlaceholderWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！发条消息互动...` })
-                          : t('inGame.guessedChatPlaceholder', '你已猜中！发条消息互动...')
-                        : effectiveMode === 'guess'
-                        ? t('inGame.guessInputPlaceholderDesktop', '输入你的猜测词，按回车提交...')
-                        : t('inGame.chatInputPlaceholder', '输入聊天消息（按 Enter 发送）...')
-                    }
-                    className="w-full pl-10 pr-9 py-2 rounded-full bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-outline/70 font-semibold"
-                  />
-                  {guessInput && (
-                    <button
-                      type="button"
-                      onClick={() => setGuessInput('')}
-                      className="absolute right-3 text-outline hover:text-on-surface cursor-pointer"
-                      title={t('inGame.clear', '清空')}
-                    >
-                      <AppIcon name="cancel" className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  disabled={!guessInput.trim()}
-                  className={`tactile-btn px-6 py-2 rounded-full font-label-lg text-sm font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40 ${
+            <footer className="bg-surface-container-lowest p-2 rounded-2xl border border-surface-container shadow-xs shrink-0">
+              <InGameBottomBar
+                value={guessInput}
+                onChange={setGuessInput}
+                onSubmit={handleInputSubmit}
+                showModeToggle={true}
+                mode={effectiveMode}
+                onToggleMode={() => setInputMode((m) => (m === 'guess' ? 'chat' : 'guess'))}
+                hasGuessedCorrect={hasGuessedCorrect}
+                showDanmakuToggle={true}
+                isDanmakuOn={isDanmakuOn}
+                onToggleDanmaku={() => setIsDanmakuOn((p) => !p)}
+                placeholder={
+                  hasGuessedCorrect
+                    ? guessResult?.earned
+                      ? t('inGame.guessedChatPlaceholderWithScore', { score: guessResult.earned, defaultValue: `你已猜中 (+${guessResult.earned}分)！发条消息互动...` })
+                      : t('inGame.guessedChatPlaceholder', '你已猜中！发条消息互动...')
+                    : effectiveMode === 'guess'
+                    ? t('inGame.guessInputPlaceholderDesktop', '输入你的猜测词，按回车提交...')
+                    : t('inGame.chatInputPlaceholder', '输入聊天消息（按 Enter 发送）...')
+                }
+                sendLabel={
+                  effectiveMode === 'guess' && !hasGuessedCorrect
+                    ? t('inGame.submitGuessBtn', '抢答提交')
+                    : t('inGame.sendChat', '发消息')
+                }
+                rightSlot={
+                  <button
+                    type="button"
+                    onClick={() => handleSendReaction('🔥')}
+                    className="tactile-btn px-2 py-1 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant shadow-2xs cursor-pointer text-xs"
+                    title={t('inGame.quickReaction', '热烈反应')}
+                    aria-label={t('inGame.quickReaction', '热烈反应')}
+                  >
+                    <span>🔥</span>
+                  </button>
+                }
+                labels={{
+                  ...bottomBarLabels,
+                  sendAria:
                     effectiveMode === 'guess' && !hasGuessedCorrect
-                      ? 'bg-primary-container text-on-primary-container hover:bg-primary'
-                      : 'bg-primary text-on-primary hover:bg-primary/90'
-                  }`}
-                >
-                  <span>
-                    {effectiveMode === 'guess' && !hasGuessedCorrect
-                      ? t('inGame.submitGuess', '抢先猜词')
-                      : t('inGame.sendChat', '发消息')}
-                  </span>
-                  <AppIcon name="send" className="w-4 h-4" />
-                </button>
-              </form>
-
-              {/* Quick Reaction Button */}
-              <button
-                type="button"
-                onClick={() => handleSendReaction('🔥')}
-                className="tactile-btn w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant shadow-xs cursor-pointer"
-                title={t('inGame.quickReaction', '热烈反应')}
-                aria-label={t('inGame.quickReaction', '热烈反应')}
-              >
-                <AppIcon name="add_reaction" className="w-5 h-5" />
-              </button>
+                      ? t('inGame.submitGuessBtn', '抢答提交')
+                      : t('inGame.sendChat', '发消息'),
+                  clearAria: t('chat.clear', '清空'),
+                }}
+              />
             </footer>
           </div>
 
@@ -1542,7 +1328,7 @@ export const InGameGuesserPage: React.FC = () => {
         onClose={() => setIsChatDrawerOpen(false)}
         messages={messages}
         currentUserId={userId}
-        onSendMessage={(content) => sendMessage(content, false)}
+        onSendMessage={(content) => sendMessage(content, true)}
         players={players}
         isMuted={isMuted}
         onToggleMute={toggleMute}
@@ -1558,6 +1344,7 @@ export const InGameGuesserPage: React.FC = () => {
         currentDrawerNickname={drawerNickname}
         isDrawer={false}
         labels={chatDrawerLabels}
+        quickPhrases={guesserQuickPhrases}
       />
     </div>
   );

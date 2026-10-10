@@ -30,7 +30,16 @@ import {
   Trophy,
   Award,
 } from 'lucide-react';
-import { Button, Avatar, InGameChatDrawer, InGameChatDrawerLabels, QuickPhraseItem, ChatWindow } from '@idavoll/ui';
+import {
+  Button,
+  Avatar,
+  InGameChatDrawer,
+  InGameChatDrawerLabels,
+  QuickPhraseItem,
+  ChatWindow,
+  DanmakuOverlay,
+  InGameBottomBar,
+} from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGomokuStore } from '../store/useGomokuStore';
@@ -133,7 +142,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { chatDrawerLabels, voiceDockLabels } = useVoiceLabels();
+  const { chatDrawerLabels, voiceDockLabels, bottomBarLabels } = useVoiceLabels();
 
   // Global user & theme stores
   const currentUserId = useUserStore((s) => s.id);
@@ -143,10 +152,14 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
   const toggleTheme = useUserStore((s) => s.toggleTheme);
   const setLanguage = useUserStore((s) => s.setLanguage);
 
+  // Danmaku display toggle (unified state)
+  const [isDanmakuOn, setIsDanmakuOn] = useState(true);
+
   // Global room stores (isolated completely when in preview mode)
   const {
     room: rawRoom,
     messages: rawMessages,
+    danmakus: rawDanmakus,
     sendMessage,
     isMuted: rawIsMuted,
     isDeafened: rawIsDeafened,
@@ -161,6 +174,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
   const room = isPreview ? null : rawRoom;
   const messages = isPreview ? [] : rawMessages;
+  const danmakus = isPreview ? [] : rawDanmakus;
   const speakingUserIds = isPreview ? [] : rawSpeakingUserIds;
   const isMuted = isPreview ? false : rawIsMuted;
   const isDeafened = isPreview ? false : rawIsDeafened;
@@ -549,7 +563,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
     if (e) e.preventDefault();
     if (!inlineChatText.trim()) return;
     if (!isPreview) {
-      sendMessage(inlineChatText.trim(), false);
+      sendMessage(inlineChatText.trim(), true);
     }
     setInlineChatText('');
   };
@@ -1229,6 +1243,9 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
 
           {/* Central Interactive Gomoku Board (15x15) */}
           <section className="relative flex items-center justify-center shrink-0 my-auto w-full max-w-[min(calc(100vw-12px),calc(100dvh-215px))] max-h-[min(calc(100vw-12px),calc(100dvh-215px))] sm:max-w-[min(400px,calc(100dvh-230px))] sm:max-h-[min(400px,calc(100dvh-230px))] md:max-w-[min(430px,calc(100dvh-240px))] md:max-h-[min(430px,calc(100dvh-240px))] lg:max-w-[min(420px,calc(100dvh-240px))] lg:max-h-[min(420px,calc(100dvh-240px))] xl:max-w-[min(480px,calc(100dvh-250px))] xl:max-h-[min(480px,calc(100dvh-250px))] aspect-square max-lg:landscape:max-h-[calc(100dvh-54px)] max-lg:landscape:max-w-[calc(100dvh-54px)] max-lg:landscape:w-auto">
+            {/* Real Danmaku Overlay */}
+            <DanmakuOverlay items={danmakus} enabled={isDanmakuOn} />
+
             {/* Wood Board Outer Surface */}
             <div className="relative w-full h-full rounded-2xl sm:rounded-3xl p-2 sm:p-3.5 bg-gradient-to-br from-amber-100 via-amber-200 to-amber-300 dark:from-[#3a2717] dark:via-[#2b1c10] dark:to-[#1e130a] border-4 border-amber-400/90 dark:border-amber-900/80 shadow-2xl overflow-hidden flex flex-col justify-between">
               {/* Subtle Wood Texture Ring */}
@@ -1253,6 +1270,20 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
                   aria-label={t('gomoku.historyReview', '对局回放')}
                 >
                   <History className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDanmakuOn((prev) => !prev)}
+                  className={`w-6 h-6 rounded-md ${
+                    isDanmakuOn
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-amber-900/10 dark:bg-white/10 text-amber-950/60 dark:text-amber-200/60'
+                  } hover:bg-primary/30 flex items-center justify-center transition-colors cursor-pointer`}
+                  title={isDanmakuOn ? t('chat.danmakuOn', '🚀 弹幕模式开启') : t('chat.danmakuOff', '弹幕已关')}
+                  aria-label={t('chat.danmakuToggleAria', '切换弹幕显示')}
+                  aria-pressed={isDanmakuOn}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -1538,43 +1569,37 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
             </div>
 
             {/* Mobile Inline Chat Bar (hidden on desktop lg where sidebar is active) */}
-            <form
+            <InGameBottomBar
+              value={inlineChatText}
+              onChange={setInlineChatText}
               onSubmit={handleSendInlineChat}
-              className="lg:hidden flex items-center gap-1.5 w-full bg-card/90 border border-border/80 rounded-xl px-2 py-1 shadow-2xs"
-            >
-              <button
-                type="button"
-                onClick={() => setIsChatDrawerOpen(true)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors relative cursor-pointer"
-                title={t('gomoku.voice.chatDrawer', '房间聊天')}
-                aria-label={t('gomoku.voice.chatDrawer', '房间聊天')}
-              >
-                <MessageSquare className="w-4 h-4" />
-                {messages.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                )}
-              </button>
-
-              <input
-                type="text"
-                value={inlineChatText}
-                onChange={(e) => setInlineChatText(e.target.value)}
-                placeholder={t('gomoku.chatPlaceholder', '发送聊天消息...')}
-                aria-label={t('gomoku.chatPlaceholder', '发送聊天消息...')}
-                className="flex-1 min-w-0 h-7 text-xs px-2.5 rounded-lg border border-border bg-background/80 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!inlineChatText.trim()}
-                aria-label={t('chat.send', '发送')}
-                className="h-7 px-2.5 rounded-lg font-bold text-xs gap-1 cursor-pointer shrink-0"
-              >
-                <Send className="w-3 h-3" />
-                <span className="hidden xs:inline">{t('chat.send', '发送')}</span>
-              </Button>
-            </form>
+              placeholder={t('gomoku.chatPlaceholder', '发送聊天消息...')}
+              className="lg:hidden"
+              showDrawerButton={true}
+              onOpenDrawer={() => setIsChatDrawerOpen(true)}
+              hasUnreadMessages={messages.length > 0}
+              showDanmakuToggle={true}
+              isDanmakuOn={isDanmakuOn}
+              onToggleDanmaku={() => setIsDanmakuOn((prev) => !prev)}
+              showVoiceButton={!isPreview}
+              voiceMode={voiceMode}
+              isMuted={isMuted}
+              onToggleMute={isPreview ? undefined : toggleMute}
+              onHoldToTalk={(pressed) => {
+                if (!isPreview && voiceMode === 'hold') holdToTalk(pressed);
+              }}
+              isSpeaking={isMeSpeaking}
+              secondaryClassName="hidden sm:flex"
+              labels={{
+                ...bottomBarLabels,
+                placeholder: t('gomoku.chatPlaceholder', '发送聊天消息...'),
+                openDrawer: t('gomoku.voice.chatDrawer', '房间聊天'),
+                openDrawerAria: t('gomoku.voice.chatDrawer', '房间聊天'),
+                send: t('chat.send', '发送'),
+                clearAria: t('chat.clear', '清空'),
+                danmakuToggleAria: t('chat.danmakuToggleAria', '切换弹幕显示'),
+              }}
+            />
           </div>
         </div>
 
@@ -1583,20 +1608,26 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
           <ChatWindow
             messages={messages}
             currentUserId={currentUserId}
-            onSendMessage={(text, isDanmaku) => {
-              if (!isPreview) sendMessage(text, isDanmaku);
+            onSendMessage={(text) => {
+              if (!isPreview) sendMessage(text, true);
             }}
             labels={{
               title: t('gomoku.voice.chatDrawer', '房间聊天'),
               placeholder: t('gomoku.chatPlaceholder', '发送聊天消息...'),
               danmakuOn: t('chat.danmakuOn', '🚀 弹幕模式开启'),
               danmakuOff: t('chat.danmakuOff', '弹幕已关'),
+              danmakuOnBadge: t('chat.danmakuOnBadge', '弹幕'),
+              danmakuOffBadge: t('chat.danmakuOffBadge', '关'),
+              danmakuToggleAria: t('chat.danmakuToggleAria', '切换弹幕显示'),
               empty: t('chat.empty', '还没有发言，快发条消息热热场吧~'),
               quickEmoji: t('chat.quickEmoji', '快捷表情'),
               send: t('chat.send', '发送'),
+              clearAria: t('chat.clear', '清空'),
             }}
             enableDanmakuToggle={true}
-            isDanmakuDefault={false}
+            isDanmakuDefault={true}
+            isDanmaku={isDanmakuOn}
+            onToggleDanmaku={() => setIsDanmakuOn((prev) => !prev)}
             className="h-full rounded-2xl shadow-sm border border-border"
             aboveInputSlot={
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-2 bg-muted/30 border-t border-border/40">
@@ -1621,8 +1652,8 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         isOpen={isChatDrawerOpen}
         onClose={() => setIsChatDrawerOpen(false)}
         messages={messages}
-        onSendMessage={(text, isDanmaku) => {
-          if (!isPreview) sendMessage(text, isDanmaku);
+        onSendMessage={(text) => {
+          if (!isPreview) sendMessage(text, true);
         }}
         players={room?.players || []}
         currentUserId={currentUserId}
@@ -1635,6 +1666,7 @@ export const InGameGomokuPage: React.FC<GomokuContractProps> = ({
         voiceError={voiceError}
         voiceMode={voiceMode}
         onSetVoiceMode={isPreview ? () => {} : setVoiceMode}
+        onHoldToTalk={isPreview ? () => {} : holdToTalk}
         labels={gomokuChatLabels}
         quickPhrases={quickChatItems}
       />

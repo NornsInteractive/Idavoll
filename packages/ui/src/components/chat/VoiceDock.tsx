@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, Radio, AlertCircle } from 'lucide-react';
 import { UserProfile } from '@idavoll/protocol';
 import { cn } from '../../lib/utils';
@@ -64,12 +64,46 @@ export const VoiceDock: React.FC<VoiceDockProps> = ({
   onHoldToTalk,
   labels,
 }) => {
-  // Release push-to-talk on unmount
+  const onHoldToTalkRef = useRef(onHoldToTalk);
   useEffect(() => {
-    return () => {
-      onHoldToTalk?.(false);
+    onHoldToTalkRef.current = onHoldToTalk;
+  });
+
+  const isHoldingRef = useRef(false);
+
+  const releaseTalk = () => {
+    if (isHoldingRef.current) {
+      isHoldingRef.current = false;
+      onHoldToTalkRef.current?.(false);
+    }
+  };
+
+  const startTalk = () => {
+    if (voiceMode !== 'hold') return;
+    if (!isHoldingRef.current) {
+      isHoldingRef.current = true;
+      onHoldToTalkRef.current?.(true);
+    }
+  };
+
+  // Release push-to-talk on unmount or window blur
+  useEffect(() => {
+    const handleWindowBlur = () => {
+      releaseTalk();
     };
-  }, [onHoldToTalk]);
+    window.addEventListener('blur', handleWindowBlur);
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      releaseTalk();
+    };
+  }, []);
+
+  // Cancel hold if voiceMode changes away from 'hold'
+  useEffect(() => {
+    if (voiceMode !== 'hold') {
+      releaseTalk();
+    }
+  }, [voiceMode]);
 
   return (
     <div
@@ -177,30 +211,32 @@ export const VoiceDock: React.FC<VoiceDockProps> = ({
             size="sm"
             variant={!isMuted ? 'default' : 'secondary'}
             onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture(e.pointerId);
-              onHoldToTalk?.(true);
+              try {
+                e.currentTarget.setPointerCapture(e.pointerId);
+              } catch {}
+              startTalk();
             }}
             onPointerUp={(e) => {
               try {
                 e.currentTarget.releasePointerCapture(e.pointerId);
               } catch {}
-              onHoldToTalk?.(false);
+              releaseTalk();
             }}
-            onPointerCancel={() => onHoldToTalk?.(false)}
-            onLostPointerCapture={() => onHoldToTalk?.(false)}
+            onPointerCancel={releaseTalk}
+            onLostPointerCapture={releaseTalk}
             onKeyDown={(e) => {
               if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
                 e.preventDefault();
-                onHoldToTalk?.(true);
+                startTalk();
               }
             }}
             onKeyUp={(e) => {
               if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
-                onHoldToTalk?.(false);
+                releaseTalk();
               }
             }}
-            onBlur={() => onHoldToTalk?.(false)}
+            onBlur={releaseTalk}
             className={`h-8 px-3 gap-1 text-xs select-none touch-none cursor-pointer ${
               !isMuted ? 'bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse' : ''
             }`}

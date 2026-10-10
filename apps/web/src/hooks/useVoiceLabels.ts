@@ -1,8 +1,36 @@
 import { useTranslation } from 'react-i18next';
-import { VoiceDockLabels, InGameChatDrawerLabels } from '@idavoll/ui';
+import { VoiceDockLabels, InGameChatDrawerLabels, InGameBottomBarLabels } from '@idavoll/ui';
 
 export function useVoiceLabels() {
   const { t } = useTranslation();
+
+  const bottomBarLabels: InGameBottomBarLabels = {
+    placeholder: t('chat.placeholder', '发送消息...'),
+    send: t('chat.send', '发送'),
+    sendAria: t('chat.send', '发送'),
+    clearAria: t('chat.clear', '清空'),
+    danmakuOn: t('chat.danmakuOn', '🚀 弹幕模式开启'),
+    danmakuOff: t('chat.danmakuOff', '弹幕已关'),
+    danmakuOnBadge: t('chat.danmakuOnBadge', '弹幕'),
+    danmakuOffBadge: t('chat.danmakuOffBadge', '关'),
+    danmakuToggleAria: t('chat.danmakuToggleAria', '切换弹幕显示'),
+    openDrawer: t('voice.roomChatTitle', '房间交流'),
+    openDrawerAria: t('voice.roomChatTitle', '房间交流'),
+    modeGuess: t('inGame.modeGuess', '猜词'),
+    modeChat: t('inGame.modeChat', '聊天'),
+    modeGuessed: t('inGame.modeGuessed', '已猜中'),
+    modeToggleAria: t('inGame.modeToggleAria', '切换猜词与聊天模式'),
+    modeGuessTitle: t('inGame.modeGuessTitle', '当前：猜词模式（点击切换聊天）'),
+    modeChatTitle: t('inGame.modeChatTitle', '当前：聊天模式（点击切换猜词）'),
+    holdToTalk: t('voice.holdToTalk', '按住说话'),
+    releaseToMute: t('voice.releaseToMute', '松开发言'),
+    holdToTalkAria: t('voice.holdToTalkAria', '按住说话'),
+    releaseToMuteAria: t('voice.releaseToMuteAria', '松开静音'),
+    mute: t('voice.mute', '静音'),
+    unmute: t('voice.unmute', '开麦'),
+    muteAria: t('voice.muteAria', '点击静音'),
+    unmuteAria: t('voice.unmuteAria', '点击开麦'),
+  };
 
   const voiceDockLabels: VoiceDockLabels = {
     statusConnected: t('voice.connected', '已连麦'),
@@ -66,12 +94,18 @@ export function useVoiceLabels() {
     muteAria: t('voice.muteAria', '点击静音'),
     unmuteAria: t('voice.unmuteAria', '点击开麦'),
     inputPlaceholderArtist: t('voice.inputPlaceholderArtist', '发送聊天消息... (画手禁发答案)'),
-    inputPlaceholderGuesser: t('voice.inputPlaceholderGuesser', '发送消息或猜词...'),
+    inputPlaceholderGuesser: t('voice.inputPlaceholderGuesser', '发送聊天消息...'),
     inputAriaArtist: t('voice.inputAriaArtist', '发送聊天消息'),
-    inputAriaGuesser: t('voice.inputAriaGuesser', '发送消息或猜词'),
+    inputAriaGuesser: t('voice.inputAriaGuesser', '发送聊天消息'),
     insertEmojiAria: t('voice.insertEmojiAria', '插入表情符号'),
     send: t('voice.send', '发送'),
     sendAria: t('voice.sendAria', '发送消息'),
+    clearAria: t('chat.clear', '清空'),
+    danmakuOn: t('chat.danmakuOn', '🚀 弹幕模式开启'),
+    danmakuOff: t('chat.danmakuOff', '弹幕已关'),
+    danmakuOnBadge: t('chat.danmakuOnBadge', '弹幕'),
+    danmakuOffBadge: t('chat.danmakuOffBadge', '关'),
+    danmakuToggleAria: t('chat.danmakuToggleAria', '切换弹幕显示'),
     voiceModeLabel: t('voice.voiceModeLabel', '语音模式:'),
     modeHold: t('voice.modeHold', '按住说话'),
     modeHoldAria: t('voice.modeHoldAria', '切换到按住说话模式'),
@@ -91,5 +125,6 @@ export function useVoiceLabels() {
   return {
     voiceDockLabels,
     chatDrawerLabels,
+    bottomBarLabels,
   };
 }

@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
-import { DrawBoard, InGameChatDrawer, DanmakuOverlay } from '@idavoll/ui';
+import { DrawBoard, InGameChatDrawer, DanmakuOverlay, InGameBottomBar, QuickPhraseItem } from '@idavoll/ui';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { useGameStore } from '../store/useGameStore';
 import { toggleMute, toggleDeafen, setVoiceMode, holdToTalk } from '../services/voice';
 import { leaveRoom } from '../services/room-session';
 import { useVoiceLabels } from '../hooks/useVoiceLabels';
+import { useSpacePushToTalk } from '../hooks/useSpacePushToTalk';
 import { AppIcon } from '../components/common/AppIcon';
 
 export const InGameDrawerPage: React.FC = () => {
   const { t } = useTranslation();
-  const { chatDrawerLabels } = useVoiceLabels();
+  const { chatDrawerLabels, bottomBarLabels } = useVoiceLabels();
   const navigate = useNavigate();
 
   const { id: userId, nickname, avatar } = useUserStore();
@@ -53,58 +54,20 @@ export const InGameDrawerPage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Spacebar push-to-talk handler on desktop
-  const isHoldingSpaceRef = useRef(false);
+  // Global Spacebar push-to-talk handler on desktop
+  useSpacePushToTalk(voiceMode === 'hold', holdToTalk);
 
-  useEffect(() => {
-    const isEditableOrInteractive = (target: EventTarget | null): boolean => {
-      if (!target || !(target instanceof HTMLElement)) return false;
-      const tag = target.tagName.toUpperCase();
-      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(tag)) return true;
-      if (target.isContentEditable || target.getAttribute('contenteditable') === 'true') return true;
-      return false;
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (voiceMode !== 'hold') return;
-      if (e.code === 'Space' && !e.repeat) {
-        if (!isEditableOrInteractive(e.target)) {
-          e.preventDefault();
-          isHoldingSpaceRef.current = true;
-          holdToTalk(true);
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        if (isHoldingSpaceRef.current) {
-          isHoldingSpaceRef.current = false;
-          holdToTalk(false);
-        }
-      }
-    };
-
-    const handleBlur = () => {
-      if (isHoldingSpaceRef.current) {
-        isHoldingSpaceRef.current = false;
-        holdToTalk(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleBlur);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleBlur);
-      if (isHoldingSpaceRef.current) {
-        isHoldingSpaceRef.current = false;
-      }
-      holdToTalk(false);
-    };
-  }, [voiceMode]);
+  // Localized quick phrases for chat drawer
+  const drawerQuickPhrases = useMemo<QuickPhraseItem[]>(
+    () => [
+      { icon: '👍', text: t('inGame.quickPillAwesome', '太神了') },
+      { icon: '💡', text: t('inGame.quickPillHint', '求提示') },
+      { icon: '🤔', text: t('inGame.quickPillHard', '有点难') },
+      { icon: '🎨', text: t('inGame.quickPillArtist', '灵魂画手') },
+      { icon: '🔥', text: t('inGame.quickPillGo', '冲冲冲') },
+    ],
+    [t]
+  );
 
   // Loading state
   if (!room || !gameState) {
@@ -630,128 +593,50 @@ export const InGameDrawerPage: React.FC = () => {
 
           {/* 4. BOTTOM ACTION FOOTER: QUICK HINT, EMOJI & PUSH-TO-TALK */}
           <footer className="bg-surface-container-lowest px-3 pt-1.5 pb-3 border-t border-surface-container shadow-md z-30 shrink-0">
-            <div className="flex flex-col gap-1.5">
-              {/* Danmaku Input */}
-              <form
-                onSubmit={handleSendDanmaku}
-                className="flex items-center gap-1.5 bg-surface-container-low border border-surface-container rounded-full px-2 py-1 shadow-xs"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSendEmoji('🎨')}
-                  className="tactile-btn w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer"
-                  title="常用短语与表情"
-                >
-                  <AppIcon name="sentiment_satisfied" className="w-4 h-4" />
-                </button>
-                <input
-                  type="text"
-                  value={danmakuInput}
-                  onChange={(e) => setDanmakuInput(e.target.value)}
-                  placeholder="发弹幕互动...（画手禁发答案）"
-                  className="flex-1 bg-transparent border-0 text-on-surface placeholder:text-outline font-body-sm text-[12px] p-0 focus:ring-0 focus:outline-none truncate"
-                />
-                <button
-                  type="submit"
-                  disabled={!danmakuInput.trim()}
-                  className="tactile-btn w-7 h-7 rounded-full bg-primary hover:bg-primary-container text-on-primary flex items-center justify-center shrink-0 shadow-xs transition-colors cursor-pointer disabled:opacity-40"
-                  title="发送弹幕"
-                >
-                  <AppIcon name="send" className="w-4 h-4" />
-                </button>
-              </form>
-
-              {/* Bottom Buttons Row: Hint + Emojis + PTT */}
-              <div className="flex items-center justify-between gap-1.5">
-                {/* Hint Button */}
-                {hintsLeft > 0 && (
-                  <button
-                    type="button"
-                    onClick={revealHint}
-                    className="tactile-btn shrink-0 flex items-center gap-1 bg-surface-container-high text-primary hover:bg-primary hover:text-white px-2.5 py-1.5 rounded-full font-label-sm text-[11px] transition-colors cursor-pointer"
-                    title={`公布线索提示 (剩${hintsLeft}次)`}
-                  >
-                    <AppIcon name="lightbulb" className="w-4 h-4" />
-                    <span className="font-extrabold">提示</span>
-                  </button>
-                )}
-
-                {/* Quick Reaction Emojis */}
-                <div className="flex items-center gap-0.5 bg-surface-container-low p-0.5 rounded-full border border-surface-container">
-                  {['👏', '😂', '🔥', '💡'].map((em) => (
+            <InGameBottomBar
+              value={danmakuInput}
+              onChange={setDanmakuInput}
+              onSubmit={handleSendDanmaku}
+              placeholder={t('inGame.danmakuPlaceholderDrawer', '发弹幕互动...（画手禁发答案）')}
+              showDanmakuToggle={true}
+              isDanmakuOn={isDanmakuOn}
+              onToggleDanmaku={() => setIsDanmakuOn((prev) => !prev)}
+              showVoiceButton={true}
+              voiceMode={voiceMode}
+              isMuted={isMuted}
+              onToggleMute={toggleMute}
+              onHoldToTalk={(pressed) => holdToTalk(pressed)}
+              isSpeaking={!isMuted}
+              leftSlot={
+                <div className="flex items-center gap-1.5">
+                  {hintsLeft > 0 && (
                     <button
-                      key={em}
                       type="button"
-                      onClick={() => handleSendEmoji(em)}
-                      className="tactile-btn w-6 h-6 rounded-full hover:bg-surface-container flex items-center justify-center text-[13px] cursor-pointer"
+                      onClick={revealHint}
+                      className="tactile-btn shrink-0 flex items-center gap-1 bg-surface-container-high text-primary hover:bg-primary hover:text-white px-2.5 py-1 rounded-full font-label-sm text-[11px] transition-colors cursor-pointer"
+                      title={t('inGame.revealHintCount', { count: hintsLeft, defaultValue: `公布线索提示 (剩${hintsLeft}次)` })}
+                      aria-label={t('inGame.revealHintCount', { count: hintsLeft, defaultValue: `公布线索提示 (剩${hintsLeft}次)` })}
                     >
-                      {em}
+                      <AppIcon name="lightbulb" className="w-3.5 h-3.5" />
+                      <span className="font-extrabold">{t('inGame.hint', '提示')}</span>
                     </button>
-                  ))}
+                  )}
+                  <div className="flex items-center gap-0.5 bg-surface-container-low p-0.5 rounded-full border border-surface-container">
+                    {['👏', '😂', '🔥', '💡'].map((em) => (
+                      <button
+                        key={em}
+                        type="button"
+                        onClick={() => handleSendEmoji(em)}
+                        className="tactile-btn w-6 h-6 rounded-full hover:bg-surface-container flex items-center justify-center text-[13px] cursor-pointer"
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-
-                {/* Push-to-Talk Mic Button */}
-                <button
-                  type="button"
-                  aria-label={
-                    voiceMode === 'hold'
-                      ? !isMuted
-                        ? t('voice.releaseToMuteAria', '松开静音')
-                        : t('voice.holdToTalkAria', '按住说话')
-                      : isMuted
-                      ? t('voice.unmuteAria', '开麦')
-                      : t('voice.muteAria', '静音')
-                  }
-                  {...(voiceMode === 'hold'
-                    ? {
-                        onPointerDown: (e) => {
-                          e.currentTarget.setPointerCapture(e.pointerId);
-                          holdToTalk(true);
-                        },
-                        onPointerUp: (e) => {
-                          try {
-                            e.currentTarget.releasePointerCapture(e.pointerId);
-                          } catch {}
-                          holdToTalk(false);
-                        },
-                        onPointerCancel: () => holdToTalk(false),
-                        onLostPointerCapture: () => holdToTalk(false),
-                        onKeyDown: (e) => {
-                          if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-                            e.preventDefault();
-                            holdToTalk(true);
-                          }
-                        },
-                        onKeyUp: (e) => {
-                          if (e.code === 'Space' || e.code === 'Enter') {
-                            e.preventDefault();
-                            holdToTalk(false);
-                          }
-                        },
-                        onBlur: () => holdToTalk(false),
-                      }
-                    : {
-                        onClick: toggleMute,
-                      })}
-                  className={`tactile-btn flex-1 flex items-center justify-center gap-1 py-1.5 px-3 rounded-full shadow-sm font-label-md text-[13px] font-black cursor-pointer select-none touch-none ${
-                    !isMuted
-                      ? 'bg-emerald-600 text-white shadow-md animate-pulse'
-                      : 'bg-primary hover:bg-primary-container text-on-primary'
-                  }`}
-                >
-                  <AppIcon name={!isMuted ? 'mic' : 'mic_none'} className="w-4 h-4" />
-                  <span>
-                    {voiceMode === 'hold'
-                      ? !isMuted
-                        ? t('voice.releaseToMute', '松开发言')
-                        : t('voice.holdToTalk', '按住说话')
-                      : isMuted
-                      ? t('voice.unmute', '开麦')
-                      : t('voice.mute', '静音')}
-                  </span>
-                </button>
-              </div>
-            </div>
+              }
+              labels={bottomBarLabels}
+            />
           </footer>
         </div>
       </div>
@@ -1345,25 +1230,18 @@ export const InGameDrawerPage: React.FC = () => {
               </div>
 
               {/* Danmaku Input Bar */}
-              <form
-                onSubmit={handleSendDanmaku}
-                className="pt-2 border-t border-surface-container-high/60 flex items-center gap-2 shrink-0"
-              >
-                <input
-                  type="text"
+              <div className="pt-2 border-t border-surface-container-high/60 shrink-0">
+                <InGameBottomBar
                   value={danmakuInput}
-                  onChange={(e) => setDanmakuInput(e.target.value)}
+                  onChange={setDanmakuInput}
+                  onSubmit={handleSendDanmaku}
                   placeholder={t('inGame.danmakuPlaceholderDrawer', '发弹幕互动...（画手禁发答案）')}
-                  className="flex-1 bg-surface-container-low px-3 py-2 rounded-xl text-xs font-bold border border-outline-variant/60 focus:outline-none focus:border-primary"
+                  showDanmakuToggle={true}
+                  isDanmakuOn={isDanmakuOn}
+                  onToggleDanmaku={() => setIsDanmakuOn((prev) => !prev)}
+                  labels={bottomBarLabels}
                 />
-                <button
-                  type="submit"
-                  disabled={!danmakuInput.trim()}
-                  className="tactile-btn px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-black disabled:opacity-40 cursor-pointer"
-                >
-                  {t('inGame.send', '发送')}
-                </button>
-              </form>
+              </div>
             </section>
           </div>
         </div>
@@ -1434,7 +1312,7 @@ export const InGameDrawerPage: React.FC = () => {
         onClose={() => setIsChatDrawerOpen(false)}
         messages={messages}
         currentUserId={userId}
-        onSendMessage={(content) => sendMessage(content, false)}
+        onSendMessage={(content) => sendMessage(content, true)}
         players={players}
         isMuted={isMuted}
         onToggleMute={toggleMute}
@@ -1450,6 +1328,7 @@ export const InGameDrawerPage: React.FC = () => {
         currentDrawerNickname={nickname}
         isDrawer={true}
         labels={chatDrawerLabels}
+        quickPhrases={drawerQuickPhrases}
       />
     </div>
   );

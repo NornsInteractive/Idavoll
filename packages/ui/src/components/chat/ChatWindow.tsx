@@ -4,15 +4,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage } from '@idavoll/protocol';
 import { Avatar } from '../ui/avatar';
 import { Button } from '../ui/button';
+import { InGameBottomBar } from './InGameBottomBar';
 
 export interface ChatWindowLabels {
   title?: string;
   placeholder?: string;
   danmakuOn?: string;
   danmakuOff?: string;
+  danmakuOnBadge?: string;
+  danmakuOffBadge?: string;
+  danmakuToggleAria?: string;
   empty?: string;
   quickEmoji?: string;
   send?: string;
+  clearAria?: string;
 }
 
 export interface ChatWindowProps {
@@ -23,6 +28,8 @@ export interface ChatWindowProps {
   placeholder?: string;
   enableDanmakuToggle?: boolean;
   isDanmakuDefault?: boolean;
+  isDanmaku?: boolean;
+  onToggleDanmaku?: (val: boolean) => void;
   className?: string;
   aboveInputSlot?: React.ReactNode;
   labels?: ChatWindowLabels;
@@ -38,6 +45,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   placeholder,
   enableDanmakuToggle = true,
   isDanmakuDefault = false,
+  isDanmaku: isDanmakuControlled,
+  onToggleDanmaku,
   className = '',
   aboveInputSlot,
   labels,
@@ -50,9 +59,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const quickEmojiTitle = labels?.quickEmoji ?? '快捷表情';
   const sendText = labels?.send ?? '发送';
   const [inputText, setInputText] = useState('');
-  const [isDanmaku, setIsDanmaku] = useState(isDanmakuDefault);
+  const [localDanmaku, setLocalDanmaku] = useState(isDanmakuDefault);
+  const activeDanmaku = isDanmakuControlled !== undefined ? isDanmakuControlled : localDanmaku;
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const handleToggleDanmaku = () => {
+    if (onToggleDanmaku) {
+      onToggleDanmaku(!activeDanmaku);
+    } else {
+      setLocalDanmaku(!localDanmaku);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -63,12 +81,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
-    onSendMessage(inputText.trim(), isDanmaku);
+    onSendMessage(inputText.trim(), activeDanmaku);
     setInputText('');
   };
 
   const handleQuickEmoji = (emoji: string) => {
-    onSendMessage(emoji, isDanmaku);
+    onSendMessage(emoji, activeDanmaku);
     setShowEmojiPicker(false);
   };
 
@@ -84,14 +102,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         {enableDanmakuToggle && (
           <button
             type="button"
-            onClick={() => setIsDanmaku(!isDanmaku)}
+            onClick={handleToggleDanmaku}
             className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              isDanmaku
+              activeDanmaku
                 ? 'bg-[var(--theme-primary,#5B5BF0)] text-white shadow-sm'
                 : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
-            {isDanmaku ? danmakuOnText : danmakuOffText}
+            {activeDanmaku ? danmakuOnText : danmakuOffText}
           </button>
         )}
       </div>
@@ -198,30 +216,41 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* Input bar */}
-      <form onSubmit={handleSend} className="p-3 border-t border-border/80 bg-background/80 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-          title={quickEmojiTitle}
-        >
-          <Smile className="w-5 h-5" />
-        </button>
-
-        <input
-          type="text"
+      {/* Shared Bottom Input Bar */}
+      <div className="p-2 border-t border-border/80 bg-background/80 shrink-0">
+        <InGameBottomBar
           value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
+          onChange={setInputText}
+          onSubmit={handleSend}
           placeholder={displayPlaceholder}
-          className="flex-1 bg-muted/50 rounded-full px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary,#5B5BF0)]"
+          sendLabel={sendText}
+          showDanmakuToggle={enableDanmakuToggle}
+          isDanmakuOn={activeDanmaku}
+          onToggleDanmaku={handleToggleDanmaku}
+          leftSlot={
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+              title={quickEmojiTitle}
+              aria-label={quickEmojiTitle}
+            >
+              <Smile className="w-4 h-4" />
+            </button>
+          }
+          labels={{
+            placeholder: displayPlaceholder,
+            send: sendText,
+            sendAria: sendText,
+            clearAria: labels?.clearAria,
+            danmakuOn: danmakuOnText,
+            danmakuOff: danmakuOffText,
+            danmakuOnBadge: labels?.danmakuOnBadge,
+            danmakuOffBadge: labels?.danmakuOffBadge,
+            danmakuToggleAria: labels?.danmakuToggleAria,
+          }}
         />
-
-        <Button type="submit" size="sm" className="h-9 px-4 gap-1.5">
-          <Send className="w-3.5 h-3.5" />
-          <span>{sendText}</span>
-        </Button>
-      </form>
+      </div>
     </div>
   );
 };

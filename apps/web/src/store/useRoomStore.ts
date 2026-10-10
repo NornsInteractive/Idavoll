@@ -28,8 +28,8 @@ export const useRoomStore = create<RoomStore>((set) => ({
   room: null, messages: [], danmakus: [], connectionState: 'disconnected', error: null,
   isMuted: true, isDeafened: false, speakingUserIds: [], voiceStatus: 'off', voiceError: null, voiceMode: 'open',
   setRoom: room => set({ room }),
-  addMessage: message => set(s => ({
-    messages: s.messages.some(m => m.payload.id === message.payload.id) ? s.messages : [...s.messages.slice(-99), message],
+  addMessage: message => set(s => s.messages.some(m => m.payload.id === message.payload.id) ? s : ({
+    messages: [...s.messages.slice(-99), message],
     danmakus: message.payload.isDanmaku ? [...s.danmakus.slice(-29), { id: message.payload.id, text: message.payload.content, color: message.payload.color || '#5B5BF0', fontSize: 16, topPercent: Math.random() * 70 + 15, senderNickname: message.payload.senderNickname, timestamp: message.timestamp }] : s.danmakus,
   })),
   clearError: () => set({ error: null }),

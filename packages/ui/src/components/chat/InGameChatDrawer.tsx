@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage, UserProfile } from '@idavoll/protocol';
 import { Avatar } from '../ui/avatar';
 import { Button } from '../ui/button';
+import { InGameBottomBar } from './InGameBottomBar';
 
 export interface QuickPhraseItem {
   icon?: string;
@@ -72,6 +73,12 @@ export interface InGameChatDrawerLabels {
   insertEmojiAria?: string;
   send?: string;
   sendAria?: string;
+  clearAria?: string;
+  danmakuOn?: string;
+  danmakuOff?: string;
+  danmakuOnBadge?: string;
+  danmakuOffBadge?: string;
+  danmakuToggleAria?: string;
   // Footer
   voiceModeLabel?: string;
   modeHold?: string;
@@ -110,13 +117,20 @@ export interface InGameChatDrawerProps {
   quickPhrases?: QuickPhraseItem[];
 }
 
-const QUICK_PHRASES: QuickPhraseItem[] = [
-  { icon: '👍', text: '画得太棒了' },
-  { icon: '😂', text: '抽象艺术' },
-  { icon: '⏳', text: '猜快点猜快点' },
-  { icon: '💡', text: '给个提示嘛' },
-  { icon: '👏', text: '太牛了！秒猜' },
-  { icon: '🎨', text: '灵魂画师' },
+const DEFAULT_QUICK_PHRASES_ZH: QuickPhraseItem[] = [
+  { icon: '👍', text: '太神了' },
+  { icon: '💡', text: '求提示' },
+  { icon: '🤔', text: '有点难' },
+  { icon: '🎨', text: '灵魂画手' },
+  { icon: '🔥', text: '冲冲冲' },
+];
+
+const DEFAULT_QUICK_PHRASES_EN: QuickPhraseItem[] = [
+  { icon: '👍', text: 'Awesome' },
+  { icon: '💡', text: 'Clue please' },
+  { icon: '🤔', text: 'Tricky' },
+  { icon: '🎨', text: 'Great artist' },
+  { icon: '🔥', text: 'Keep going' },
 ];
 
 export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
@@ -143,7 +157,17 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   labels,
   quickPhrases,
 }) => {
-  const activeQuickPhrases = quickPhrases && quickPhrases.length > 0 ? quickPhrases : QUICK_PHRASES;
+  const isEnglish = Boolean(
+    labels?.send === 'Send' ||
+    labels?.roomChatTitle?.toLowerCase().includes('room') ||
+    labels?.closeDrawerAria?.toLowerCase().includes('close')
+  );
+  const activeQuickPhrases =
+    quickPhrases && quickPhrases.length > 0
+      ? quickPhrases
+      : isEnglish
+      ? DEFAULT_QUICK_PHRASES_EN
+      : DEFAULT_QUICK_PHRASES_ZH;
   const [activeTab, setActiveTab] = useState<'chat' | 'phrases'>('chat');
   const [inputText, setInputText] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -172,7 +196,7 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
-    onSendMessage(inputText.trim(), false);
+    onSendMessage(inputText.trim(), true);
     setInputText('');
   };
 
@@ -500,109 +524,57 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               ))}
             </div>
 
-            {/* Input Bar & Push-to-Talk Action */}
-            <form onSubmit={handleSend} className="p-3 bg-card border-t border-border flex items-center gap-2 shrink-0">
-              {/* Mic / Push-to-talk button */}
-              {voiceMode === 'hold' ? (
-                <button
-                  type="button"
-                  aria-label={
-                    !isMuted
-                      ? labels?.releaseToMuteAria ?? '松开静音'
-                      : labels?.holdToTalkAria ?? '按住说话'
-                  }
-                  onPointerDown={(e) => {
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    onHoldToTalk?.(true);
-                  }}
-                  onPointerUp={(e) => {
-                    try {
-                      e.currentTarget.releasePointerCapture(e.pointerId);
-                    } catch {}
-                    onHoldToTalk?.(false);
-                  }}
-                  onPointerCancel={() => onHoldToTalk?.(false)}
-                  onLostPointerCapture={() => onHoldToTalk?.(false)}
-                  onKeyDown={(e) => {
-                    if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-                      e.preventDefault();
-                      onHoldToTalk?.(true);
-                    }
-                  }}
-                  onKeyUp={(e) => {
-                    if (e.code === 'Space' || e.code === 'Enter') {
-                      e.preventDefault();
-                      onHoldToTalk?.(false);
-                    }
-                  }}
-                  onBlur={() => onHoldToTalk?.(false)}
-                  className={`px-3 h-10 rounded-full flex items-center justify-center gap-1 shrink-0 font-extrabold text-xs transition-all select-none touch-none cursor-pointer ${
-                    !isMuted
-                      ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 scale-105 shadow-md animate-pulse'
-                      : 'bg-muted text-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  {!isMuted ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                  <span className="hidden sm:inline">
-                    {!isMuted
-                      ? labels?.releaseToMute ?? '松开发言'
-                      : labels?.holdToTalk ?? '按住说话'}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onToggleMute}
-                  aria-label={
-                    isMuted
-                      ? labels?.unmuteAria ?? '开麦'
-                      : labels?.muteAria ?? '静音'
-                  }
-                  className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                    isMuted ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500 text-white shadow-sm'
-                  }`}
-                >
-                  {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                </button>
-              )}
-
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={
-                    isDrawer
-                      ? labels?.inputPlaceholderArtist ?? '发送聊天消息... (画手禁发答案)'
-                      : labels?.inputPlaceholderGuesser ?? '发送消息或猜词...'
-                  }
-                  aria-label={
-                    isDrawer
-                      ? labels?.inputAriaArtist ?? '发送聊天消息'
-                      : labels?.inputAriaGuesser ?? '发送消息或猜词'
-                  }
-                  className="w-full h-10 pl-3 pr-8 rounded-full bg-muted/60 border border-border/80 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary,#5B5BF0)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setInputText((prev) => `${prev} 🎉`)}
-                  aria-label={labels?.insertEmojiAria ?? '插入表情符号'}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <Smile className="w-4 h-4" />
-                </button>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={!inputText.trim()}
-                aria-label={labels?.sendAria ?? '发送消息'}
-                className="h-10 px-4 rounded-full font-black text-xs gap-1 shrink-0 shadow-md cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>{labels?.send ?? '发送'}</span>
-              </Button>
-            </form>
+            {/* Shared Bottom Input Bar & Voice Controls */}
+            <div className="p-2.5 bg-card border-t border-border shrink-0">
+              <InGameBottomBar
+                value={inputText}
+                onChange={setInputText}
+                onSubmit={handleSend}
+                placeholder={
+                  isDrawer
+                    ? labels?.inputPlaceholderArtist ?? '发送聊天消息... (画手禁发答案)'
+                    : labels?.inputPlaceholderGuesser ?? '发送消息或猜词...'
+                }
+                sendLabel={labels?.send ?? '发送'}
+                showVoiceButton={true}
+                voiceMode={voiceMode}
+                isMuted={isMuted}
+                onToggleMute={onToggleMute}
+                onHoldToTalk={onHoldToTalk}
+                isSpeaking={!isMuted}
+                leftSlot={
+                  <button
+                    type="button"
+                    onClick={() => setInputText((prev) => `${prev} 🎉`)}
+                    aria-label={labels?.insertEmojiAria ?? '插入表情符号'}
+                    className="p-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <Smile className="w-4 h-4" />
+                  </button>
+                }
+                labels={{
+                  placeholder: isDrawer
+                    ? labels?.inputPlaceholderArtist ?? (isEnglish ? 'Send chat message... (Artist cannot send answers)' : '发送聊天消息... (画手禁发答案)')
+                    : labels?.inputPlaceholderGuesser ?? (isEnglish ? 'Send chat message...' : '发送聊天消息...'),
+                  send: labels?.send ?? '发送',
+                  sendAria: labels?.sendAria ?? '发送消息',
+                  clearAria: labels?.clearAria,
+                  danmakuOn: labels?.danmakuOn,
+                  danmakuOff: labels?.danmakuOff,
+                  danmakuOnBadge: labels?.danmakuOnBadge,
+                  danmakuOffBadge: labels?.danmakuOffBadge,
+                  danmakuToggleAria: labels?.danmakuToggleAria,
+                  holdToTalk: labels?.holdToTalk,
+                  releaseToMute: labels?.releaseToMute,
+                  holdToTalkAria: labels?.holdToTalkAria,
+                  releaseToMuteAria: labels?.releaseToMuteAria,
+                  mute: labels?.mute,
+                  unmute: labels?.unmute,
+                  muteAria: labels?.muteAria,
+                  unmuteAria: labels?.unmuteAria,
+                }}
+              />
+            </div>
 
             {/* Voice Mode Footer */}
             <div className="flex items-center justify-between px-4 py-1.5 bg-muted/30 border-t border-border/60 text-[11px] font-bold text-muted-foreground shrink-0 pb-safe">
