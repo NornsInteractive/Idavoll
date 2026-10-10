@@ -219,7 +219,7 @@ export const InGameGuesserPage: React.FC = () => {
                     title={t('inGame.leaderboard', '实时积分榜')}
                     aria-label={t('inGame.leaderboard', '实时积分榜')}
                   >
-                    <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
+                    <AppIcon name="leaderboard" className="w-4 h-4 text-primary" />
                   </button>
                   <button
                     type="button"
@@ -688,7 +688,7 @@ export const InGameGuesserPage: React.FC = () => {
               title={t('inGame.leaderboard', '实时积分榜')}
               className="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface text-xs font-bold transition-colors cursor-pointer shrink-0"
             >
-              <AppIcon name="leaderboard" className="w-4 h-4 text-secondary-container" />
+              <AppIcon name="leaderboard" className="w-4 h-4 text-primary" />
               <span>{t('inGame.leaderboard', '实时积分榜')}</span>
             </button>
           </div>
