@@ -27,7 +27,7 @@ export const SplashLoginPage: React.FC = () => {
   const { token, id, nickname: currentNick, avatar: currentAvatar, setUser } = useUserStore();
 
   const [nickname, setNickname] = useState(() => currentNick || generateRandomNickname());
-  const [selectedSeed, setSelectedSeed] = useState(AVATAR_SEEDS[0]);
+  const [selectedSeed, setSelectedSeed] = useState(() => AVATAR_SEEDS[Math.floor(Math.random() * AVATAR_SEEDS.length)]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +36,30 @@ export const SplashLoginPage: React.FC = () => {
   const startXRef = useRef(0);
   const scrollStartRef = useRef(0);
   const hasDraggedRef = useRef(false);
+  const isFirstRenderRef = useRef(true);
+
+  // Auto-scroll selected avatar into view (on initial random seed or randomize button)
+  useEffect(() => {
+    if (isPointerDownRef.current || hasDraggedRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const timer = setTimeout(() => {
+      const selectedEl = container.querySelector<HTMLElement>('[data-selected="true"]');
+      if (!selectedEl) return;
+      const containerRect = container.getBoundingClientRect();
+      const elRect = selectedEl.getBoundingClientRect();
+      const scrollOffset =
+        elRect.left - containerRect.left + container.scrollLeft - (container.clientWidth - selectedEl.clientWidth) / 2;
+      container.scrollTo({
+        left: Math.max(0, scrollOffset),
+        behavior: isFirstRenderRef.current ? 'auto' : 'smooth',
+      });
+      isFirstRenderRef.current = false;
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [selectedSeed]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     isPointerDownRef.current = true;
@@ -170,6 +194,7 @@ export const SplashLoginPage: React.FC = () => {
                     return (
                       <motion.button
                         key={seed}
+                        data-selected={isSelected}
                         type="button"
                         whileTap={{ scale: 0.92 }}
                         onClick={(e) => {

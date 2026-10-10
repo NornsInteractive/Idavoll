@@ -186,6 +186,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         })}
       </div>
 
+      {/* Slot above input (e.g. Mic / Voice controls) */}
+      {aboveInputSlot && (
+        <div className="shrink-0">
+          {aboveInputSlot}
+        </div>
+      )}
+
       {/* Quick emoji drawer */}
       <AnimatePresence>
         {showEmojiPicker && (
@@ -208,13 +215,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Slot above input (e.g. Mic / Voice controls) */}
-      {aboveInputSlot && (
-        <div className="shrink-0">
-          {aboveInputSlot}
-        </div>
-      )}
 
       {/* Shared Bottom Input Bar */}
       <div className="p-2 border-t border-border/80 bg-background/80 shrink-0">

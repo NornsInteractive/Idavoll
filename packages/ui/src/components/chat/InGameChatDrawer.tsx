@@ -526,62 +526,8 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
               ))}
             </div>
 
-            {/* Shared Bottom Input Bar & Voice Controls */}
-            <div className="p-2.5 bg-card border-t border-border shrink-0">
-              <InGameBottomBar
-                value={inputText}
-                onChange={setInputText}
-                onSubmit={handleSend}
-                placeholder={
-                  isDrawer
-                    ? labels?.inputPlaceholderArtist ?? '发送聊天消息... (画手禁发答案)'
-                    : labels?.inputPlaceholderGuesser ?? '发送消息或猜词...'
-                }
-                sendLabel={labels?.send ?? '发送'}
-                showVoiceButton={true}
-                voiceMode={voiceMode}
-                isMuted={isMuted}
-                onToggleMute={onToggleMute}
-                onHoldToTalk={onHoldToTalk}
-                isSpeaking={!isMuted}
-                leftSlot={
-                  <button
-                    type="button"
-                    onClick={() => setInputText((prev) => `${prev} 🎉`)}
-                    aria-label={labels?.insertEmojiAria ?? '插入表情符号'}
-                    className="p-1 text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    <Smile className="w-4 h-4" />
-                  </button>
-                }
-                labels={{
-                  placeholder: isDrawer
-                    ? labels?.inputPlaceholderArtist ?? (isEnglish ? 'Send chat message... (Artist cannot send answers)' : '发送聊天消息... (画手禁发答案)')
-                    : labels?.inputPlaceholderGuesser ?? (isEnglish ? 'Send chat message...' : '发送聊天消息...'),
-                  send: labels?.send ?? '发送',
-                  sendAria: labels?.sendAria ?? '发送消息',
-                  clearAria: labels?.clearAria,
-                  danmakuOn: labels?.danmakuOn,
-                  danmakuOff: labels?.danmakuOff,
-                  danmakuOnBadge: labels?.danmakuOnBadge,
-                  danmakuOffBadge: labels?.danmakuOffBadge,
-                  danmakuToggleAria: labels?.danmakuToggleAria,
-                  holdToTalk: labels?.holdToTalk,
-                  releaseToMute: labels?.releaseToMute,
-                  holdToTalkShort: labels?.holdToTalkShort,
-                  releaseToMuteShort: labels?.releaseToMuteShort,
-                  holdToTalkAria: labels?.holdToTalkAria,
-                  releaseToMuteAria: labels?.releaseToMuteAria,
-                  mute: labels?.mute,
-                  unmute: labels?.unmute,
-                  muteAria: labels?.muteAria,
-                  unmuteAria: labels?.unmuteAria,
-                }}
-              />
-            </div>
-
-            {/* Voice Mode Footer */}
-            <div className="flex items-center justify-between px-4 py-1.5 bg-muted/30 border-t border-border/60 text-[11px] font-bold text-muted-foreground shrink-0 pb-safe">
+            {/* Voice Mode & Status Bar */}
+            <div className="flex items-center justify-between px-4 py-1.5 bg-muted/30 border-t border-border/60 text-[11px] font-bold text-muted-foreground shrink-0">
               <div className="flex items-center gap-2">
                 <span>{labels?.voiceModeLabel ?? '语音模式:'}</span>
                 <div className="inline-flex rounded-full bg-muted p-0.5 border border-border/60">
@@ -646,6 +592,60 @@ export const InGameChatDrawer: React.FC<InGameChatDrawerProps> = ({
                   </>
                 )}
               </div>
+            </div>
+
+            {/* Shared Bottom Input Bar & Voice Controls */}
+            <div className="p-2.5 bg-card border-t border-border shrink-0 pb-safe">
+              <InGameBottomBar
+                value={inputText}
+                onChange={setInputText}
+                onSubmit={handleSend}
+                placeholder={
+                  isDrawer
+                    ? labels?.inputPlaceholderArtist ?? '发送聊天消息... (画手禁发答案)'
+                    : labels?.inputPlaceholderGuesser ?? '发送消息或猜词...'
+                }
+                sendLabel={labels?.send ?? '发送'}
+                showVoiceButton={true}
+                voiceMode={voiceMode}
+                isMuted={isMuted}
+                onToggleMute={onToggleMute}
+                onHoldToTalk={onHoldToTalk}
+                isSpeaking={!isMuted}
+                leftSlot={
+                  <button
+                    type="button"
+                    onClick={() => setInputText((prev) => `${prev} 🎉`)}
+                    aria-label={labels?.insertEmojiAria ?? '插入表情符号'}
+                    className="p-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <Smile className="w-4 h-4" />
+                  </button>
+                }
+                labels={{
+                  placeholder: isDrawer
+                    ? labels?.inputPlaceholderArtist ?? (isEnglish ? 'Send chat message... (Artist cannot send answers)' : '发送聊天消息... (画手禁发答案)')
+                    : labels?.inputPlaceholderGuesser ?? (isEnglish ? 'Send chat message...' : '发送聊天消息...'),
+                  send: labels?.send ?? '发送',
+                  sendAria: labels?.sendAria ?? '发送消息',
+                  clearAria: labels?.clearAria,
+                  danmakuOn: labels?.danmakuOn,
+                  danmakuOff: labels?.danmakuOff,
+                  danmakuOnBadge: labels?.danmakuOnBadge,
+                  danmakuOffBadge: labels?.danmakuOffBadge,
+                  danmakuToggleAria: labels?.danmakuToggleAria,
+                  holdToTalk: labels?.holdToTalk,
+                  releaseToMute: labels?.releaseToMute,
+                  holdToTalkShort: labels?.holdToTalkShort,
+                  releaseToMuteShort: labels?.releaseToMuteShort,
+                  holdToTalkAria: labels?.holdToTalkAria,
+                  releaseToMuteAria: labels?.releaseToMuteAria,
+                  mute: labels?.mute,
+                  unmute: labels?.unmute,
+                  muteAria: labels?.muteAria,
+                  unmuteAria: labels?.unmuteAria,
+                }}
+              />
             </div>
           </motion.div>
         </>

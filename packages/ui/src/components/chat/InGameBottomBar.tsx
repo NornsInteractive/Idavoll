@@ -302,6 +302,23 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
     <div className={cn('w-full flex flex-col gap-1.5 shrink-0', className)}>
       {aboveInputSlot}
 
+      {/* Secondary Action Row (Slots: e.g. emojis, hints, quick actions) */}
+      {(leftSlot || rightSlot) && (
+        <div
+          className={cn(
+            'flex items-center justify-between gap-1.5 w-full',
+            secondaryClassName
+          )}
+        >
+          <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar">
+            {leftSlot}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {rightSlot}
+          </div>
+        </div>
+      )}
+
       <form
         onSubmit={handleSubmit}
         className="flex items-center gap-1 sm:gap-1.5 w-full bg-card/90 dark:bg-card/95 border border-border/80 rounded-xl px-1 sm:px-2 py-1 shadow-2xs"
@@ -435,23 +452,6 @@ export const InGameBottomBar: React.FC<InGameBottomBarProps> = ({
         {/* Voice Button (Rendered inline on the right side of the input in the same row) */}
         {renderVoiceButton()}
       </form>
-
-      {/* Secondary Action Row (Slots) */}
-      {(leftSlot || rightSlot) && (
-        <div
-          className={cn(
-            'flex items-center justify-between gap-1.5 w-full',
-            secondaryClassName
-          )}
-        >
-          <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar">
-            {leftSlot}
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {rightSlot}
-          </div>
-        </div>
-      )}
 
       {belowInputSlot}
     </div>
